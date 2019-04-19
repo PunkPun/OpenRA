@@ -17,9 +17,9 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Reserve landing places for aircraft.")]
-	class ReservableInfo : TraitInfo<Reservable> { }
+	class DockInfo : TraitInfo<Dock> { }
 
-	public class Reservable : ITick, INotifyOwnerChanged, INotifySold, INotifyActorDisposing, INotifyCreated
+	public class Dock : ITick, INotifyOwnerChanged, INotifySold, INotifyActorDisposing, INotifyCreated
 	{
 		Actor reservedFor;
 		Aircraft reservedForAircraft;
@@ -67,13 +67,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		public static bool IsReserved(Actor a)
 		{
-			var res = a.TraitOrDefault<Reservable>();
+			var res = a.TraitOrDefault<Dock>();
 			return res != null && res.reservedForAircraft != null && !res.reservedForAircraft.MayYieldReservation;
 		}
 
 		public static bool IsAvailableFor(Actor reservable, Actor forActor)
 		{
-			var res = reservable.TraitOrDefault<Reservable>();
+			var res = reservable.TraitOrDefault<Dock>();
 			return res == null || res.reservedForAircraft == null || res.reservedForAircraft.MayYieldReservation || res.reservedFor == forActor;
 		}
 

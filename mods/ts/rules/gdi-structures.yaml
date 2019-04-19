@@ -306,7 +306,7 @@ GAHPAD:
 	Production:
 		Produces: Air
 		PauseOnCondition: empdisable
-	Reservable:
+	Dock:
 	RepairsUnits:
 		HpPerStep: 1000
 		PauseOnCondition: empdisable
@@ -356,7 +356,7 @@ GADEPT:
 	RevealsShroud:
 		Range: 5c0
 		MaxHeightDelta: 3
-	Reservable:
+	Dock:
 	RepairsUnits:
 		HpPerStep: 1000
 		PauseOnCondition: empdisable

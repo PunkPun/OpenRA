@@ -270,7 +270,7 @@ NAHPAD:
 	Production:
 		Produces: Air
 		PauseOnCondition: empdisable
-	Reservable:
+	Dock:
 	RepairsUnits:
 		HpPerStep: 1000
 		PauseOnCondition: empdisable

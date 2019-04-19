@@ -42,11 +42,11 @@ namespace OpenRA.Mods.Common.Activities
 			if (rearmInfo == null)
 				return null;
 
-			return self.World.ActorsHavingTrait<Reservable>()
+			return self.World.ActorsHavingTrait<Dock>()
 				.Where(a => !a.IsDead
 					&& a.Owner == self.Owner
 					&& rearmInfo.RearmActors.Contains(a.Info.Name)
-					&& (!unreservedOnly || Reservable.IsAvailableFor(a, self)))
+					&& (!unreservedOnly || Dock.IsAvailableFor(a, self)))
 				.ClosestTo(self);
 		}
 
@@ -72,7 +72,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (IsCanceling || self.IsDead)
 				return true;
 
-			if (dest == null || dest.IsDead || !Reservable.IsAvailableFor(dest, self))
+			if (dest == null || dest.IsDead || !Dock.IsAvailableFor(dest, self))
 				dest = ChooseResupplier(self, true);
 
 			if (dest == null)

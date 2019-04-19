@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.Traits
 						Info.EnterCursor,
 						Info.EnterBlockedCursor,
 						AircraftCanEnter,
-						target => Reservable.IsAvailableFor(target, self));
+						target => Dock.IsAvailableFor(target, self));
 
 					yield return new AircraftMoveOrderTargeter(this);
 				}

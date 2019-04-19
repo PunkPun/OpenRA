@@ -832,7 +832,7 @@ repair_pad:
 		Range: 3c768
 	Selectable:
 		Bounds: 3072, 3072
-	Reservable:
+	Dock:
 	RepairsUnits:
 		Interval: 10
 		HpPerStep: 800

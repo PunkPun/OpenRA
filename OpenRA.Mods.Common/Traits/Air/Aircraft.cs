@@ -550,13 +550,13 @@ namespace OpenRA.Mods.Common.Traits
 				return null; // Not on the resupplier.
 
 			return self.World.ActorMap.GetActorsAt(self.Location)
-				.FirstOrDefault(a => a.Info.HasTraitInfo<ReservableInfo>());
+				.FirstOrDefault(a => a.Info.HasTraitInfo<DockInfo>());
 		}
 
 		public void MakeReservation(Actor target)
 		{
 			UnReserve();
-			var reservable = target.TraitOrDefault<Reservable>();
+			var reservable = target.TraitOrDefault<Dock>();
 			if (reservable != null)
 			{
 				reservation = reservable.Reserve(target, self, this);
@@ -987,7 +987,7 @@ namespace OpenRA.Mods.Common.Traits
 					Info.EnterCursor,
 					Info.EnterBlockedCursor,
 					(target, modifiers) => Info.CanForceLand && modifiers.HasModifier(TargetModifiers.ForceMove) && AircraftCanEnter(target),
-					target => Reservable.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, true));
+					target => Dock.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, true));
 
 				yield return new EnterAlliedActorTargeter<BuildingInfo>(
 					"Enter",
@@ -995,7 +995,7 @@ namespace OpenRA.Mods.Common.Traits
 					Info.EnterCursor,
 					Info.EnterBlockedCursor,
 					AircraftCanEnter,
-					target => Reservable.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, !Info.TakeOffOnResupply));
+					target => Dock.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, !Info.TakeOffOnResupply));
 
 				yield return new AircraftMoveOrderTargeter(this);
 			}
@@ -1096,12 +1096,15 @@ namespace OpenRA.Mods.Common.Traits
 
 				// This is what the order targeter checks to display the correct cursor, so we need to make sure
 				// the behavior matches the cursor if the player clicks despite a "blocked" cursor.
-				if (!canResupplyAt || !Reservable.IsAvailableFor(targetActor, self))
+				if (!canResupplyAt || !Dock.IsAvailableFor(targetActor, self))
 					return;
 
 				if (!order.Queued)
 					UnReserve();
 
+				// We only want to set a target line if the order will (most likely) succeed
+				// if (Dock.IsAvailableFor(targetActor, self))
+				// self.SetTargetLine(Target.FromActor(targetActor), Color.Green);
 				// Aircraft with TakeOffOnResupply would immediately take off again, so there's no point in automatically forcing
 				// them to land on a resupplier. For aircraft without it, it makes more sense to land than to idle above a
 				// free resupplier.
