@@ -1,6 +1,6 @@
 Metadata:
 	Title: Tiberian Dawn
-	Version: {DEV_VERSION}
+	Version: release-20210321
 	Website: https://www.openra.net
 	WebIcon32: https://www.openra.net/images/icons/cnc_32x32.png
 
@@ -34,7 +34,7 @@ Packages:
 
 MapFolders:
 	cnc|maps: System
-	~^SupportDir|maps/cnc/{DEV_VERSION}: User
+	~^SupportDir|maps/cnc/release-20210321: User
 
 Rules:
 	cnc|rules/misc.yaml

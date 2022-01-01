@@ -1,6 +1,6 @@
 Metadata:
 	Title: Red Alert
-	Version: {DEV_VERSION}
+	Version: release-20210321
 	Website: https://www.openra.net
 	WebIcon32: https://www.openra.net/images/icons/ra_32x32.png
 
@@ -37,7 +37,7 @@ Packages:
 
 MapFolders:
 	ra|maps: System
-	~^SupportDir|maps/ra/{DEV_VERSION}: User
+	~^SupportDir|maps/ra/release-20210321: User
 
 Rules:
 	ra|rules/misc.yaml
