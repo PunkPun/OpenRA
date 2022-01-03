@@ -1,3 +1,7 @@
+SaveGamestate: K
+	Description: Save Gamestate
+	Types: Player, Observer, Spectator
+
 ObserverCombinedView: MINUS
 	Description: All Players
 	Types: Observer, Spectator

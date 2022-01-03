@@ -197,7 +197,7 @@ namespace OpenRA
 		public List<MiniYamlNode> ActorDefinitions = new List<MiniYamlNode>();
 
 		// Custom map yaml. Public for access by the map importers and lint checks
-		public readonly MiniYaml RuleDefinitions;
+		public MiniYaml RuleDefinitions;
 		public readonly MiniYaml SequenceDefinitions;
 		public readonly MiniYaml ModelSequenceDefinitions;
 		public readonly MiniYaml WeaponDefinitions;
@@ -244,6 +244,11 @@ namespace OpenRA
 		CellLayer<PPos[]> cellProjection;
 		CellLayer<List<MPos>> inverseCellProjection;
 		CellLayer<byte> projectedHeight;
+
+		public Map Copy()
+    	{
+       		return (Map)MemberwiseClone();
+    	}
 
 		public static string ComputeUID(IReadOnlyPackage package)
 		{
