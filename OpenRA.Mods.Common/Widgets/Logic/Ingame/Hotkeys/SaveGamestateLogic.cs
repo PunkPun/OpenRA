@@ -61,7 +61,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 				if (player is null)
 				{
 					map.PlayerDefinitions.Remove(pl);
-					creepEnemiesNode.Value.Value = String.Join(",",
+					creepEnemiesNode.Value.Value = string.Join(",",
 						creepEnemiesNode.Value.Value.Split(',')
 						.Where(x => !x.Contains(pNameNode.Value.Value)));
 					continue;
@@ -71,11 +71,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 				pl.Value.Nodes.Find(x => x.Key == "Faction").Value.Value = player.Faction.Name.ToLower();
 				if (player.SpawnPoint != 0)
 				{
-					pl.Value.Nodes.Add(new MiniYamlNode("LockFaction", "True"));
-					pl.Value.Nodes.Add(new MiniYamlNode("LockSpawn", "True"));
-					pl.Value.Nodes.Add(new MiniYamlNode("LockTeam", "True"));
-					pl.Value.Nodes.Add(new MiniYamlNode("Team", player.PlayerReference.Team.ToString()));
-					pl.Value.Nodes.Add(new MiniYamlNode("Spawn", player.SpawnPoint.ToString()));
+					OverwriteNode(pl.Value.Nodes, "LockFaction", "True");
+					OverwriteNode(pl.Value.Nodes, "LockSpawn", "True");
+					OverwriteNode(pl.Value.Nodes, "LockTeam", "True");
+					OverwriteNode(pl.Value.Nodes, "Team", player.PlayerReference.Team.ToString());
+					OverwriteNode(pl.Value.Nodes, "Spawn", player.SpawnPoint.ToString());
 					occupiedSpawns.Add(player.SpawnPoint);
 				}
 			}
@@ -122,44 +122,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 				lastActorId = (int)a.ActorID;
 			}
 
-			// create rules if they are missing
-			var ruleDefinitions = map.RuleDefinitions;
-			if (ruleDefinitions is null)
-			{
-				ruleDefinitions = new MiniYaml("");
-			}
+			var ruleDefinitions = map.RuleDefinitions ?? new MiniYaml("");
 
-			// create world actor if missing
-			var worldActor = ruleDefinitions.Nodes.Find(x => x.Key == "World");
-			if (worldActor is null)
+			// world actor settings
+			OverwriteNode(ruleDefinitions.Nodes, "World", "", new List<MiniYamlNode>()
 			{
-				var temp = new MiniYamlNode("World", "");
-				ruleDefinitions.Nodes.Add(temp);
-				worldActor = temp;
-			}
+				new MiniYamlNode("-SpawnMPUnits", "")
+			});
 
-			// worldActor.Value.Nodes.Add(new MiniYamlNode("MPStartLocations", "",  new List<MiniYamlNode>()
-			// {
-			// 	new MiniYamlNode("SeparateTeamSpawnsCheckboxVisible", "False")
-			// }));
-			// worldActor.Value.Nodes.Add(new MiniYamlNode("-MPStartLocations", ""));
-			worldActor.Value.Nodes.Add(new MiniYamlNode("-SpawnMPUnits", ""));
-
-			// create player actor if missing
-			var playerActor = ruleDefinitions.Nodes.Find(x => x.Key == "Player");
-			if (playerActor is null)
+			// player actor settings
+			OverwriteNode(ruleDefinitions.Nodes, "Player", "", new List<MiniYamlNode>()
 			{
-				var temp = new MiniYamlNode("Player", "");
-				ruleDefinitions.Nodes.Add(temp);
-				playerActor = temp;
-			}
-
-			playerActor.Value.Nodes.Add(new MiniYamlNode("PlayerResources", "", new List<MiniYamlNode>()
-			{
-				new MiniYamlNode("SelectableCash", "0"),
-				new MiniYamlNode("DefaultCash", "0"),
-				new MiniYamlNode("DefaultCashDropdownLocked", "True")
-			}));
+				new MiniYamlNode("PlayerResources", "", new List<MiniYamlNode>()
+				{
+					new MiniYamlNode("SelectableCash", "0"),
+					new MiniYamlNode("DefaultCash", "0"),
+					new MiniYamlNode("DefaultCashDropdownLocked", "True")
+				})
+			});
 
 			// adds actors that give cash to players
 			foreach (var pl in world.Players)
@@ -168,24 +148,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 					continue;
 
 				// to rules definitions
-				var actor = new MiniYamlNode("cash" + pl.InternalName.ToLower(), "");
-				ruleDefinitions.Nodes.Add(actor);
-
-				actor.Value.Nodes.Add(new MiniYamlNode("Immobile", ""));
-				actor.Value.Nodes.Add(new MiniYamlNode("KillsSelf", ""));
-				actor.Value.Nodes.Add(new MiniYamlNode("CashTrickler", "", new List<MiniYamlNode>()
+				OverwriteNode(ruleDefinitions.Nodes, "cash" + pl.InternalName.ToLower(), "", new List<MiniYamlNode>()
 				{
-				new MiniYamlNode("Amount", pl.PlayerActor.TraitOrDefault<PlayerResources>().Cash.ToString()),
-				new MiniYamlNode("ShowTicks", "False")
-				}));
+					new MiniYamlNode("Immobile", ""),
+					new MiniYamlNode("KillsSelf", ""),
+					new MiniYamlNode("CashTrickler", "", new List<MiniYamlNode>()
+					{
+						new MiniYamlNode("Amount", pl.PlayerActor.TraitOrDefault<PlayerResources>().Cash.ToString()),
+						new MiniYamlNode("ShowTicks", "False")
+					})
+				});
 
-				// to actors definitions
-				var mapActor = new MiniYamlNode("Actor" + lastActorId, "Cash" + pl.InternalName);
-				actorDefinitions.Add(mapActor);
-
-				mapActor.Value.Nodes.Add(new MiniYamlNode("Owner", pl.InternalName));
-				mapActor.Value.Nodes.Add(new MiniYamlNode("Location", "0,0"));
+				// to actors definitions (doesn't need to overwrite)
 				lastActorId++;
+				OverwriteNode(actorDefinitions, "Actor" + lastActorId, "Cash" + pl.InternalName, new List<MiniYamlNode>()
+				{
+					new MiniYamlNode("Owner", pl.InternalName),
+					new MiniYamlNode("Location", "0,0")
+				});
 			}
 
 			map.ActorDefinitions = actorDefinitions;
@@ -201,6 +181,33 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 			map.Save(package);
 
 			return true;
+		}
+
+		MiniYamlNode OverwriteNode(List<MiniYamlNode> list, string key, string value)
+		{
+			return OverwriteNode(list, key, value, new List<MiniYamlNode>());
+		}
+
+		MiniYamlNode OverwriteNode(List<MiniYamlNode> list, string key, string value, List<MiniYamlNode> values)
+		{
+			Console.WriteLine(key);
+			var node = list.Find(x => x.Key == key);
+			if (node is null)
+			{
+				var tnode = new MiniYamlNode(key, value, values);
+				list.Add(tnode);
+				Console.WriteLine(1);
+				return tnode;
+			}
+			Console.WriteLine(2);
+			foreach (var n in values)
+			{
+				OverwriteNode(node.Value.Nodes, n.Key, n.Value.Value);
+			}
+			Console.WriteLine(3);
+			node.Value.Value = value;
+			Console.WriteLine(4);
+			return node;
 		}
 	}
 }
