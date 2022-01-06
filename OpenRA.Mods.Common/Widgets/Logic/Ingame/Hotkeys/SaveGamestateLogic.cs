@@ -85,9 +85,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 			var lastActorId = 0; // to track actor internal id
 			foreach (var a in actors)
 			{
-				var actor = new MiniYamlNode("Actor" + a.ActorID, a.Info.Name);
-				actorDefinitions.Add(actor);
-
 				// remove unused spawns
 				if (a.Info.Name == "mpspawn")
 				{
@@ -97,6 +94,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 						continue;
 					}
 				}
+
+				var actor = new MiniYamlNode("Actor" + a.ActorID, a.Info.Name == "proc" ? "proc.noharv" : a.Info.Name);
+				actorDefinitions.Add(actor);
 
 				actor.Value.Nodes.Add(new MiniYamlNode("Owner", a.Owner.InternalName.ToString()));
 
@@ -140,6 +140,17 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 					new MiniYamlNode("DefaultCashDropdownLocked", "True")
 				})
 			});
+
+			// add a definition for a refinery without a free harvester
+			OverwriteNode(ruleDefinitions.Nodes, "PROC.NoHarv", "", new List<MiniYamlNode>()
+				{
+					new MiniYamlNode("Inherits", "PROC"),
+					new MiniYamlNode("-FreeActor", ""),
+					new MiniYamlNode("RenderSprites", "", new List<MiniYamlNode>()
+					{
+						new MiniYamlNode("Image", "PROC")
+					})
+				});
 
 			// adds actors that give cash to players
 			foreach (var pl in world.Players)
