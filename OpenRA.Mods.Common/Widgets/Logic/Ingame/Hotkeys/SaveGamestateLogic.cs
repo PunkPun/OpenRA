@@ -111,6 +111,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic.Ingame
 						actor.Value.Nodes.Add(new MiniYamlNode("Health", hp.ToString()));
 				}
 
+				var mobile = a.TraitOrDefault<Mobile>();
+				if (mobile != null && mobile.ToSubCell != SubCell.FullCell)
+					actor.Value.Nodes.Add(new MiniYamlNode("SubCell", ((int)mobile.ToSubCell).ToString()));
+
 				var facing = a.TraitOrDefault<IFacing>();
 				if (facing != null)
 					actor.Value.Nodes.Add(new MiniYamlNode("Facing", facing.Facing.ToString()));
