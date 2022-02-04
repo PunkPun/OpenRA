@@ -12,6 +12,7 @@
 using System;
 using OpenRA.Primitives;
 using OpenRA.Traits;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
@@ -79,6 +80,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							break;
 						}
 				}
+
+				labelText += " " + world.WorldActor.Trait<DomainIndex>().GetDomain(viewport.Cell);
 
 				if (viewport.ActorTooltipExtra != null)
 				{

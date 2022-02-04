@@ -27,6 +27,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			None = 0,
 			Grid = 1,
 			Buildable = 2,
+			Resources = 4
 		}
 
 		MapOverlays overlays = MapOverlays.None;
@@ -126,7 +127,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var categoriesPanel = Ui.LoadWidget("OVERLAY_PANEL", null, new WidgetArgs());
 			var categoryTemplate = categoriesPanel.Get<CheckboxWidget>("CATEGORY_TEMPLATE");
 
-			MapOverlays[] allCategories = { MapOverlays.Grid, MapOverlays.Buildable };
+			MapOverlays[] allCategories = { MapOverlays.Grid, MapOverlays.Buildable, MapOverlays.Resources };
 			foreach (var cat in allCategories)
 			{
 				var category = (CheckboxWidget)categoryTemplate.Clone();
@@ -152,6 +153,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					{
 						overlays ^= cat;
 						buildableTerrainTrait.Enabled = overlays.HasFlag(MapOverlays.Buildable);
+					};
+				}
+
+				if (cat.HasFlag(MapOverlays.Resources))
+				{
+					var editorResourceOverlayTrait = world.WorldActor.Trait<EditorResourceOverlay>();
+					category.OnClick = () =>
+					{
+						overlays ^= cat;
+						editorResourceOverlayTrait.Enabled = overlays.HasFlag(MapOverlays.Resources);
 					};
 				}
 

@@ -663,7 +663,7 @@ ScrollPanel@COPY_FILTER_PANEL:
 
 ScrollPanel@OVERLAY_PANEL:
 	Width: 140
-	Height: 45
+	Height: 65
 	Children:
 		Checkbox@CATEGORY_TEMPLATE:
 			X: 5

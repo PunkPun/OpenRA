@@ -70,7 +70,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly EditorResourceLayerInfo info;
 		protected readonly Map Map;
-		protected readonly Dictionary<byte, string> ResourceTypesByIndex;
+		public readonly Dictionary<byte, string> ResourceTypesByIndex;
 		protected readonly CellLayer<ResourceLayerContents> Tiles;
 		protected Dictionary<string, int> resourceValues;
 
@@ -256,6 +256,23 @@ namespace OpenRA.Mods.Common.Traits
 			Map.Resources[cell] = new ResourceTile((byte)resourceInfo.ResourceIndex, density);
 
 			return density - oldDensity;
+		}
+
+		public bool IsResoureCell(CPos cell, string resource)
+		{
+			var resources = Map.Resources;
+			var uv = cell.ToMPos(Map);
+			if (!Map.Resources.Contains(uv))
+				return false;
+
+			var tile = Map.Resources[uv];
+			if (!ResourceTypesByIndex.TryGetValue(tile.Type, out var resourceType))
+				return false;
+			if (!info.ResourceTypes.TryGetValue(resourceType, out var resourceInfo))
+				return false;
+			if (resource != resourceType)
+				return false;
+			return resources[cell].Type == resourceInfo.ResourceIndex;
 		}
 
 		protected virtual int RemoveResource(string resourceType, CPos cell, int amount = 1)

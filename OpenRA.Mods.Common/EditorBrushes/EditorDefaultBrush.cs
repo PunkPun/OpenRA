@@ -31,6 +31,7 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly EditorActorLayer editorLayer;
 		readonly EditorActionManager editorActionManager;
 		readonly IResourceLayer resourceLayer;
+		readonly EditorResourceOverlay resourceOverlay;
 
 		public EditorActorPreview SelectedActor;
 		int2 worldPixel;
@@ -41,6 +42,7 @@ namespace OpenRA.Mods.Common.Widgets
 			worldRenderer = wr;
 			world = wr.World;
 
+			resourceOverlay = world.WorldActor.Trait<EditorResourceOverlay>();
 			editorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
 			resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
@@ -72,13 +74,14 @@ namespace OpenRA.Mods.Common.Widgets
 
 			var underCursor = editorLayer.PreviewsAt(worldPixel).MinByOrDefault(CalculateActorSelectionPriority);
 			var resourceUnderCursor = resourceLayer?.GetResource(cell).Type;
+			var domain = resourceOverlay.UpdateDomain(cell).ToString();
 
 			if (underCursor != null)
 				editorWidget.SetTooltip(underCursor.Tooltip);
 			else if (resourceUnderCursor != null)
-				editorWidget.SetTooltip(resourceUnderCursor);
+				editorWidget.SetTooltip(resourceUnderCursor + " " + domain);
 			else
-				editorWidget.SetTooltip(null);
+				editorWidget.SetTooltip(domain);
 
 			// Finished with mouse move events, so let them bubble up the widget tree
 			if (mi.Event == MouseInputEvent.Move)
