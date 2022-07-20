@@ -114,7 +114,7 @@ namespace OpenRA.Mods.Common.Activities
 				var offset = WVec.Zero;
 				if (exit != null)
 				{
-					offset = exit.Info.SpawnOffset;
+					offset = aircraft.ReservedActorDockOffset;
 					facing = exit.Info.Facing;
 				}
 

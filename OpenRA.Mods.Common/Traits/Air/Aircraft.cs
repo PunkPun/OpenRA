@@ -229,7 +229,7 @@ namespace OpenRA.Mods.Common.Traits
 		Repairable repairable;
 		Rearmable rearmable;
 		IAircraftCenterPositionOffset[] positionOffsets;
-		IDisposable reservation;
+		bool hasReservation;
 		IEnumerable<int> speedModifiers;
 		INotifyMoving[] notifyMoving;
 		INotifyCenterPositionChanged[] notifyCenterPositionChanged;
@@ -278,6 +278,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		public Actor ReservedActor { get; private set; }
+		public WVec ReservedActorDockOffset { get; private set; }
 		public bool MayYieldReservation { get; private set; }
 		public bool ForceLanding { get; private set; }
 
@@ -473,7 +474,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!Info.Repulsable)
 				return WVec.Zero;
 
-			if (reservation != null)
+			if (hasReservation)
 			{
 				var distanceFromReservationActor = (ReservedActor.CenterPosition - self.CenterPosition).HorizontalLength;
 				if (distanceFromReservationActor < Info.WaitDistanceFromResupplyBase.Length)
@@ -556,17 +557,25 @@ namespace OpenRA.Mods.Common.Traits
 		public void MakeReservation(Actor target)
 		{
 			UnReserve();
-			var reservable = target.TraitOrDefault<Dock>();
+			var reservables = target.Docks(self.Info.Name.ToLowerInvariant()).ToArray();
+
+			// Look for unreserved Docks first, only if that fails check for reserved ones where the reserver may yield
+			var reservable = reservables.FirstOrDefault(r => r.DockEmpty);
+			if (reservable == null)
+				reservable = reservables.FirstOrDefault(r => r.DockCanYield);
+
 			if (reservable != null)
 			{
-				reservation = reservable.Reserve(target, self, this);
+				reservable.Reserve(target, self, this);
+				ReservedActorDockOffset = reservable.Info.Offset;
 				ReservedActor = target;
+				hasReservation = true;
 			}
 		}
 
 		public void AllowYieldingReservation()
 		{
-			if (reservation == null)
+			if (!hasReservation)
 				return;
 
 			MayYieldReservation = true;
@@ -574,11 +583,14 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void UnReserve()
 		{
-			if (reservation == null)
+			if (!hasReservation)
 				return;
 
-			reservation.Dispose();
-			reservation = null;
+			var reservable = ReservedActor.TraitsImplementing<Dock>().FirstOrDefault(r => r.ReservedForActor != null && r.ReservedForActor == self);
+			if (reservable != null)
+				reservable.UnReserveAircraft();
+
+			hasReservation = false;
 			ReservedActor = null;
 			MayYieldReservation = false;
 		}
@@ -761,7 +773,7 @@ namespace OpenRA.Mods.Common.Traits
 				var dat = self.World.Map.DistanceAboveTerrain(CenterPosition);
 				if (dat == LandAltitude)
 				{
-					if (!CanLand(self.Location) && ReservedActor == null)
+					if (!CanLand(self.Location, self) && ReservedActor == null)
 						self.QueueActivity(new TakeOff(self));
 
 					// All remaining idle behaviors rely on not being at LandAltitude, so unconditionally return
