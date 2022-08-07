@@ -11,40 +11,42 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class RearmableInfo : TraitInfo
+	public class RearmableInfo : DockableInfo
 	{
-		[ActorReference]
-		[FieldLoader.Require]
-		[Desc("Actors that this actor can dock to and get rearmed by.")]
-		public readonly HashSet<string> RearmActors = new HashSet<string> { };
-
 		[Desc("Name(s) of AmmoPool(s) that use this trait to rearm.")]
 		public readonly HashSet<string> AmmoPools = new HashSet<string> { "primary" };
 
-		public override object Create(ActorInitializer init) { return new Rearmable(this); }
+		[Desc("Rearm docking type")]
+		public readonly BitSet<DockType> DockType = new BitSet<DockType>("rearm");
+
+		public override object Create(ActorInitializer init) { return new Rearmable(init.Self, this); }
 	}
 
-	public class Rearmable : INotifyCreated, INotifyDockable
+	public class Rearmable : Dockable<RearmableInfo>, INotifyCreated, INotifyDockable
 	{
-		public readonly RearmableInfo Info;
-
-		public Rearmable(RearmableInfo info)
-		{
-			Info = info;
-		}
+		public Rearmable(Actor self, RearmableInfo info)
+			: base(self, info) { }
 
 		public AmmoPool[] RearmableAmmoPools { get; private set; }
+
+		protected override BitSet<DockType> DockType() { return Info.DockType; }
+
+		public override bool CanDock()
+		{
+			return !RearmableAmmoPools.All(p => p.HasFullAmmo);
+		}
 
 		void INotifyCreated.Created(Actor self)
 		{
 			RearmableAmmoPools = self.TraitsImplementing<AmmoPool>().Where(p => Info.AmmoPools.Contains(p.Info.Name)).ToArray();
 		}
 
-		void INotifyDockable.Docked(Actor self, Actor dock)
+		void INotifyDockable.Docked(Actor self, Actor dock, DockManager dockable)
 		{
 			// Reset the ReloadDelay to avoid any issues with early cancellation
 			// from previous reload attempts (explicit order, host building died, etc).
@@ -52,7 +54,33 @@ namespace OpenRA.Mods.Common.Traits
 				pool.RemainingTicks = pool.Info.ReloadDelay;
 		}
 
-		void INotifyDockable.Undocked(Actor self, Actor dock) { }
-		void INotifyDockable.Canceled(Actor self, Actor dock) { }
+		void INotifyDockable.Undocked(Actor self, Actor dock, DockManager dockable) { }
+		void INotifyDockable.Canceled(Actor self, Actor dock, DockManager dockable) { }
+
+		public override bool TickDock(Dock dock)
+		{
+			var rearmComplete = true;
+			foreach (var ammoPool in RearmableAmmoPools)
+			{
+				if (!ammoPool.HasFullAmmo)
+				{
+					if (--ammoPool.RemainingTicks <= 0)
+					{
+						ammoPool.RemainingTicks = ammoPool.Info.ReloadDelay;
+						if (!string.IsNullOrEmpty(ammoPool.Info.RearmSound))
+							Game.Sound.PlayToPlayer(SoundType.World, Self.Owner, ammoPool.Info.RearmSound, Self.CenterPosition);
+
+						ammoPool.GiveAmmo(Self, ammoPool.Info.ReloadCount);
+					}
+
+					rearmComplete = false;
+				}
+			}
+
+			if (rearmComplete)
+				return true;
+
+			return false;
+		}
 	}
 }

@@ -105,6 +105,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new TextNotificationsDisplayWidgetRemoveTime(),
 				new RemoveWithVoxelUnloadBody(),
 				new RemoveTSRefinery(),
+				new RemoveRepairableNear(),
 			})
 		};
 

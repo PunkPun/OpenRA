@@ -61,7 +61,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 				anim.Animation.PlayThen(Info.Sequence, PlayDockingOverlay);
 		}
 
-		void INotifyDock.Docked(Actor self, Actor dockable) { docked = true; PlayDockingOverlay(); }
-		void INotifyDock.Undocked(Actor self, Actor dockable) { docked = false; }
+		void INotifyDock.Docked(Actor self, Actor dockable, DockManager dockManager) { docked = true; PlayDockingOverlay(); }
+		void INotifyDock.Undocked(Actor self, Actor dockable, DockManager dockManager) { docked = false; }
 	}
 }

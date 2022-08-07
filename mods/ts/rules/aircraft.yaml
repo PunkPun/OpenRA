@@ -172,7 +172,6 @@ ORCA:
 		Actor: ORCA.Husk.EMP
 		RequiresCondition: empdisable
 	Rearmable:
-		RearmActors: gahpad, nahpad
 	WithAmmoPipsDecoration:
 		Position: BottomLeft
 		RequiresSelection: true
@@ -239,7 +238,6 @@ ORCAB:
 		Actor: ORCAB.Husk.EMP
 		RequiresCondition: empdisable
 	Rearmable:
-		RearmActors: gahpad, nahpad
 	WithAmmoPipsDecoration:
 		Position: BottomLeft
 		RequiresSelection: true
@@ -394,7 +392,6 @@ SCRIN:
 		Actor: SCRIN.Husk.EMP
 		RequiresCondition: empdisable
 	Rearmable:
-		RearmActors: gahpad, nahpad
 	WithAmmoPipsDecoration:
 		Position: BottomLeft
 		RequiresSelection: true
@@ -465,7 +462,6 @@ APACHE:
 		Actor: APACHE.Husk.EMP
 		RequiresCondition: empdisable
 	Rearmable:
-		RearmActors: gahpad, nahpad
 	WithAmmoPipsDecoration:
 		Position: BottomLeft
 		RequiresSelection: true

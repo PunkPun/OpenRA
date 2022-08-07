@@ -39,10 +39,11 @@ GACNST:
 		Locomotor: tracked
 		Voice: Move
 		RequiresForceMove: true
-	TransformsIntoRepairable:
-		RequiresCondition: factundeploy
-		RepairActors: gadept
+	DockManager:
+		TransformOnDock: true
 		Voice: Move
+	Repairable:
+		RequiresCondition: factundeploy
 		RequiresForceMove: true
 	TransformsIntoEntersTunnels:
 		RequiresCondition: factundeploy
@@ -119,9 +120,10 @@ PROC:
 	RevealsShroud:
 		Range: 6c0
 		MaxHeightDelta: 3
-	Refinery:
-		DockAngle: 640
-		DockOffset: 2,1
+	Dock:
+		Type: unload
+		Facing: 640
+		Offset: 2,1
 		DiscardExcessResources: true
 	StoresResources:
 		Capacity: 2000

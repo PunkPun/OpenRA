@@ -312,11 +312,12 @@ GAHPAD:
 	Production:
 		Produces: Air
 		PauseOnCondition: empdisable
-	Reservable:
 	RepairsUnits:
 		HpPerStep: 1000
 		PauseOnCondition: empdisable
 		PlayerExperience: 5
+	Dock:
+		Type: repairAir, rearm
 		StartRepairingNotification: Repairing
 		StartRepairingTextNotification: Repairing.
 		FinishRepairingNotification: UnitRepaired
@@ -362,11 +363,12 @@ GADEPT:
 	RevealsShroud:
 		Range: 5c0
 		MaxHeightDelta: 3
-	Reservable:
 	RepairsUnits:
 		HpPerStep: 1000
 		PauseOnCondition: empdisable
 		PlayerExperience: 5
+	Dock:
+		Type: repair
 		StartRepairingNotification: Repairing
 		StartRepairingTextNotification: Repairing.
 		FinishRepairingNotification: UnitRepaired

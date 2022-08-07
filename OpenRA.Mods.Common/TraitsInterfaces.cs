@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using OpenRA.Activities;
 using OpenRA.Graphics;
-using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
@@ -155,8 +154,11 @@ namespace OpenRA.Mods.Common.Traits
 	public interface INotifyProduction { void UnitProduced(Actor self, Actor other, CPos exit); }
 	public interface INotifyOtherProduction { void UnitProducedByOther(Actor self, Actor producer, Actor produced, string productionType, TypeDictionary init); }
 	public interface INotifyDelivery { void IncomingDelivery(Actor self); void Delivered(Actor self); }
-	public interface INotifyDock { void Docked(Actor self, Actor dockable); void Undocked(Actor self, Actor dockable); }
-	public interface INotifyDockable { void Docked(Actor self, Actor dock); void Canceled(Actor self, Actor dock); void Undocked(Actor self, Actor dock); }
+	public interface INotifyDock { void Docked(Actor self, Actor dockable, DockManager dockManager); void Undocked(Actor self, Actor dockable, DockManager dockManager); }
+	public interface INotifyDockable { void Docked(Actor self, Actor dock, DockManager dockManager); void Canceled(Actor self, Actor dock, DockManager dockManager); void Undocked(Actor self, Actor dock, DockManager dockManager); }
+
+	[RequireExplicitImplementation]
+	public interface INotifyDockResupply { void BeforeResupply(Actor dockable, ResupplyType types); void ResupplyTick(ResupplyType types); }
 
 	[RequireExplicitImplementation]
 	public interface INotifyResourceAccepted { void OnResourceAccepted(Actor self, Actor refinery, string resourceType, int count, int value); }
@@ -190,12 +192,29 @@ namespace OpenRA.Mods.Common.Traits
 	[RequireExplicitImplementation]
 	public interface INotifyExitedCargo { void OnExitedCargo(Actor self, Actor cargo); }
 
-	public interface INotifyHarvesterAction
+	public interface INotifyHarvesterAction : INotifyDockableAction
 	{
 		void MovingToResources(Actor self, CPos targetCell);
-		void MovingToRefinery(Actor self, Actor refineryActor);
-		void MovementCancelled(Actor self);
 		void Harvested(Actor self, string resourceType);
+	}
+
+	public interface INotifyDockableAction
+	{
+		void MovingToDock(DockManager dockable, Dock dock);
+		void MovementCancelled(DockManager dockable);
+	}
+
+	public interface IDockable
+	{
+		Actor Self { get; }
+		DockManager DockManager { get; }
+		BitSet<DockType> MyDockType { get; }
+		bool DockingPossible(BitSet<DockType> type);
+		bool DockingPossible(BitSet<DockType> type, TargetModifiers modifiers);
+		bool CanDockAt(Dock target, bool allowedToForceEnter = false);
+		bool TickDock(Dock dock);
+		void DockStarted(Dock dock);
+		bool IsAliveAndInWorld { get; }
 	}
 
 	[RequireExplicitImplementation]
@@ -259,15 +278,6 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		void Deploy(Actor self, bool skipMakeAnim);
 		void Undeploy(Actor self, bool skipMakeAnim);
-	}
-
-	public interface IAcceptResourcesInfo : ITraitInfoInterface { }
-	public interface IAcceptResources
-	{
-		void OnDock(Actor harv, DeliverResources dockOrder);
-		int AcceptResources(string resourceType, int count = 1);
-		CVec DeliveryOffset { get; }
-		bool AllowDocking { get; }
 	}
 
 	public interface IProvidesAssetBrowserPalettes

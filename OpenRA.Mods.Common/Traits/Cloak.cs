@@ -270,7 +270,7 @@ namespace OpenRA.Mods.Common.Traits
 			return color;
 		}
 
-		void INotifyDockable.Docked(Actor self, Actor dock)
+		void INotifyDockable.Docked(Actor self, Actor dock, DockManager dockManager)
 		{
 			if (Info.UncloakOn.HasFlag(UncloakType.Dock))
 			{
@@ -279,9 +279,9 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		void INotifyDockable.Canceled(Actor self, Actor dock) { }
+		void INotifyDockable.Canceled(Actor self, Actor dock, DockManager dockManager) { }
 
-		void INotifyDockable.Undocked(Actor self, Actor dock)
+		void INotifyDockable.Undocked(Actor self, Actor dock, DockManager dockManager)
 		{
 			if (Info.UncloakOn.HasFlag(UncloakType.Dock))
 				isDocking = false;
