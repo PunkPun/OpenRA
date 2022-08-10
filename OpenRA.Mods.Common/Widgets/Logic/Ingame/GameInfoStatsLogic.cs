@@ -27,6 +27,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			var player = world.LocalPlayer;
 			var playerPanel = widget.Get<ScrollPanelWidget>("PLAYER_LIST");
+			var statsHeader = widget.Get("STATS_HEADERS");
 
 			if (player != null && !player.NonCombatant)
 			{
@@ -51,13 +52,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			{
 				// Expand the stats window to cover the hidden objectives
 				var objectiveGroup = widget.Get("OBJECTIVE");
-				var statsHeader = widget.Get("STATS_HEADERS");
 
 				objectiveGroup.Visible = false;
 				statsHeader.Bounds.Y -= objectiveGroup.Bounds.Height;
 				playerPanel.Bounds.Y -= objectiveGroup.Bounds.Height;
 				playerPanel.Bounds.Height += objectiveGroup.Bounds.Height;
 			}
+
+			// orderManager.LocalClient is null when watching a replay
+			if (!orderManager.LobbyInfo.Clients.Any(c => !c.IsBot && c.Index != orderManager.LocalClient?.Index && c.State != Session.ClientState.Disconnected))
+				statsHeader.Get<LabelWidget>("ACTIONS").Visible = false;
 
 			var teamTemplate = playerPanel.Get<ScrollItemWidget>("TEAM_TEMPLATE");
 			var playerTemplate = playerPanel.Get("PLAYER_TEMPLATE");
@@ -112,6 +116,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					var scoreCache = new CachedTransform<int, string>(s => s.ToString());
 					item.Get<LabelWidget>("SCORE").GetText = () => scoreCache.Update(p.PlayerStatistics?.Experience ?? 0);
 
+					var muteCheckbox = item.Get<CheckboxWidget>("MUTE");
+					muteCheckbox.IsChecked = () => TextNotificationsManager.MutedPlayers[pp.ClientIndex];
+					muteCheckbox.OnClick = () => TextNotificationsManager.MutedPlayers[pp.ClientIndex] ^= true;
+					muteCheckbox.IsVisible = () => !pp.IsBot && client.State != Session.ClientState.Disconnected && pp.ClientIndex != orderManager.LocalClient?.Index;
+					muteCheckbox.GetTooltipText = () => muteCheckbox.IsChecked() ? "Unmute this player" : "Mute this player";
+
 					playerPanel.AddChild(item);
 				}
 			}
@@ -143,7 +153,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					};
 
 					var kickButton = item.Get<ButtonWidget>("KICK");
-					kickButton.IsVisible = () => Game.IsHost && client.Index != orderManager.LocalClient.Index && client.State != Session.ClientState.Disconnected;
+					kickButton.IsVisible = () => Game.IsHost && client.Index != orderManager.LocalClient?.Index && client.State != Session.ClientState.Disconnected;
 					kickButton.OnClick = () =>
 					{
 						hideMenu(true);
@@ -158,6 +168,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							onCancel: () => hideMenu(false),
 							confirmText: "Kick");
 					};
+
+					var muteCheckbox = item.Get<CheckboxWidget>("MUTE");
+					muteCheckbox.IsChecked = () => TextNotificationsManager.MutedPlayers[client.Index];
+					muteCheckbox.OnClick = () => TextNotificationsManager.MutedPlayers[client.Index] ^= true;
+					muteCheckbox.IsVisible = () => !client.IsBot && client.State != Session.ClientState.Disconnected && client.Index != orderManager.LocalClient?.Index;
+					muteCheckbox.GetTooltipText = () => muteCheckbox.IsChecked() ? "Unmute this player" : "Mute this player";
 
 					playerPanel.AddChild(item);
 				}
