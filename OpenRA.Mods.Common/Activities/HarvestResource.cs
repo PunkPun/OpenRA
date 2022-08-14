@@ -58,30 +58,23 @@ namespace OpenRA.Mods.Common.Activities
 			if (IsCanceling || harv.IsFull)
 				return true;
 
-			// Move towards the target cell
-			if (self.Location != targetCell)
+			// TODO: the unit should decide its angle after having moved to target location
+			var currentAngle = facing.Facing;
+			WAngle? desiredAngle = null;
+			if (harvInfo.HarvestFacings != 0)
+				desiredAngle = body.QuantizeFacing(currentAngle, harvInfo.HarvestFacings);
+
+			// Move towards the target cell and turn to one of the harvestable facings
+			if (self.World.Map.CenterOfCell(targetCell) != self.CenterPosition || (desiredAngle != null && currentAngle != desiredAngle))
 			{
 				foreach (var n in notifyHarvestActions)
 					n.MovingToResources(self, targetCell);
 
-				QueueChild(move.MoveTo(targetCell, 0));
-				return false;
+				QueueChild(move.MoveOntoTarget(self, Target.FromCell(self.World, targetCell), WVec.Zero, desiredAngle, harvInfo.HarvestLineColor));
 			}
 
 			if (!harv.CanHarvestCell(self.Location))
 				return true;
-
-			// Turn to one of the harvestable facings
-			if (harvInfo.HarvestFacings != 0)
-			{
-				var current = facing.Facing;
-				var desired = body.QuantizeFacing(current, harvInfo.HarvestFacings);
-				if (desired != current)
-				{
-					QueueChild(new Turn(self, desired));
-					return false;
-				}
-			}
 
 			var resource = resourceLayer.GetResource(self.Location);
 			if (resource.Type == null || resourceLayer.RemoveResource(resource.Type, self.Location) != 1)

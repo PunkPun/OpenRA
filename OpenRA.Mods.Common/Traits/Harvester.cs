@@ -19,7 +19,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class HarvesterInfo : DockClientBaseInfo, Requires<MobileInfo>
+	public class HarvesterInfo : DockClientBaseInfo, Requires<IMoveInfo>
 	{
 		[Desc("Docking type")]
 		public readonly BitSet<DockType> Type = new BitSet<DockType>("Unload");
@@ -86,10 +86,10 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		public readonly IReadOnlyDictionary<string, int> Contents;
 
-		readonly Mobile mobile;
 		readonly IResourceLayer resourceLayer;
 		readonly ResourceClaimLayer claimLayer;
 		readonly Dictionary<string, int> contents = new Dictionary<string, int>();
+		readonly IPositionable positionable;
 		int conditionToken = Actor.InvalidConditionToken;
 
 		public override BitSet<DockType> GetDockType => Info.Type;
@@ -113,9 +113,9 @@ namespace OpenRA.Mods.Common.Traits
 			: base(self, info)
 		{
 			Contents = new ReadOnlyDictionary<string, int>(contents);
-			mobile = self.Trait<Mobile>();
 			resourceLayer = self.World.WorldActor.Trait<IResourceLayer>();
 			claimLayer = self.World.WorldActor.Trait<ResourceClaimLayer>();
+			positionable = self.Trait<IPositionable>();
 		}
 
 		protected override void Created(Actor self)
@@ -259,7 +259,7 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					// Find the nearest claimable cell to the order location (useful for group-select harvest):
 					var cell = self.World.Map.CellContaining(order.Target.CenterPosition);
-					loc = mobile.NearestCell(cell, p => mobile.CanEnterCell(p) && claimLayer.TryClaimCell(self, p), 1, 6);
+					loc = NearestCell(self, cell, p => positionable.CanEnterCell(p) && claimLayer.TryClaimCell(self, p), 1, 6);
 				}
 				else
 				{
@@ -271,6 +271,19 @@ namespace OpenRA.Mods.Common.Traits
 				self.QueueActivity(order.Queued, new FindAndDeliverResources(self, loc));
 				self.ShowTargetLines();
 			}
+		}
+
+		CPos NearestCell(Actor self, CPos target, Func<CPos, bool> check, int minRange, int maxRange)
+		{
+			if (check(target))
+				return target;
+
+			foreach (var tile in self.World.Map.FindTilesInAnnulus(target, minRange, maxRange))
+				if (check(tile))
+					return tile;
+
+			// Couldn't find a cell
+			return target;
 		}
 
 		int ISpeedModifier.GetSpeedModifier()
