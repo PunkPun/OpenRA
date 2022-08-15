@@ -527,10 +527,10 @@ checkmark-highlighted-cross:
 checkmark-mute:
 	Inherits: ^Glyphs
 	Regions:
-		unchecked: 0, 170, 16, 13
-		unchecked-pressed: 17, 170, 16, 13
-		checked: 17, 170, 16, 13
-		checked-pressed: 0, 170, 16, 13
+		unchecked: 0, 170, 16, 16
+		unchecked-pressed: 17, 170, 16, 16
+		checked: 17, 170, 16, 16
+		checked-pressed: 0, 170, 16, 16
 
 checkmark-highlighted-mute:
 	Inherits: checkmark-mute

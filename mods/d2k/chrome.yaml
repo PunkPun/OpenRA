@@ -398,10 +398,10 @@ checkmark-highlighted-cross:
 checkmark-mute:
 	Inherits: ^Glyphs
 	Regions:
-		unchecked: 0, 144, 16, 13
-		unchecked-pressed: 17, 144, 16, 13
-		checked: 17, 144, 16, 13
-		checked-pressed: 0, 144, 16, 13
+		unchecked: 221, 34, 16, 16
+		unchecked-pressed: 238, 34, 16, 16
+		checked: 238, 34, 16, 16
+		checked-pressed: 221, 34, 16, 16
 
 checkmark-highlighted-mute:
 	Inherits: checkmark-mute

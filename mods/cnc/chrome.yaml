@@ -437,10 +437,10 @@ checkmark-highlighted-cross:
 checkmark-mute:
 	Inherits: ^Chrome
 	Regions:
-		unchecked: 768, 209, 16, 13
-		unchecked-pressed: 785, 209, 16, 13
-		checked: 785, 209, 16, 13
-		checked-pressed: 768, 209, 16, 13
+		unchecked: 989, 34, 16, 16
+		unchecked-pressed: 1006, 34, 16, 16
+		checked: 1006, 34, 16, 16
+		checked-pressed: 989, 34, 16, 16
 
 checkmark-highlighted-mute:
 	Inherits: checkmark-mute
