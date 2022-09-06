@@ -32,7 +32,7 @@ namespace OpenRA.Mods.Common.Scripting
 		public void Capture(Actor target)
 		{
 			var targetManager = target.TraitOrDefault<CaptureManager>();
-			if (targetManager == null || !targetManager.CanBeTargetedBy(target, Self, captureManager))
+			if (targetManager == null || !captureManager.CanTarget(targetManager))
 				throw new LuaException($"Actor '{Self}' cannot capture actor '{target}'!");
 
 			// NB: Scripted actions get no visible targetlines.
