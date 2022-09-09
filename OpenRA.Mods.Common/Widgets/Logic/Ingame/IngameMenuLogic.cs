@@ -478,6 +478,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			};
 		}
 
+		// a
 		void CreateExitEditorButton()
 		{
 			if (world.Type != WorldType.Editor)
