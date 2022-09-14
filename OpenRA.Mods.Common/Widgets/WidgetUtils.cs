@@ -296,6 +296,23 @@ namespace OpenRA.Mods.Common.Widgets
 				label.GetTooltipText = null;
 		}
 
+		public static void TruncateLabelToTooltip(LabelWithTooltipWidget label, Func<string> text)
+		{
+			var transform = new CachedTransform<string, string>(str =>
+			{
+				var truncatedText = TruncateText(str, label.Bounds.Width, Game.Renderer.Fonts[label.Font]);
+
+				if (str != truncatedText)
+					label.GetTooltipText = () => str;
+				else
+					label.GetTooltipText = null;
+
+				return truncatedText;
+			});
+
+			label.GetText = () => transform.Update(text());
+		}
+
 		public static void TruncateButtonToTooltip(ButtonWidget button, string text)
 		{
 			var truncatedText = TruncateText(text, button.Bounds.Width - button.LeftMargin - button.RightMargin, Game.Renderer.Fonts[button.Font]);
