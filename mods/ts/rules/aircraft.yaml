@@ -366,6 +366,7 @@ SCRIN:
 		LandingSounds: dropdwn1.aud
 		CanHover: false
 		CanSlide: false
+		Crushes: visceroid-fusing
 	Health:
 		HP: 28000
 	Armor:
@@ -373,18 +374,18 @@ SCRIN:
 	RevealsShroud:
 		Range: 2c0
 		Type: CenterPosition
-	Armament:
-		Weapon: Proton
-		PauseOnCondition: !ammo
-	AttackAircraft:
-		Voice: Attack
-		FacingTolerance: 80
-		PersistentTargeting: false
-		PauseOnCondition: empdisable
-	AmmoPool:
-		Ammo: 15
-		ReloadCount: 5
-		AmmoCondition: ammo
+	# Armament:
+	# 	Weapon: Proton
+	# 	PauseOnCondition: !ammo
+	# AttackAircraft:
+	# 	Voice: Attack
+	# 	FacingTolerance: 80
+	# 	PersistentTargeting: false
+	# 	PauseOnCondition: empdisable
+	# AmmoPool:
+	# 	Ammo: 15
+	# 	ReloadCount: 5
+	# 	AmmoCondition: ammo
 	RenderSprites:
 	DeathSounds:
 	SpawnActorOnDeath:
@@ -393,16 +394,17 @@ SCRIN:
 	SpawnActorOnDeath@EMP:
 		Actor: SCRIN.Husk.EMP
 		RequiresCondition: empdisable
-	Rearmable:
-		RearmActors: gahpad, nahpad
-	WithAmmoPipsDecoration:
-		Position: BottomLeft
-		RequiresSelection: true
-		Margin: 4, 5
-		PipCount: 3
-		FullSequence: pip-ammo
-		EmptySequence: pip-ammoempty
-		Palette: pips
+	# Rearmable:
+	# 	RearmActors: gahpad, nahpad
+	# WithAmmoPipsDecoration:
+	# 	Position: BottomLeft
+	# 	RequiresSelection: true
+	# 	Margin: 4, 5
+	# 	PipCount: 3
+	# 	FullSequence: pip-ammo
+	# 	EmptySequence: pip-ammoempty
+	# 	Palette: pips
+	AutoCrusher:
 
 APACHE:
 	Inherits: ^EMPableAircraft
@@ -477,6 +479,9 @@ APACHE:
 	WithShadow:
 	WithVoxelBody:
 		ShowShadow: False
+	Crushable:
+		CrushClasses: visceroid-fusing
+		CrushedByFriendlies: true
 
 HUNTER:
 	Inherits@2: ^ExistsInWorld
