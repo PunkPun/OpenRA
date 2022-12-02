@@ -1083,6 +1083,15 @@ namespace OpenRA
 			return delta.Yaw;
 		}
 
+		public WAngle FacingBetween(WPos cell, WPos towards, WAngle fallbackfacing)
+		{
+			var delta = towards - cell;
+			if (delta.HorizontalLengthSquared == 0)
+				return fallbackfacing;
+
+			return delta.Yaw;
+		}
+
 		public void Resize(int width, int height)
 		{
 			var oldMapTiles = Tiles;

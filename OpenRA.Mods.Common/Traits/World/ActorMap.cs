@@ -291,6 +291,59 @@ namespace OpenRA.Mods.Common.Traits
 			return FreeSubCell(cell, SubCell.Any, checkTransient) != SubCell.Invalid;
 		}
 
+		public (CPos, SubCell) ClosestSubCell(WPos fromPos, CPos cell, CPos cell2, Actor ignoreActor)
+		{
+			var uv = cell.ToMPos(map);
+			var layer = influence[cell.Layer];
+
+			var closestDist = long.MaxValue;
+			var closestSubcell = (CPos.Zero, SubCell.Invalid);
+
+			foreach (var i in Subcells())
+			{
+				if (!AnyActorsAt(uv, layer, i, (actor) => { return actor != ignoreActor; }))
+				{
+					var dist = (fromPos - (map.CenterOfCell(cell) + map.Grid.OffsetOfSubCell(i))).LengthSquared;
+					if (closestDist > dist)
+					{
+						closestDist = dist;
+						closestSubcell = (cell, i);
+					}
+				}
+			}
+
+			if (cell == cell2)
+				return closestSubcell;
+
+			uv = cell2.ToMPos(map);
+			layer = influence[cell2.Layer];
+
+			foreach (var i in Subcells())
+			{
+				if (!AnyActorsAt(uv, layer, i, (actor) => { return actor != ignoreActor; }))
+				{
+					var dist = (fromPos - (map.CenterOfCell(cell2) + map.Grid.OffsetOfSubCell(i))).LengthSquared;
+					if (closestDist > dist)
+					{
+						closestDist = dist;
+						closestSubcell = (cell2, i);
+					}
+				}
+			}
+
+			return closestSubcell;
+		}
+
+		public IEnumerable<SubCell> Subcells()
+		{
+			for (var i = (int)SubCell.First; i < map.Grid.SubCellOffsets.Length; i++)
+			{
+				yield return (SubCell)i;
+			}
+
+			yield break;
+		}
+
 		public SubCell FreeSubCell(CPos cell, SubCell preferredSubCell = SubCell.Any, bool checkTransient = true)
 		{
 			var uv = cell.ToMPos(map);

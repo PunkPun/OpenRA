@@ -543,6 +543,8 @@ namespace OpenRA.Mods.Common.Traits
 			if (FromCell == from && ToCell == to && FromSubCell == fromSub && ToSubCell == toSub)
 				return;
 
+			Console.WriteLine($"Location {to} {toSub}");
+
 			RemoveInfluence();
 			FromCell = from;
 			ToCell = to;

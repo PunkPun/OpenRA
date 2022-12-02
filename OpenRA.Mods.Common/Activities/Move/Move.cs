@@ -391,8 +391,6 @@ namespace OpenRA.Mods.Common.Activities
 				this.terrainOrientationMargin = Math.Min(terrainOrientationMargin, Distance / 2);
 				MovingOnGroundLayer = movingOnGroundLayer;
 
-				IsInterruptible = false; // See comments in Move.Cancel()
-
 				TurnsWhileMoving = move.mobile.Info.TurnsWhileMoving;
 
 				// Calculate an elliptical arc that joins from and to
@@ -423,6 +421,9 @@ namespace OpenRA.Mods.Common.Activities
 
 			public override bool Tick(Actor self)
 			{
+				if (IsCanceling)
+					return true;
+
 				var mobile = Move.mobile;
 
 				// Only move by a full speed step if we didn't already move this tick.
@@ -481,11 +482,56 @@ namespace OpenRA.Mods.Common.Activities
 				return false;
 			}
 
+			public override void Cancel(Actor self, bool keepQueue = false)
+			{
+				if (Move.mobile.Locomotor.Info.SharesCell)
+				{
+					var closestSubcell = self.World.ActorMap.ClosestSubCell(self.CenterPosition, Move.mobile.ToCell, Move.mobile.FromCell, self);
+					if (closestSubcell.Item2 != SubCell.Invalid && (closestSubcell.Item2 != Move.mobile.FromSubCell || closestSubcell.Item1 != Move.mobile.FromCell))
+					{
+						base.Cancel(self, false);
+
+						var map = self.World.Map;
+						var targetPos = map.CenterOfCell(closestSubcell.Item1) + map.Grid.OffsetOfSubCell(closestSubcell.Item2);
+						var margin = Move.mobile.Info.TerrainOrientationAdjustmentMargin.Length;
+
+						Queue(new MoveSecondHalf(
+							Move,
+							self.CenterPosition,
+							targetPos,
+							Move.mobile.Facing,
+							map.FacingBetween(self.CenterPosition, targetPos, Move.mobile.Facing),
+							ToTerrainOrientation,
+							Move.mobile.Orientation,
+							margin,
+							progress - Distance,
+							Move.mobile.FromCell.Layer == 0));
+
+						Move.destination = closestSubcell.Item1;
+						Console.WriteLine("New stop");
+						Move.mobile.FinishedMoving(self);
+						Move.mobile.SetLocation(closestSubcell.Item1, closestSubcell.Item2, closestSubcell.Item1, closestSubcell.Item2);
+						return;
+					}
+				}
+
+				IsInterruptible = false;
+				base.Cancel(self, keepQueue);
+				IsInterruptible = true;
+			}
+
 			protected abstract MovePart OnComplete(Actor self, Mobile mobile, Move parent);
 
 			public override IEnumerable<Target> GetTargets(Actor self)
 			{
 				return Move.GetTargets(self);
+			}
+
+			public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+			{
+				// destination might be initialized with null, but will be set in a subsequent tick
+				if (Move.targetLineColor != null && Move.destination != null)
+					yield return new TargetLineNode(Target.FromCell(self.World, Move.destination.Value), Move.targetLineColor.Value);
 			}
 		}
 
@@ -580,6 +626,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			protected override MovePart OnComplete(Actor self, Mobile mobile, Move parent)
 			{
+				Console.WriteLine("SecondPart completed");
 				mobile.SetPosition(self, mobile.ToCell);
 
 				// Move might immediately queue a new MoveFirstHalf within the same tick if we haven't

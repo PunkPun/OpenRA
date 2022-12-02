@@ -234,6 +234,7 @@ namespace OpenRA.Traits
 		IEnumerable<Actor> GetActorsAt(CPos a);
 		IEnumerable<Actor> GetActorsAt(CPos a, SubCell sub);
 		bool HasFreeSubCell(CPos cell, bool checkTransient = true);
+		(CPos, SubCell) ClosestSubCell(WPos fromPos, CPos cell, CPos cell2, Actor ignoreActor);
 		SubCell FreeSubCell(CPos cell, SubCell preferredSubCell = SubCell.Any, bool checkTransient = true);
 		SubCell FreeSubCell(CPos cell, SubCell preferredSubCell, Func<Actor, bool> checkIfBlocker);
 		bool AnyActorsAt(CPos a);
