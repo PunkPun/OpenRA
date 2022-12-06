@@ -60,6 +60,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Undeploy before the actor tries to move?")]
 		public readonly bool UndeployOnMove = false;
 
+		[Desc("Deploy when an actor tries to attack")]
+		public readonly bool DeployOnAttack = false;
+
 		[Desc("Undeploy before the actor is picked up by a Carryall?")]
 		public readonly bool UndeployOnPickup = false;
 
@@ -92,7 +95,7 @@ namespace OpenRA.Mods.Common.Traits
 	public enum DeployState { Undeployed, Deploying, Deployed, Undeploying }
 
 	public class GrantConditionOnDeploy : PausableConditionalTrait<GrantConditionOnDeployInfo>, IResolveOrder, IIssueOrder,
-		INotifyDeployComplete, IIssueDeployOrder, IOrderVoice, IWrapMove, IDelayCarryallPickup
+		INotifyDeployComplete, IIssueDeployOrder, IOrderVoice, IWrapMove, IWrapAttack, IDelayCarryallPickup
 	{
 		readonly Actor self;
 		readonly bool checkTerrainType;
@@ -150,6 +153,18 @@ namespace OpenRA.Mods.Common.Traits
 
 			var activity = new DeployForGrantedCondition(self, this, true);
 			activity.Queue(moveInner);
+			return activity;
+		}
+
+		Activity IWrapAttack.WrapAttack(Activity attackInner)
+		{
+			// Note: We can't assume anything about the current deploy state
+			// because WrapAttack may be called for a queued order
+			if (!Info.DeployOnAttack)
+				return attackInner;
+
+			var activity = new DeployForGrantedCondition(self, this, attacking: true);
+			activity.Queue(attackInner);
 			return activity;
 		}
 

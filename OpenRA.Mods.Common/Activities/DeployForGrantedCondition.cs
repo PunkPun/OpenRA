@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
@@ -20,16 +21,20 @@ namespace OpenRA.Mods.Common.Activities
 		readonly GrantConditionOnDeploy deploy;
 		readonly bool canTurn;
 		readonly bool moving;
+		readonly bool attacking;
 
-		public DeployForGrantedCondition(Actor self, GrantConditionOnDeploy deploy, bool moving = false)
+		public DeployForGrantedCondition(Actor self, GrantConditionOnDeploy deploy, bool moving = false, bool attacking = false)
 		{
 			this.deploy = deploy;
 			this.moving = moving;
+			this.attacking = attacking;
 			canTurn = self.Info.HasTraitInfo<IFacingInfo>();
 		}
 
 		protected override void OnFirstRun(Actor self)
 		{
+			Console.WriteLine("deploy");
+
 			// Turn to the required facing.
 			if (deploy.DeployState == DeployState.Undeployed && deploy.Info.Facing.HasValue && canTurn && !moving)
 				QueueChild(new Turn(self, deploy.Info.Facing.Value));
@@ -37,7 +42,7 @@ namespace OpenRA.Mods.Common.Activities
 
 		public override bool Tick(Actor self)
 		{
-			if (IsCanceling || (deploy.DeployState != DeployState.Deployed && moving))
+			if (IsCanceling || (deploy.DeployState != DeployState.Deployed && moving) || (deploy.DeployState == DeployState.Deployed && attacking))
 				return true;
 
 			QueueChild(new DeployInner(deploy));

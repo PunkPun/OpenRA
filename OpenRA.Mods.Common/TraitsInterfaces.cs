@@ -123,6 +123,11 @@ namespace OpenRA.Mods.Common.Traits
 		void PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel);
 	}
 
+	public interface IWrapAttack
+	{
+		Activity WrapAttack(Activity attackInner);
+	}
+
 	[RequireExplicitImplementation]
 	public interface INotifyDamageStateChanged { void DamageStateChanged(Actor self, AttackInfo e); }
 

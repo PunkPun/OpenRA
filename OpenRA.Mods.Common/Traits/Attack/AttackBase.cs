@@ -83,6 +83,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly Actor self;
 
+		IWrapAttack[] attackWrappers;
+
 		bool wasAiming;
 
 		public AttackBase(Actor self, AttackBaseInfo info)
@@ -96,6 +98,7 @@ namespace OpenRA.Mods.Common.Traits
 			facing = self.TraitOrDefault<IFacing>();
 			positionable = self.TraitOrDefault<IPositionable>();
 			notifyAiming = self.TraitsImplementing<INotifyAiming>().ToArray();
+			attackWrappers = self.TraitsImplementing<IWrapAttack>().ToArray();
 
 			getArmaments = InitializeGetArmaments(self);
 
@@ -224,6 +227,15 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		public abstract Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null);
+
+		Activity WrapAttack(Activity inner)
+		{
+			var attackWrapper = attackWrappers.FirstEnabledTraitOrDefault();
+			if (attackWrapper != null)
+				return attackWrapper.WrapAttack(inner);
+
+			return inner;
+		}
 
 		public bool HasAnyValidWeapons(in Target t, bool checkForCenterTargetingWeapons = false, bool reloadingIsInvalid = false)
 		{
@@ -387,7 +399,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!target.IsValidFor(self))
 				return;
 
-			var activity = GetAttackActivity(self, source, target, allowMove, forceAttack, targetLineColor);
+			var activity = WrapAttack(GetAttackActivity(self, source, target, allowMove, forceAttack, targetLineColor));
 			self.QueueActivity(queued, activity);
 			OnResolveAttackOrder(self, activity, target, queued, forceAttack);
 		}

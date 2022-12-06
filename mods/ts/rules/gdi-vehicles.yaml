@@ -368,6 +368,7 @@ JUGG:
 		DeployedCondition: deployed
 		UndeployedCondition: undeployed
 		UndeployOnMove: true
+		DeployOnAttack: true
 		UndeployOnPickup: true
 		Facing: 384
 		AllowedTerrainTypes: Clear, Road, DirtRoad, Rough
@@ -406,17 +407,14 @@ JUGG:
 		Voice: Attack
 		Armaments: deployed
 		Turrets: deployed
-		RequiresCondition: deployed
-		PauseOnCondition: empdisable
+		PauseOnCondition: empdisable || !deployed
 		TargetFrozenActors: True
 		ForceFireIgnoresActors: True
-		OutsideRangeRequiresForceFire: True
 	Armament@deployed:
 		Name: deployed
 		Turret: deployed
 		Weapon: Jugg90mm
 		LocalOffset: 820,203,1386, 820,0,1386, 820,-203,1386
-		RequiresCondition: deployed
 		MuzzleSequence: muzzle
 	WithMuzzleOverlay:
 	RevealOnFire:
