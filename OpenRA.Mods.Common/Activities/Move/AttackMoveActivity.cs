@@ -69,8 +69,8 @@ namespace OpenRA.Mods.Common.Activities
 					runningMoveActivity = false;
 					ChildActivity?.Cancel(self);
 
-					foreach (var ab in autoTarget.ActiveAttackBases)
-						QueueChild(ab.GetAttackActivity(self, AttackSource.AttackMove, target, false, false));
+					foreach (var at in autoTarget.ActiveAutoTargetables)
+						QueueChild(at.GetAttackActivity(self, target));
 				}
 
 				// Continue with the move activity (or queue a new one) when there are no targets.

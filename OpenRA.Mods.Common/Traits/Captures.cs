@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using OpenRA.Activities;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Primitives;
@@ -18,7 +19,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("This actor can capture other actors which have the Capturable: trait.")]
-	public class CapturesInfo : ConditionalTraitInfo, Requires<CaptureManagerInfo>
+	public class CapturesInfo : ConditionalTraitInfo, Requires<CaptureManagerInfo>, IAutoTargetInfo
 	{
 		[FieldLoader.Require]
 		[Desc("Types of actors that it can capture, as long as the type also exists in the Capturable Type: trait.")]
@@ -70,14 +71,16 @@ namespace OpenRA.Mods.Common.Traits
 		public override object Create(ActorInitializer init) { return new Captures(init.Self, this); }
 	}
 
-	public class Captures : ConditionalTrait<CapturesInfo>, IIssueOrder, IResolveOrder, IOrderVoice
+	public class Captures : ConditionalTrait<CapturesInfo>, IIssueOrder, IResolveOrder, IOrderVoice, IAutoTarget
 	{
 		public readonly CaptureManager CaptureManager;
+		readonly Actor self;
 
 		public Captures(Actor self, CapturesInfo info)
 			: base(info)
 		{
 			CaptureManager = self.Trait<CaptureManager>();
+			this.self = self;
 		}
 
 		public IEnumerable<IOrderTargeter> Orders
@@ -109,12 +112,46 @@ namespace OpenRA.Mods.Common.Traits
 			if (order.OrderString != "CaptureActor" || IsTraitDisabled)
 				return;
 
-			self.QueueActivity(order.Queued, new CaptureActor(self, order.Target, Info.TargetLineColor));
+			QueueCaptureActivity(order.Target, order.Queued);
+		}
+
+		void QueueCaptureActivity(Target target, bool queued)
+		{
+			self.QueueActivity(queued, GetAttackActivity(self, target));
 			self.ShowTargetLines();
 		}
 
 		protected override void TraitEnabled(Actor self) { CaptureManager.RefreshCaptures(); }
 		protected override void TraitDisabled(Actor self) { CaptureManager.RefreshCaptures(); }
+
+		bool IAutoTarget.TargetFrozenActors => true;
+
+		PlayerRelationship IAutoTarget.UnforcedAttackTargetStances() => Info.ValidRelationships;
+		WDist IAutoTarget.GetMaximumRange() => WDist.Zero;
+
+		public bool ValidTarget(Target target)
+		{
+			var targetManager = target.Actor.TraitOrDefault<CaptureManager>();
+			return targetManager != null && CaptureManager.CanTarget(targetManager);
+		}
+
+		public bool CanAttackTarget(Target target, bool allowMove, bool allowTurn)
+		{
+			return allowMove && ValidTarget(target);
+		}
+
+		void IAutoTarget.AttackTarget(Target target, bool allowMove)
+		{
+			if (!CanAttackTarget(target, allowMove, true))
+				return;
+
+			QueueCaptureActivity(target, false);
+		}
+
+		public Activity GetAttackActivity(Actor self, in Target newTarget)
+		{
+			return new CaptureActor(self, newTarget, Info.TargetLineColor);
+		}
 
 		class CaptureOrderTargeter : UnitOrderTargeter
 		{

@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	[Desc("The actor will automatically engage the enemy when it is in range.")]
-	public class AutoTargetInfo : ConditionalTraitInfo, Requires<AttackBaseInfo>, IEditorActorOptions
+	public class AutoTargetInfo : ConditionalTraitInfo, Requires<IAutoTargetInfo>, IEditorActorOptions
 	{
 		[Desc("It will try to hunt down the enemy if it is set to AttackAnything.")]
 		public readonly bool AllowMovement = true;
@@ -128,7 +128,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class AutoTarget : ConditionalTrait<AutoTargetInfo>, INotifyIdle, INotifyDamage, ITick, IResolveOrder, ISync, INotifyOwnerChanged
 	{
-		public readonly IEnumerable<AttackBase> ActiveAttackBases;
+		public readonly IEnumerable<IAutoTarget> ActiveAutoTargetables;
 
 		readonly bool allowMovement;
 
@@ -179,7 +179,7 @@ namespace OpenRA.Mods.Common.Traits
 			: base(info)
 		{
 			var self = init.Self;
-			ActiveAttackBases = self.TraitsImplementing<AttackBase>().ToArray().Where(t => !t.IsTraitDisabled);
+			ActiveAutoTargetables = self.TraitsImplementing<IAutoTarget>().ToArray().Where(Exts.IsTraitEnabled);
 
 			stance = init.GetValue<StanceInit, UnitStance>(self.Owner.IsBot || !self.Owner.Playable ? info.InitialStanceAI : info.InitialStance);
 
@@ -249,7 +249,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Not a lot we can do about things we can't hurt... although maybe we should automatically run away?
 			var attackerAsTarget = Target.FromActor(attacker);
-			if (!ActiveAttackBases.Any(a => a.HasAnyValidWeapons(attackerAsTarget)))
+			if (!ActiveAutoTargetables.Any(a => a.ValidTarget(attackerAsTarget)))
 				return;
 
 			// Don't retaliate against own units force-firing on us. It's usually not what the player wanted.
@@ -282,7 +282,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Target ScanForTarget(Actor self, bool allowMove, bool allowTurn, bool ignoreScanInterval = false)
 		{
-			if ((ignoreScanInterval || nextScanTime <= 0) && ActiveAttackBases.Any())
+			if ((ignoreScanInterval || nextScanTime <= 0) && ActiveAutoTargetables.Any())
 			{
 				foreach (var oat in overrideAutoTarget)
 					if (oat.TryGetAutoTargetOverride(self, out var existingTarget))
@@ -291,7 +291,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!ignoreScanInterval)
 					nextScanTime = self.World.SharedRandom.Next(Info.MinimumScanTimeInterval, Info.MaximumScanTimeInterval);
 
-				foreach (var ab in ActiveAttackBases)
+				foreach (var ab in ActiveAutoTargetables)
 				{
 					// If we can't attack right now, there's no need to try and find a target.
 					var attackStances = ab.UnforcedAttackTargetStances();
@@ -315,8 +315,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		void Attack(in Target target, bool allowMove)
 		{
-			foreach (var ab in ActiveAttackBases)
-				ab.AttackTarget(target, AttackSource.AutoTarget, false, allowMove);
+			foreach (var at in ActiveAutoTargetables)
+				at.AttackTarget(target, allowMove);
 		}
 
 		public bool HasValidTargetPriority(Actor self, Player owner, BitSet<TargetableType> targetTypes)
@@ -338,20 +338,20 @@ namespace OpenRA.Mods.Common.Traits
 			});
 		}
 
-		Target ChooseTarget(Actor self, AttackBase ab, PlayerRelationship attackStances, WDist scanRange, bool allowMove, bool allowTurn)
+		Target ChooseTarget(Actor self, IAutoTarget at, PlayerRelationship attackStances, WDist scanRange, bool allowMove, bool allowTurn)
 		{
 			var chosenTarget = Target.Invalid;
 			var chosenTargetPriority = int.MinValue;
 			int chosenTargetRange = 0;
 
 			var activePriorities = activeTargetPriorities.ToList();
-			if (activePriorities.Count == 0)
+			if (activePriorities.Count == 0 || scanRange == WDist.Zero)
 				return chosenTarget;
 
 			var targetsInRange = self.World.FindActorsInCircle(self.CenterPosition, scanRange)
 				.Select(Target.FromActor);
 
-			if (allowMove || ab.Info.TargetFrozenActors)
+			if (allowMove || at.TargetFrozenActors)
 				targetsInRange = targetsInRange
 					.Concat(self.Owner.FrozenActorLayer.FrozenActorsInCircle(self.World, self.CenterPosition, scanRange)
 					.Select(Target.FromFrozenActor));
@@ -409,16 +409,7 @@ namespace OpenRA.Mods.Common.Traits
 					continue;
 
 				// Make sure that we can actually fire on the actor
-				var armaments = ab.ChooseArmamentsForTarget(target, false);
-				if (!allowMove)
-					armaments = armaments.Where(arm =>
-						target.IsInRange(self.CenterPosition, arm.MaxRange()) &&
-						!target.IsInRange(self.CenterPosition, arm.Weapon.MinRange));
-
-				if (!armaments.Any())
-					continue;
-
-				if (!allowTurn && !ab.TargetInFiringArc(self, target, ab.Info.FacingTolerance))
+				if (!at.CanAttackTarget(target, allowMove, allowTurn))
 					continue;
 
 				// Evaluate whether we want to target this actor

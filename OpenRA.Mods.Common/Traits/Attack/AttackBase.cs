@@ -21,7 +21,7 @@ namespace OpenRA.Mods.Common.Traits
 {
 	public enum AttackSource { Default, AutoTarget, AttackMove }
 
-	public abstract class AttackBaseInfo : PausableConditionalTraitInfo
+	public abstract class AttackBaseInfo : PausableConditionalTraitInfo, IAutoTargetInfo
 	{
 		[Desc("Armament names")]
 		public readonly string[] Armaments = { "primary", "secondary" };
@@ -66,7 +66,7 @@ namespace OpenRA.Mods.Common.Traits
 		public abstract override object Create(ActorInitializer init);
 	}
 
-	public abstract class AttackBase : PausableConditionalTrait<AttackBaseInfo>, ITick, IIssueOrder, IResolveOrder, IOrderVoice, ISync
+	public abstract class AttackBase : PausableConditionalTrait<AttackBaseInfo>, ITick, IIssueOrder, IResolveOrder, IOrderVoice, ISync, IAutoTarget
 	{
 		readonly string attackOrderName = "Attack";
 		readonly string forceAttackOrderName = "ForceAttack";
@@ -125,6 +125,45 @@ namespace OpenRA.Mods.Common.Traits
 				.Where(a => Info.Armaments.Contains(a.Info.Name)).ToArray();
 
 			return () => armaments;
+		}
+
+		bool IAutoTarget.TargetFrozenActors => Info.TargetFrozenActors;
+
+		PlayerRelationship IAutoTarget.UnforcedAttackTargetStances()
+		{
+			// PERF: Avoid LINQ.
+			var stances = PlayerRelationship.None;
+			foreach (var armament in Armaments)
+				if (!armament.IsTraitDisabled)
+					stances |= armament.Info.TargetRelationships;
+
+			return stances;
+		}
+
+		bool IAutoTarget.ValidTarget(Target target)
+		{
+			return HasAnyValidWeapons(target);
+		}
+
+		bool IAutoTarget.CanAttackTarget(Target target, bool allowMove, bool allowTurn)
+		{
+			var armaments = ChooseArmamentsForTarget(target, false);
+			if (!allowMove)
+				armaments = armaments.Where(arm =>
+					target.IsInRange(self.CenterPosition, arm.MaxRange()) &&
+					!target.IsInRange(self.CenterPosition, arm.Weapon.MinRange));
+
+			return armaments.Any() && (allowTurn || TargetInFiringArc(self, target, Info.FacingTolerance));
+		}
+
+		void IAutoTarget.AttackTarget(Target target, bool allowMove)
+		{
+			AttackTarget(target, AttackSource.AutoTarget, false, allowMove);
+		}
+
+		Activity IAutoTarget.GetAttackActivity(Actor self, in Target newTarget)
+		{
+			return GetAttackActivity(self, AttackSource.AttackMove, newTarget, false, false);
 		}
 
 		public bool TargetInFiringArc(Actor self, in Target target, WAngle facingTolerance)
@@ -398,17 +437,6 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			return HasAnyValidWeapons(target)
 				&& (target.IsInRange(self.CenterPosition, GetMaximumRangeVersusTarget(target)) || (allowMove && self.Info.HasTraitInfo<IMoveInfo>()));
-		}
-
-		public PlayerRelationship UnforcedAttackTargetStances()
-		{
-			// PERF: Avoid LINQ.
-			var stances = PlayerRelationship.None;
-			foreach (var armament in Armaments)
-				if (!armament.IsTraitDisabled)
-					stances |= armament.Info.TargetRelationships;
-
-			return stances;
 		}
 
 		class AttackOrderTargeter : IOrderTargeter

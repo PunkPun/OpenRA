@@ -675,6 +675,13 @@ THF:
 	Mobile:
 		Voice: Move
 		Speed: 68
+	AttackMove:
+		Voice: Move
+	AutoTarget:
+		InitialStance: AttackAnything
+		ScanRadius: 4
+	AutoTargetPriority@DEFAULT:
+		ValidTargets: Vehicle, Aircraft
 	-AttackFrontal:
 
 SHOK:

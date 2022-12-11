@@ -308,6 +308,20 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	[RequireExplicitImplementation]
+	public interface IAutoTargetInfo : ITraitInfoInterface { }
+
+	public interface IAutoTarget
+	{
+		bool TargetFrozenActors { get; }
+		PlayerRelationship UnforcedAttackTargetStances();
+		WDist GetMaximumRange();
+		bool ValidTarget(Target t);
+		bool CanAttackTarget(Target target, bool allowMove, bool allowTurn);
+		void AttackTarget(Target target, bool allowMove);
+		Activity GetAttackActivity(Actor self, in Target newTarget);
+	}
+
+	[RequireExplicitImplementation]
 	public interface IDisableEnemyAutoTarget
 	{
 		bool DisableEnemyAutoTarget(Actor self, Actor attacker);
