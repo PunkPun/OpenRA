@@ -20,20 +20,22 @@ namespace OpenRA.Mods.Cnc.Traits
 		public readonly string FullHuskActor = null;
 		public readonly int FullnessThreshold = 50;
 
-		public override object Create(ActorInitializer init) { return new HarvesterHuskModifier(this); }
+		public override object Create(ActorInitializer init) { return new HarvesterHuskModifier(this, init.Self); }
 	}
 
 	public class HarvesterHuskModifier : IHuskModifier
 	{
+		public readonly Actor Actor;
 		readonly HarvesterHuskModifierInfo info;
-		public HarvesterHuskModifier(HarvesterHuskModifierInfo info)
+		public HarvesterHuskModifier(HarvesterHuskModifierInfo info, Actor self)
 		{
+			Actor = self;
 			this.info = info;
 		}
 
-		public string HuskActor(Actor self)
+		public string HuskActor()
 		{
-			return self.Trait<Harvester>().Fullness > info.FullnessThreshold ? info.FullHuskActor : null;
+			return Actor.Trait<Harvester>().Fullness > info.FullnessThreshold ? info.FullHuskActor : null;
 		}
 	}
 }

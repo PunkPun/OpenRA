@@ -35,20 +35,20 @@ namespace OpenRA.Mods.Common.Activities
 			minCells = minRange.Length / 1024;
 		}
 
-		protected override bool ShouldStop(Actor self)
+		protected override bool ShouldStop()
 		{
 			// We are now in range. Don't move any further!
 			// HACK: This works around the pathfinder not returning the shortest path
-			return AtCorrectRange(self.CenterPosition) && Mobile.CanInteractWithGroundLayer(self) && Mobile.CanStayInCell(self.Location);
+			return AtCorrectRange(Actor.CenterPosition) && Mobile.CanInteractWithGroundLayer() && Mobile.CanStayInCell(Actor.Location);
 		}
 
-		protected override bool ShouldRepath(Actor self, CPos targetLocation)
+		protected override bool ShouldRepath(CPos targetLocation)
 		{
-			return lastVisibleTargetLocation != targetLocation && (!AtCorrectRange(self.CenterPosition)
-				|| !Mobile.CanInteractWithGroundLayer(self) || !Mobile.CanStayInCell(self.Location));
+			return lastVisibleTargetLocation != targetLocation && (!AtCorrectRange(Actor.CenterPosition)
+				|| !Mobile.CanInteractWithGroundLayer() || !Mobile.CanStayInCell(Actor.Location));
 		}
 
-		protected override IEnumerable<CPos> CandidateMovementCells(Actor self)
+		protected override IEnumerable<CPos> CandidateMovementCells()
 		{
 			return map.FindTilesInAnnulus(lastVisibleTargetLocation, minCells, maxCells)
 				.Where(c => Mobile.CanStayInCell(c) && AtCorrectRange(map.CenterOfSubCell(c, Mobile.FromSubCell)));

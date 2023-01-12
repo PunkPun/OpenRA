@@ -45,18 +45,20 @@ namespace OpenRA.Mods.Cnc.Traits
 
 	public class TransformsNearResources : ITick
 	{
+		public readonly Actor Actor;
 		readonly TransformsNearResourcesInfo info;
 		readonly IResourceLayer resourceLayer;
 		int delay;
 
 		public TransformsNearResources(Actor self, TransformsNearResourcesInfo info)
 		{
+			Actor = self;
 			resourceLayer = self.World.WorldActor.Trait<IResourceLayer>();
 			delay = Common.Util.RandomInRange(self.World.SharedRandom, info.Delay);
 			this.info = info;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (delay < 0)
 				return;
@@ -64,7 +66,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			var adjacent = 0;
 			foreach (var direction in CVec.Directions)
 			{
-				var location = self.Location + direction;
+				var location = Actor.Location + direction;
 
 				var resource = resourceLayer.GetResource(location);
 				if (resource.Type == null || resource.Type != info.Type)
@@ -81,21 +83,21 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 
 			if (delay < 0)
-				Transform(self);
+				Transform();
 		}
 
-		void Transform(Actor self)
+		void Transform()
 		{
-			var transform = new Transform(info.IntoActor);
+			var transform = new Transform(Actor, info.IntoActor);
 
-			var facing = self.TraitOrDefault<IFacing>();
+			var facing = Actor.TraitOrDefault<IFacing>();
 			if (facing != null)
 				transform.Facing = facing.Facing;
 
 			transform.SkipMakeAnims = info.SkipMakeAnims;
 			transform.Offset = info.Offset;
 
-			self.QueueActivity(false, transform);
+			Actor.QueueActivity(false, transform);
 		}
 	}
 }

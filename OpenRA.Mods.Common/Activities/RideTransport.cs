@@ -29,7 +29,7 @@ namespace OpenRA.Mods.Common.Activities
 			passenger = self.Trait<Passenger>();
 		}
 
-		protected override bool TryStartEnter(Actor self, Actor targetActor)
+		protected override bool TryStartEnter(Actor targetActor)
 		{
 			enterActor = targetActor;
 			enterCargo = targetActor.TraitOrDefault<Cargo>();
@@ -37,9 +37,9 @@ namespace OpenRA.Mods.Common.Activities
 
 			// Make sure we can still enter the transport
 			// (but not before, because this may stop the actor in the middle of nowhere)
-			if (enterCargo == null || !passenger.Reserve(self, enterCargo))
+			if (enterCargo == null || !passenger.Reserve(Actor, enterCargo))
 			{
-				Cancel(self, true);
+				Cancel(true);
 				return false;
 			}
 
@@ -49,11 +49,11 @@ namespace OpenRA.Mods.Common.Activities
 			return true;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
-				if (self.IsDead)
+				if (Actor.IsDead)
 					return;
 
 				// Make sure the target hasn't changed while entering
@@ -61,24 +61,24 @@ namespace OpenRA.Mods.Common.Activities
 				if (targetActor != enterActor)
 					return;
 
-				if (!enterCargo.CanLoad(self))
+				if (!enterCargo.CanLoad(Actor))
 					return;
 
-				enterCargo.Load(enterActor, self);
-				w.Remove(self);
+				enterCargo.Load(enterActor, Actor);
+				w.Remove(Actor);
 			});
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
-			passenger.Unreserve(self);
+			passenger.Unreserve(Actor);
 		}
 
-		public override void Cancel(Actor self, bool keepQueue = false)
+		public override void Cancel(bool keepQueue = false)
 		{
-			passenger.Unreserve(self);
+			passenger.Unreserve(Actor);
 
-			base.Cancel(self, keepQueue);
+			base.Cancel(keepQueue);
 		}
 	}
 }

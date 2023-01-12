@@ -47,21 +47,17 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class TransformsIntoRepairable : ConditionalTrait<TransformsIntoRepairableInfo>, IIssueOrder, IResolveOrder, IOrderVoice
 	{
-		readonly Actor self;
 		Transforms[] transforms;
 		IHealth health;
 
 		public TransformsIntoRepairable(Actor self, TransformsIntoRepairableInfo info)
-			: base(info)
-		{
-			this.self = self;
-		}
+			: base(info, self) { }
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			transforms = self.TraitsImplementing<Transforms>().ToArray();
-			health = self.Trait<IHealth>();
-			base.Created(self);
+			transforms = Actor.TraitsImplementing<Transforms>().ToArray();
+			health = Actor.Trait<IHealth>();
+			base.Created();
 		}
 
 		IEnumerable<IOrderTargeter> IIssueOrder.Orders
@@ -70,6 +66,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (!IsTraitDisabled)
 					yield return new EnterAlliedActorTargeter<BuildingInfo>(
+						Actor,
 						"Repair",
 						5,
 						Info.EnterCursor,
@@ -81,7 +78,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool CanRepair()
 		{
-			if (!(self.CurrentActivity is Transform || transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused)))
+			if (!(Actor.CurrentActivity is Transform || transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused)))
 				return false;
 
 			return health.DamageState > DamageState.Undamaged;
@@ -100,15 +97,15 @@ namespace OpenRA.Mods.Common.Traits
 			return Info.RepairActors.Contains(target.Info.Name);
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		Order IIssueOrder.IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "Repair")
-				return new Order(order.OrderID, self, target, queued);
+				return new Order(order.OrderID, Actor, target, queued);
 
 			return null;
 		}
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (IsTraitDisabled || order.OrderString != "Repair")
 				return;
@@ -121,7 +118,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!CanRepairAt(order.Target.Actor) || !CanRepair())
 				return;
 
-			var currentTransform = self.CurrentActivity as Transform;
+			var currentTransform = Actor.CurrentActivity as Transform;
 			var transform = transforms.FirstOrDefault(t => !t.IsTraitDisabled && !t.IsTraitPaused);
 			if (transform == null && currentTransform == null)
 				return;
@@ -129,17 +126,17 @@ namespace OpenRA.Mods.Common.Traits
 			// Manually manage the inner activity queue
 			var activity = currentTransform ?? transform.GetTransformActivity();
 			if (!order.Queued)
-				activity.NextActivity?.Cancel(self);
+				activity.NextActivity?.Cancel();
 
-			activity.Queue(new IssueOrderAfterTransform(order.OrderString, order.Target, Info.TargetLineColor));
+			activity.Queue(new IssueOrderAfterTransform(Actor, order.OrderString, order.Target, Info.TargetLineColor));
 
 			if (currentTransform == null)
-				self.QueueActivity(order.Queued, activity);
+				Actor.QueueActivity(order.Queued, activity);
 
-			self.ShowTargetLines();
+			Actor.ShowTargetLines();
 		}
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			return order.OrderString == "Repair" && !IsTraitDisabled && CanRepair() ? Info.Voice : null;
 		}

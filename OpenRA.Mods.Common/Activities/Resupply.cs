@@ -44,6 +44,7 @@ namespace OpenRA.Mods.Common.Activities
 		ResupplyType activeResupplyTypes = ResupplyType.None;
 
 		public Resupply(Actor self, Actor host, WDist closeEnough, bool stayOnResupplier = false)
+			: base(self)
 		{
 			this.host = Target.FromActor(host);
 			this.closeEnough = closeEnough;
@@ -83,7 +84,7 @@ namespace OpenRA.Mods.Common.Activities
 				activeResupplyTypes |= ResupplyType.Rearm;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Wait for the cooldown to expire before releasing the unit if this was cancelled
 			if (IsCanceling && remainingTicks > 0)
@@ -103,33 +104,33 @@ namespace OpenRA.Mods.Common.Activities
 				if (closeEnough < WDist.Zero)
 					isCloseEnough = true;
 				else if (repairableNear != null)
-					isCloseEnough = host.IsInRange(self.CenterPosition, closeEnough);
+					isCloseEnough = host.IsInRange(Actor.CenterPosition, closeEnough);
 				else
-					isCloseEnough = (host.CenterPosition - self.CenterPosition).HorizontalLengthSquared <= closeEnough.LengthSquared;
+					isCloseEnough = (host.CenterPosition - Actor.CenterPosition).HorizontalLengthSquared <= closeEnough.LengthSquared;
 			}
 
 			// This ensures transports are also cancelled when the host becomes invalid
 			if (!IsCanceling && isHostInvalid)
-				Cancel(self, true);
+				Cancel(true);
 
 			if (IsCanceling || isHostInvalid)
 			{
 				// Only tick host INotifyResupply traits one last time if host is still alive
 				if (!isHostInvalid)
 					foreach (var notifyResupply in notifyResupplies)
-						notifyResupply.ResupplyTick(host.Actor, self, ResupplyType.None);
+						notifyResupply.ResupplyTick(host.Actor, Actor, ResupplyType.None);
 
 				// HACK: If the activity is cancelled while we're on the host resupplying (or about to start resupplying),
 				// move actor outside the resupplier footprint to prevent it from blocking other actors.
 				// Additionally, if the host is no longer valid, make aircraft take off.
 				if (isCloseEnough || isHostInvalid)
-					OnResupplyEnding(self, isHostInvalid);
+					OnResupplyEnding(isHostInvalid);
 
 				return true;
 			}
 			else if (activeResupplyTypes != 0 && aircraft == null && !isCloseEnough)
 			{
-				var targetCell = self.World.Map.CellContaining(host.Actor.CenterPosition);
+				var targetCell = Actor.World.Map.CellContaining(host.Actor.CenterPosition);
 				QueueChild(move.MoveWithinRange(host, closeEnough, targetLineColor: moveInfo.GetTargetLineColor()));
 
 				// HACK: Repairable needs the actor to move to host center.
@@ -137,8 +138,8 @@ namespace OpenRA.Mods.Common.Activities
 				if (repairableNear == null)
 					QueueChild(move.MoveTo(targetCell, targetLineColor: moveInfo.GetTargetLineColor()));
 
-				var delta = (self.CenterPosition - host.CenterPosition).LengthSquared;
-				transportCallers.FirstOrDefault(t => t.MinimumDistance.LengthSquared < delta)?.RequestTransport(self, targetCell);
+				var delta = (Actor.CenterPosition - host.CenterPosition).LengthSquared;
+				transportCallers.FirstOrDefault(t => t.MinimumDistance.LengthSquared < delta)?.RequestTransport(targetCell);
 
 				return false;
 			}
@@ -148,45 +149,45 @@ namespace OpenRA.Mods.Common.Activities
 			{
 				actualResupplyStarted = true;
 				foreach (var notifyResupply in notifyResupplies)
-					notifyResupply.BeforeResupply(host.Actor, self, activeResupplyTypes);
+					notifyResupply.BeforeResupply(host.Actor, Actor, activeResupplyTypes);
 
 				foreach (var br in notifyBeingResupplied)
-					br.StartingResupply(self, host.Actor);
+					br.StartingResupply(host.Actor);
 			}
 
 			if (activeResupplyTypes.HasFlag(ResupplyType.Repair))
-				RepairTick(self);
+				RepairTick();
 
 			if (activeResupplyTypes.HasFlag(ResupplyType.Rearm))
-				RearmTick(self);
+				RearmTick();
 
 			foreach (var notifyResupply in notifyResupplies)
-				notifyResupply.ResupplyTick(host.Actor, self, activeResupplyTypes);
+				notifyResupply.ResupplyTick(host.Actor, Actor, activeResupplyTypes);
 
 			if (activeResupplyTypes == 0)
 			{
-				OnResupplyEnding(self);
+				OnResupplyEnding();
 				return true;
 			}
 
 			return false;
 		}
 
-		public override void Cancel(Actor self, bool keepQueue = false)
+		public override void Cancel(bool keepQueue = false)
 		{
 			// HACK: force move activities to ignore the transit-only cells when cancelling
 			// The idle handler will take over and move them into a safe cell
 			if (ChildActivity != null)
 				foreach (var c in ChildActivity.ActivitiesImplementing<Move>())
-					c.Cancel(self, false, true);
+					c.Cancel(false, true);
 
 			foreach (var t in transportCallers)
-				t.MovementCancelled(self);
+				t.MovementCancelled();
 
-			base.Cancel(self, keepQueue);
+			base.Cancel(keepQueue);
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (ChildActivity == null)
 				yield return new TargetLineNode(host, moveInfo.GetTargetLineColor());
@@ -195,7 +196,7 @@ namespace OpenRA.Mods.Common.Activities
 				var current = ChildActivity;
 				while (current != null)
 				{
-					foreach (var n in current.TargetLineNodes(self))
+					foreach (var n in current.TargetLineNodes())
 						yield return n;
 
 					current = current.NextActivity;
@@ -203,18 +204,18 @@ namespace OpenRA.Mods.Common.Activities
 			}
 		}
 
-		void OnResupplyEnding(Actor self, bool isHostInvalid = false)
+		void OnResupplyEnding(bool isHostInvalid = false)
 		{
 			var rp = !isHostInvalid ? host.Actor.TraitOrDefault<RallyPoint>() : null;
 			if (aircraft != null)
 			{
 				if (wasRepaired || isHostInvalid || (!stayOnResupplier && aircraft.Info.TakeOffOnResupply))
 				{
-					if (self.CurrentActivity.NextActivity == null && rp != null && rp.Path.Count > 0)
+					if (Actor.CurrentActivity.NextActivity == null && rp != null && rp.Path.Count > 0)
 						foreach (var cell in rp.Path)
-							QueueChild(new AttackMoveActivity(self, () => move.MoveTo(cell, 1, ignoreActor: repairableNear != null ? null : host.Actor, targetLineColor: aircraft.Info.TargetLineColor)));
+							QueueChild(new AttackMoveActivity(Actor, () => move.MoveTo(cell, 1, ignoreActor: repairableNear != null ? null : host.Actor, targetLineColor: aircraft.Info.TargetLineColor)));
 					else
-						QueueChild(new TakeOff(self));
+						QueueChild(new TakeOff(Actor));
 
 					aircraft.UnReserve();
 				}
@@ -229,23 +230,23 @@ namespace OpenRA.Mods.Common.Activities
 				// If there's no next activity, move to rallypoint if available, else just leave host if Repairable.
 				// Do nothing if RepairableNear (RepairableNear actors don't enter their host and will likely remain within closeEnough).
 				// If there's a next activity and we're not RepairableNear, first leave host if the next activity is not a Move.
-				if (self.CurrentActivity.NextActivity == null)
+				if (Actor.CurrentActivity.NextActivity == null)
 				{
 					if (rp != null && rp.Path.Count > 0)
 						foreach (var cell in rp.Path)
-							QueueChild(new AttackMoveActivity(self, () => move.MoveTo(cell, 1, repairableNear != null ? null : host.Actor, true, moveInfo.GetTargetLineColor())));
+							QueueChild(new AttackMoveActivity(Actor, () => move.MoveTo(cell, 1, repairableNear != null ? null : host.Actor, true, moveInfo.GetTargetLineColor())));
 					else if (repairableNear == null)
-						QueueChild(move.MoveToTarget(self, host));
+						QueueChild(move.MoveToTarget(host));
 				}
-				else if (repairableNear == null && !(self.CurrentActivity.NextActivity is Move))
-					QueueChild(move.MoveToTarget(self, host));
+				else if (repairableNear == null && !(Actor.CurrentActivity.NextActivity is Move))
+					QueueChild(move.MoveToTarget(host));
 			}
 
 			foreach (var br in notifyBeingResupplied)
-				br.StoppingResupply(self, isHostInvalid ? null : host.Actor);
+				br.StoppingResupply(isHostInvalid ? null : host.Actor);
 		}
 
-		void RepairTick(Actor self)
+		void RepairTick()
 		{
 			var repairsUnits = allRepairsUnits.FirstOrDefault(r => !r.IsTraitDisabled && !r.IsTraitPaused);
 			if (repairsUnits == null)
@@ -258,11 +259,11 @@ namespace OpenRA.Mods.Common.Activities
 
 			if (health.DamageState == DamageState.Undamaged)
 			{
-				if (host.Actor.Owner != self.Owner)
+				if (host.Actor.Owner != Actor.Owner)
 					host.Actor.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(repairsUnits.Info.PlayerExperience);
 
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", repairsUnits.Info.FinishRepairingNotification, self.Owner.Faction.InternalName);
-				TextNotificationsManager.AddTransientLine(repairsUnits.Info.FinishRepairingTextNotification, self.Owner);
+				Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech", repairsUnits.Info.FinishRepairingNotification, Actor.Owner.Faction.InternalName);
+				TextNotificationsManager.AddTransientLine(repairsUnits.Info.FinishRepairingTextNotification, Actor.Owner);
 
 				activeResupplyTypes &= ~ResupplyType.Repair;
 				return;
@@ -279,8 +280,8 @@ namespace OpenRA.Mods.Common.Activities
 				if (!played)
 				{
 					played = true;
-					Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", repairsUnits.Info.StartRepairingNotification, self.Owner.Faction.InternalName);
-					TextNotificationsManager.AddTransientLine(repairsUnits.Info.StartRepairingTextNotification, self.Owner);
+					Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech", repairsUnits.Info.StartRepairingNotification, Actor.Owner.Faction.InternalName);
+					TextNotificationsManager.AddTransientLine(repairsUnits.Info.StartRepairingTextNotification, Actor.Owner);
 				}
 
 				if (!playerResources.TakeCash(cost, true))
@@ -289,14 +290,14 @@ namespace OpenRA.Mods.Common.Activities
 					return;
 				}
 
-				self.InflictDamage(host.Actor, new Damage(-hpToRepair, repairsUnits.Info.RepairDamageTypes));
+				Actor.InflictDamage(host.Actor, new Damage(-hpToRepair, repairsUnits.Info.RepairDamageTypes));
 				remainingTicks = repairsUnits.Info.Interval;
 			}
 			else
 				--remainingTicks;
 		}
 
-		void RearmTick(Actor self)
+		void RearmTick()
 		{
 			var rearmComplete = true;
 			foreach (var ammoPool in rearmable.RearmableAmmoPools)
@@ -307,9 +308,9 @@ namespace OpenRA.Mods.Common.Activities
 					{
 						ammoPool.RemainingTicks = ammoPool.Info.ReloadDelay;
 						if (!string.IsNullOrEmpty(ammoPool.Info.RearmSound))
-							Game.Sound.PlayToPlayer(SoundType.World, self.Owner, ammoPool.Info.RearmSound, self.CenterPosition);
+							Game.Sound.PlayToPlayer(SoundType.World, Actor.Owner, ammoPool.Info.RearmSound, Actor.CenterPosition);
 
-						ammoPool.GiveAmmo(self, ammoPool.Info.ReloadCount);
+						ammoPool.GiveAmmo(ammoPool.Info.ReloadCount);
 					}
 
 					rearmComplete = false;

@@ -92,7 +92,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 			DefaultAnimation = new Animation(self.World, rs.GetImage(self), () => t.WorldOrientation.Yaw);
 			DefaultAnimation.PlayRepeating(NormalizeSequence(self, info.Sequence));
-			rs.Add(new AnimationWithOffset(DefaultAnimation,
+			rs.Add(new AnimationWithOffset(Actor, DefaultAnimation,
 				() => TurretOffset(self),
 				() => IsTraitDisabled,
 				p => RenderUtils.ZOffsetFromCenter(self, p, 1)), info.Palette, info.IsPlayerPalette);

@@ -243,7 +243,7 @@ namespace OpenRA
 
 		public void AddToMaps(Actor self, IOccupySpace ios)
 		{
-			ActorMap.AddInfluence(self, ios);
+			ActorMap.AddInfluence(ios);
 			ActorMap.AddPosition(self, ios);
 			ScreenMap.AddOrUpdate(self);
 		}
@@ -259,7 +259,7 @@ namespace OpenRA
 
 		public void RemoveFromMaps(Actor self, IOccupySpace ios)
 		{
-			ActorMap.RemoveInfluence(self, ios);
+			ActorMap.RemoveInfluence(ios);
 			ActorMap.RemovePosition(self, ios);
 			ScreenMap.Remove(self);
 		}
@@ -332,7 +332,7 @@ namespace OpenRA
 			ActorAdded(a);
 
 			foreach (var t in a.TraitsImplementing<INotifyAddedToWorld>())
-				t.AddedToWorld(a);
+				t.AddedToWorld();
 		}
 
 		public void Remove(Actor a)
@@ -342,7 +342,7 @@ namespace OpenRA
 			ActorRemoved(a);
 
 			foreach (var t in a.TraitsImplementing<INotifyRemovedFromWorld>())
-				t.RemovedFromWorld(a);
+				t.RemovedFromWorld();
 		}
 
 		public void Add(IEffect e)
@@ -418,7 +418,7 @@ namespace OpenRA
 					if (tp.Actor == null)
 						break;
 
-					tp.Trait.ResolveTraitData(tp.Actor, kv.Value.Nodes);
+					tp.Trait.ResolveTraitData(kv.Value.Nodes);
 				}
 
 				gameSaveTraitData.Clear();
@@ -440,7 +440,7 @@ namespace OpenRA
 					foreach (var a in actors.Values)
 						a.Tick();
 
-				ApplyToActorsWithTraitTimed<ITick>((actor, trait) => trait.Tick(actor), "Trait");
+				ApplyToActorsWithTraitTimed<ITick>((actor, trait) => trait.Tick(), "Trait");
 
 				effects.DoTimed(e => e.Tick(this), "Effect");
 			}
@@ -452,7 +452,7 @@ namespace OpenRA
 		// For things that want to update their render state once per tick, ignoring pause state
 		public void TickRender(WorldRenderer wr)
 		{
-			ApplyToActorsWithTraitTimed<ITickRender>((actor, trait) => trait.TickRender(wr, actor), "Render");
+			ApplyToActorsWithTraitTimed<ITickRender>((actor, trait) => trait.TickRender(wr), "Render");
 			ScreenMap.TickRender();
 		}
 
@@ -546,7 +546,7 @@ namespace OpenRA
 			foreach (var player in Players.Where(p => p.ClientIndex == clientId && p.PlayerReference.Playable))
 			{
 				foreach (var np in notifyDisconnected)
-					np.PlayerDisconnected(WorldActor, player);
+					np.PlayerDisconnected(player);
 
 				foreach (var p in Players)
 					p.PlayerDisconnected(player);
@@ -565,7 +565,7 @@ namespace OpenRA
 			var i = 0;
 			foreach (var tp in TraitDict.ActorsWithTrait<IGameSaveTraitData>())
 			{
-				var data = tp.Trait.IssueTraitData(tp.Actor);
+				var data = tp.Trait.IssueTraitData();
 				if (data != null)
 				{
 					var yaml = new List<MiniYamlNode>() { new MiniYamlNode(i.ToString(), new MiniYaml("", data)) };

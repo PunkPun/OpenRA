@@ -286,7 +286,7 @@ namespace OpenRA
 		internal void PlayerDisconnected(Player p)
 		{
 			foreach (var np in notifyDisconnected)
-				np.PlayerDisconnected(PlayerActor, p);
+				np.PlayerDisconnected(p);
 		}
 
 		#region Scripting interface

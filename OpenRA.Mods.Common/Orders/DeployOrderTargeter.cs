@@ -17,10 +17,12 @@ namespace OpenRA.Mods.Common.Orders
 {
 	public class DeployOrderTargeter : IOrderTargeter
 	{
+		public readonly Actor Actor;
 		readonly Func<string> cursor;
 
-		public DeployOrderTargeter(string order, int priority, Func<string> cursor)
+		public DeployOrderTargeter(Actor self, string order, int priority, Func<string> cursor)
 		{
+			Actor = self;
 			OrderID = order;
 			OrderPriority = priority;
 			this.cursor = cursor;
@@ -28,9 +30,9 @@ namespace OpenRA.Mods.Common.Orders
 
 		public string OrderID { get; }
 		public int OrderPriority { get; }
-		public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
+		public bool TargetOverridesSelection(in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
-		public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
+		public bool CanTarget(in Target target, ref TargetModifiers modifiers, ref string cursor)
 		{
 			if (target.Type != TargetType.Actor)
 				return false;
@@ -38,7 +40,7 @@ namespace OpenRA.Mods.Common.Orders
 			IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 			cursor = this.cursor();
 
-			return self == target.Actor;
+			return Actor == target.Actor;
 		}
 
 		public bool IsQueued { get; protected set; }

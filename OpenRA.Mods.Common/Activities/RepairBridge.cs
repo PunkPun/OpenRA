@@ -45,7 +45,7 @@ namespace OpenRA.Mods.Common.Activities
 			return false;
 		}
 
-		protected override bool TryStartEnter(Actor self, Actor targetActor)
+		protected override bool TryStartEnter(Actor targetActor)
 		{
 			enterActor = targetActor;
 			enterLegacyHut = enterActor.TraitOrDefault<LegacyBridgeHut>();
@@ -55,14 +55,14 @@ namespace OpenRA.Mods.Common.Activities
 			// (but not before, because this may stop the actor in the middle of nowhere)
 			if (!CanEnterHut())
 			{
-				Cancel(self, true);
+				Cancel(true);
 				return false;
 			}
 
 			return true;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
 			// Make sure the target hasn't changed while entering
 			// OnEnterComplete is only called if targetActor is alive
@@ -73,17 +73,17 @@ namespace OpenRA.Mods.Common.Activities
 				return;
 
 			if (enterLegacyHut != null)
-				enterLegacyHut.Repair(self);
-			else if (enterHut != null)
-				enterHut.Repair(self);
+				enterLegacyHut.Repair(Actor);
+			else
+				enterHut?.Repair(Actor);
 
-			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", speechNotification, self.Owner.Faction.InternalName);
-			TextNotificationsManager.AddTransientLine(textNotification, self.Owner);
+			Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech", speechNotification, Actor.Owner.Faction.InternalName);
+			TextNotificationsManager.AddTransientLine(textNotification, Actor.Owner);
 
 			if (enterBehaviour == EnterBehaviour.Dispose)
-				self.Dispose();
+				Actor.Dispose();
 			else if (enterBehaviour == EnterBehaviour.Suicide)
-				self.Kill(self);
+				Actor.Kill(Actor);
 		}
 	}
 }

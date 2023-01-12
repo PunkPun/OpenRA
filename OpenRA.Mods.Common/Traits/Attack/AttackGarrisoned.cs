@@ -86,7 +86,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Dictionary<Actor, RenderSprites> paxRender;
 
 		public AttackGarrisoned(Actor self, AttackGarrisonedInfo info)
-			: base(self, info)
+			: base(info, self)
 		{
 			Info = info;
 			coords = Exts.Lazy(() => self.Trait<BodyOrientation>());
@@ -97,12 +97,12 @@ namespace OpenRA.Mods.Common.Traits
 			paxRender = new Dictionary<Actor, RenderSprites>();
 		}
 
-		protected override Func<IEnumerable<Armament>> InitializeGetArmaments(Actor self)
+		protected override Func<IEnumerable<Armament>> InitializeGetArmaments()
 		{
 			return () => armaments;
 		}
 
-		void INotifyPassengerEntered.OnPassengerEntered(Actor self, Actor passenger)
+		void INotifyPassengerEntered.OnPassengerEntered(Actor passenger)
 		{
 			paxFacing.Add(passenger, passenger.Trait<IFacing>());
 			paxPos.Add(passenger, passenger.Trait<IPositionable>());
@@ -112,7 +112,7 @@ namespace OpenRA.Mods.Common.Traits
 				.Where(a => Info.Armaments.Contains(a.Info.Name)));
 		}
 
-		void INotifyPassengerExited.OnPassengerExited(Actor self, Actor passenger)
+		void INotifyPassengerExited.OnPassengerExited(Actor passenger)
 		{
 			paxFacing.Remove(passenger);
 			paxPos.Remove(passenger);
@@ -120,11 +120,11 @@ namespace OpenRA.Mods.Common.Traits
 			armaments.RemoveAll(a => a.Actor == passenger);
 		}
 
-		FirePort SelectFirePort(Actor self, WAngle targetYaw)
+		FirePort SelectFirePort(WAngle targetYaw)
 		{
 			// Pick a random port that faces the target
 			var bodyYaw = facing != null ? facing.Facing : WAngle.Zero;
-			var indices = Enumerable.Range(0, Info.Ports.Length).Shuffle(self.World.SharedRandom);
+			var indices = Enumerable.Range(0, Info.Ports.Length).Shuffle(Actor.World.SharedRandom);
 			foreach (var i in indices)
 			{
 				var yaw = bodyYaw + Info.Ports[i].Yaw;
@@ -137,18 +137,18 @@ namespace OpenRA.Mods.Common.Traits
 			return null;
 		}
 
-		WVec PortOffset(Actor self, FirePort p)
+		WVec PortOffset(FirePort p)
 		{
-			var bodyOrientation = coords.Value.QuantizeOrientation(self.Orientation);
+			var bodyOrientation = coords.Value.QuantizeOrientation(Actor.Orientation);
 			return coords.Value.LocalToWorld(p.Offset.Rotate(bodyOrientation));
 		}
 
-		public override void DoAttack(Actor self, in Target target)
+		public override void DoAttack(in Target target)
 		{
-			if (!CanAttack(self, target))
+			if (!CanAttack(target))
 				return;
 
-			var pos = self.CenterPosition;
+			var pos = Actor.CenterPosition;
 			var targetedPosition = GetTargetPosition(pos, target);
 			var targetYaw = (targetedPosition - pos).Yaw;
 
@@ -157,55 +157,55 @@ namespace OpenRA.Mods.Common.Traits
 				if (a.IsTraitDisabled)
 					continue;
 
-				var port = SelectFirePort(self, targetYaw);
+				var port = SelectFirePort(targetYaw);
 				if (port == null)
 					return;
 
 				paxFacing[a.Actor].Facing = targetYaw;
-				paxPos[a.Actor].SetCenterPosition(a.Actor, pos + PortOffset(self, port));
+				paxPos[a.Actor].SetCenterPosition(pos + PortOffset(port));
 
-				var barrel = a.CheckFire(a.Actor, facing, target);
+				var barrel = a.CheckFire(facing, target);
 				if (barrel == null)
 					continue;
 
 				if (a.Info.MuzzleSequence != null)
 				{
 					// Muzzle facing is fixed once the firing starts
-					var muzzleAnim = new Animation(self.World, paxRender[a.Actor].GetImage(a.Actor), () => targetYaw);
+					var muzzleAnim = new Animation(Actor.World, paxRender[a.Actor].GetImage(a.Actor), () => targetYaw);
 					var sequence = a.Info.MuzzleSequence;
-					var muzzleFlash = new AnimationWithOffset(muzzleAnim,
-						() => PortOffset(self, port),
+					var muzzleFlash = new AnimationWithOffset(Actor, muzzleAnim,
+						() => PortOffset(port),
 						() => false,
-						p => RenderUtils.ZOffsetFromCenter(self, p, 1024));
+						p => RenderUtils.ZOffsetFromCenter(Actor, p, 1024));
 
 					muzzles.Add(muzzleFlash);
 					muzzleAnim.PlayThen(sequence, () => muzzles.Remove(muzzleFlash));
 				}
 
-				foreach (var npa in self.TraitsImplementing<INotifyAttack>())
-					npa.Attacking(self, target, a, barrel);
+				foreach (var npa in Actor.TraitsImplementing<INotifyAttack>())
+					npa.Attacking(target, a, barrel);
 			}
 		}
 
-		IEnumerable<IRenderable> IRender.Render(Actor self, WorldRenderer wr)
+		IEnumerable<IRenderable> IRender.Render(WorldRenderer wr)
 		{
 			var pal = wr.Palette(Info.MuzzlePalette);
 
 			// Display muzzle flashes
 			foreach (var m in muzzles)
-				foreach (var r in m.Render(self, pal))
+				foreach (var r in m.Render(pal))
 					yield return r;
 		}
 
-		IEnumerable<Rectangle> IRender.ScreenBounds(Actor self, WorldRenderer wr)
+		IEnumerable<Rectangle> IRender.ScreenBounds(WorldRenderer wr)
 		{
 			// Muzzle flashes don't contribute to actor bounds
 			yield break;
 		}
 
-		protected override void Tick(Actor self)
+		protected override void Tick()
 		{
-			base.Tick(self);
+			base.Tick();
 
 			// Take a copy so that Tick() can remove animations
 			foreach (var m in muzzles.ToArray())

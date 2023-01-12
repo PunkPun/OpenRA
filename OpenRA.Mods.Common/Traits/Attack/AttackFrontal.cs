@@ -18,30 +18,30 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Unit got to face the target")]
 	public class AttackFrontalInfo : AttackBaseInfo, Requires<IFacingInfo>
 	{
-		public override object Create(ActorInitializer init) { return new AttackFrontal(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new AttackFrontal(this, init.Self); }
 	}
 
 	public class AttackFrontal : AttackBase
 	{
 		public new readonly AttackFrontalInfo Info;
 
-		public AttackFrontal(Actor self, AttackFrontalInfo info)
-			: base(self, info)
+		public AttackFrontal(AttackFrontalInfo info, Actor self)
+			: base(info, self)
 		{
 			Info = info;
 		}
 
-		protected override bool CanAttack(Actor self, in Target target)
+		protected override bool CanAttack(in Target target)
 		{
-			if (!base.CanAttack(self, target))
+			if (!base.CanAttack(target))
 				return false;
 
-			return TargetInFiringArc(self, target, Info.FacingTolerance);
+			return TargetInFiringArc(target, Info.FacingTolerance);
 		}
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
+		public override Activity GetAttackActivity(AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
 		{
-			return new Activities.Attack(self, newTarget, allowMove, forceAttack, targetLineColor);
+			return new Activities.Attack(Actor, newTarget, allowMove, forceAttack, targetLineColor);
 		}
 	}
 }

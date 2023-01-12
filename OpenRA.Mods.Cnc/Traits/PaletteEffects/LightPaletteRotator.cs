@@ -44,7 +44,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.info = info;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			t += info.TimeStep;
 		}

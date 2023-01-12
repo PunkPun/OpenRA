@@ -193,7 +193,7 @@ namespace OpenRA
 				Targetables = targetablesList.ToArray();
 				var targetablePositions = targetablePositionsList.ToArray();
 				EnabledTargetablePositions = targetablePositions.Where(Exts.IsTraitEnabled);
-				enabledTargetableWorldPositions = EnabledTargetablePositions.SelectMany(tp => tp.TargetablePositions(this));
+				enabledTargetableWorldPositions = EnabledTargetablePositions.SelectMany(tp => tp.TargetablePositions());
 				SyncHashes = syncHashesList.ToArray();
 			}
 		}
@@ -204,7 +204,7 @@ namespace OpenRA
 
 			// Make sure traits are usable for condition notifiers
 			foreach (var t in TraitsImplementing<INotifyCreated>())
-				t.Created(this);
+				t.Created();
 
 			var allObserverNotifiers = new HashSet<VariableObserverNotifier>();
 			foreach (var provider in TraitsImplementing<IObservesVariables>())
@@ -227,7 +227,7 @@ namespace OpenRA
 
 			// Update all traits with their initial condition state
 			foreach (var notify in allObserverNotifiers)
-				notify(this, readOnlyConditionCache);
+				notify(readOnlyConditionCache);
 
 			// TODO: Other traits may need initialization after being notified of initial condition state.
 
@@ -260,21 +260,21 @@ namespace OpenRA
 		public void Tick()
 		{
 			var wasIdle = IsIdle;
-			CurrentActivity = ActivityUtils.RunActivity(this, CurrentActivity);
+			CurrentActivity = ActivityUtils.RunActivity(CurrentActivity);
 
 			if (!wasIdle && IsIdle)
 			{
 				foreach (var n in becomingIdles)
-					n.OnBecomingIdle(this);
+					n.OnBecomingIdle();
 
 				// If IsIdle is true, it means the last CurrentActivity.Tick returned null.
 				// If a next activity has been queued via OnBecomingIdle, we need to start running it now,
 				// to avoid an 'empty' null tick where the actor will (visibly, if moving) do nothing.
-				CurrentActivity = ActivityUtils.RunActivity(this, CurrentActivity);
+				CurrentActivity = ActivityUtils.RunActivity(CurrentActivity);
 			}
 			else if (wasIdle)
 				foreach (var tickIdle in tickIdles)
-					tickIdle.TickIdle(this);
+					tickIdle.TickIdle();
 		}
 
 		public IEnumerable<IRenderable> Render(WorldRenderer wr)
@@ -282,7 +282,7 @@ namespace OpenRA
 			// PERF: Avoid LINQ.
 			var renderables = Renderables(wr);
 			foreach (var modifier in renderModifiers)
-				renderables = modifier.ModifyRender(this, wr, renderables);
+				renderables = modifier.ModifyRender(wr, renderables);
 			return renderables;
 		}
 
@@ -296,7 +296,7 @@ namespace OpenRA
 			// For small amounts of renderables, allocating a small collection can often be faster and require less
 			// memory than creating the objects needed to represent a sequence.
 			foreach (var render in renders)
-				foreach (var renderable in render.Render(this, wr))
+				foreach (var renderable in render.Render(wr))
 					yield return renderable;
 		}
 
@@ -304,7 +304,7 @@ namespace OpenRA
 		{
 			var bounds = Bounds(wr);
 			foreach (var modifier in renderModifiers)
-				bounds = modifier.ModifyScreenBounds(this, wr, bounds);
+				bounds = modifier.ModifyScreenBounds(wr, bounds);
 			return bounds;
 		}
 
@@ -312,7 +312,7 @@ namespace OpenRA
 		{
 			// PERF: Avoid LINQ. See comments for Renderables
 			foreach (var render in renders)
-				foreach (var r in render.ScreenBounds(this, wr))
+				foreach (var r in render.ScreenBounds(wr))
 					if (!r.IsEmpty)
 						yield return r;
 		}
@@ -321,7 +321,7 @@ namespace OpenRA
 		{
 			foreach (var mb in mouseBounds)
 			{
-				var bounds = mb.MouseoverBounds(this, wr);
+				var bounds = mb.MouseoverBounds(wr);
 				if (!bounds.IsEmpty)
 					return bounds;
 			}
@@ -350,7 +350,7 @@ namespace OpenRA
 
 		public void CancelActivity()
 		{
-			CurrentActivity?.Cancel(this);
+			CurrentActivity?.Cancel();
 		}
 
 		public override int GetHashCode()
@@ -401,7 +401,7 @@ namespace OpenRA
 		{
 			// If CurrentActivity isn't null, run OnActorDisposeOuter in case some cleanups are needed.
 			// This should be done before the FrameEndTask to avoid dependency issues.
-			CurrentActivity?.OnActorDisposeOuter(this);
+			CurrentActivity?.OnActorDisposeOuter();
 
 			// Allow traits/activities to prevent a race condition when they depend on disposing the actor (e.g. Transforms)
 			WillDispose = true;
@@ -415,7 +415,7 @@ namespace OpenRA
 					World.Remove(this);
 
 				foreach (var t in TraitsImplementing<INotifyActorDisposing>())
-					t.Disposing(this);
+					t.Disposing();
 
 				World.TraitDict.RemoveActor(this);
 				Disposed = true;
@@ -427,7 +427,7 @@ namespace OpenRA
 		public void ResolveOrder(Order order)
 		{
 			foreach (var r in resolveOrders)
-				r.ResolveOrder(this, order);
+				r.ResolveOrder(order);
 		}
 
 		// TODO: move elsewhere.
@@ -456,10 +456,10 @@ namespace OpenRA
 			Generation++;
 
 			foreach (var t in TraitsImplementing<INotifyOwnerChanged>())
-				t.OnOwnerChanged(this, oldOwner, newOwner);
+				t.OnOwnerChanged(oldOwner, newOwner);
 
 			foreach (var t in World.WorldActor.TraitsImplementing<INotifyOwnerChanged>())
-				t.OnOwnerChanged(this, oldOwner, newOwner);
+				t.OnOwnerChanged(oldOwner, newOwner);
 
 			if (wasInWorld)
 				World.Add(this);
@@ -478,7 +478,7 @@ namespace OpenRA
 			if (Disposed || health == null)
 				return;
 
-			health.InflictDamage(this, attacker, damage, false);
+			health.InflictDamage(attacker, damage, false);
 		}
 
 		public void Kill(Actor attacker, BitSet<DamageType> damageTypes = default)
@@ -486,17 +486,17 @@ namespace OpenRA
 			if (Disposed || health == null)
 				return;
 
-			health.Kill(this, attacker, damageTypes);
+			health.Kill(attacker, damageTypes);
 		}
 
 		public bool CanBeViewedByPlayer(Player player)
 		{
 			// PERF: Avoid LINQ.
 			foreach (var visibilityModifier in visibilityModifiers)
-				if (!visibilityModifier.IsVisible(this, player))
+				if (!visibilityModifier.IsVisible(player))
 					return false;
 
-			return defaultVisibility.IsVisible(this, player);
+			return defaultVisibility.IsVisible(player);
 		}
 
 		public BitSet<TargetableType> GetAllTargetTypes()
@@ -522,7 +522,7 @@ namespace OpenRA
 		{
 			// PERF: Avoid LINQ.
 			foreach (var targetable in Targetables)
-				if (targetable.TargetableBy(this, byActor))
+				if (targetable.TargetableBy(byActor))
 					return true;
 
 			return false;
@@ -553,7 +553,7 @@ namespace OpenRA
 			// These notifications will be processed after INotifyCreated.Created.
 			if (created)
 				foreach (var notify in conditionState.Notifiers)
-					notify(this, readOnlyConditionCache);
+					notify(readOnlyConditionCache);
 		}
 
 		/// <summary>

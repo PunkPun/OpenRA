@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 	public class WithLandingCraftAnimation : ITick
 	{
 		readonly WithLandingCraftAnimationInfo info;
-		readonly Actor self;
+		readonly Actor actor;
 		readonly Cargo cargo;
 		readonly IMove move;
 		readonly WithSpriteBody wsb;
@@ -48,19 +48,19 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 		public WithLandingCraftAnimation(ActorInitializer init, WithLandingCraftAnimationInfo info)
 		{
 			this.info = info;
-			self = init.Self;
-			cargo = self.Trait<Cargo>();
-			move = self.Trait<IMove>();
+			actor = init.Self;
+			cargo = actor.Trait<Cargo>();
+			move = actor.Trait<IMove>();
 			wsb = init.Self.TraitsImplementing<WithSpriteBody>().Single(w => w.Info.Name == info.Body);
 		}
 
 		public bool ShouldBeOpen()
 		{
-			if (move.CurrentMovementTypes != MovementType.None || self.World.Map.DistanceAboveTerrain(self.CenterPosition).Length > 0)
+			if (move.CurrentMovementTypes != MovementType.None || actor.World.Map.DistanceAboveTerrain(actor.CenterPosition).Length > 0)
 				return false;
 
-			return cargo.CurrentAdjacentCells.Any(c => self.World.Map.Contains(c)
-				&& info.OpenTerrainTypes.Contains(self.World.Map.GetTerrainInfo(c).Type));
+			return cargo.CurrentAdjacentCells.Any(c => actor.World.Map.Contains(c)
+				&& info.OpenTerrainTypes.Contains(actor.World.Map.GetTerrainInfo(c).Type));
 		}
 
 		void Open()
@@ -69,10 +69,10 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 				return;
 
 			open = true;
-			wsb.PlayCustomAnimation(self, info.OpenSequence, () =>
+			wsb.PlayCustomAnimation(info.OpenSequence, () =>
 			{
 				if (wsb.DefaultAnimation.HasSequence(info.UnloadSequence))
-					wsb.PlayCustomAnimationRepeating(self, info.UnloadSequence);
+					wsb.PlayCustomAnimationRepeating(info.UnloadSequence);
 			});
 		}
 
@@ -82,10 +82,10 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 				return;
 
 			open = false;
-			wsb.PlayCustomAnimation(self, info.CloseSequence);
+			wsb.PlayCustomAnimation(info.CloseSequence);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (ShouldBeOpen())
 				Open();

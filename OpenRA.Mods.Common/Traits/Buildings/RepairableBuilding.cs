@@ -65,7 +65,7 @@ namespace OpenRA.Mods.Common.Traits
 		public bool RepairActive { get; private set; }
 
 		public RepairableBuilding(Actor self, RepairableBuildingInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			health = self.Trait<IHealth>();
 			isNotActiveAlly = player => player.WinState != WinState.Undefined || self.Owner.RelationshipWith(player) != PlayerRelationship.Ally;
@@ -84,27 +84,27 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		void UpdateCondition(Actor self)
+		void UpdateCondition()
 		{
 			if (string.IsNullOrEmpty(Info.RepairCondition))
 				return;
 
 			while (Repairers.Count > repairTokens.Count)
-				repairTokens.Push(self.GrantCondition(Info.RepairCondition));
+				repairTokens.Push(Actor.GrantCondition(Info.RepairCondition));
 
 			while (Repairers.Count < repairTokens.Count && repairTokens.Count > 0)
-				self.RevokeCondition(repairTokens.Pop());
+				Actor.RevokeCondition(repairTokens.Pop());
 		}
 
-		public void RepairBuilding(Actor self, Player player)
+		public void RepairBuilding(Player player)
 		{
-			if (IsTraitDisabled || !self.AppearsFriendlyTo(player.PlayerActor))
+			if (IsTraitDisabled || !Actor.AppearsFriendlyTo(player.PlayerActor))
 				return;
 
 			// Remove the player if they are already repairing
 			if (Repairers.Remove(player))
 			{
-				UpdateCondition(self);
+				UpdateCondition();
 				return;
 			}
 
@@ -114,20 +114,20 @@ namespace OpenRA.Mods.Common.Traits
 
 			Repairers.Add(player);
 
-			Game.Sound.PlayNotification(self.World.Map.Rules, player, "Speech", Info.RepairingNotification, player.Faction.InternalName);
-			TextNotificationsManager.AddTransientLine(Info.RepairingTextNotification, self.Owner);
+			Game.Sound.PlayNotification(Actor.World.Map.Rules, player, "Speech", Info.RepairingNotification, player.Faction.InternalName);
+			TextNotificationsManager.AddTransientLine(Info.RepairingTextNotification, Actor.Owner);
 
-			UpdateCondition(self);
+			UpdateCondition();
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (IsTraitDisabled)
 			{
 				if (RepairActive && Info.CancelWhenDisabled)
 				{
 					Repairers.Clear();
-					UpdateCondition(self);
+					UpdateCondition();
 				}
 
 				return;
@@ -136,7 +136,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (remainingTicks == 0)
 			{
 				Repairers.RemoveAll(isNotActiveAlly);
-				UpdateCondition(self);
+				UpdateCondition();
 
 				// If after the previous operation there's no repairers left, stop
 				if (Repairers.Count == 0)
@@ -145,7 +145,7 @@ namespace OpenRA.Mods.Common.Traits
 					return;
 				}
 
-				var buildingValue = self.GetSellValue();
+				var buildingValue = Actor.GetSellValue();
 
 				// The cost is the same regardless of the amount of people repairing
 				var hpToRepair = Math.Min(Info.RepairStep, health.MaxHP - health.HP);
@@ -168,17 +168,17 @@ namespace OpenRA.Mods.Common.Traits
 
 				// activePlayers won't cause IndexOutOfRange because we capped the max amount of players
 				// to the length of the array
-				self.InflictDamage(self, new Damage(-(hpToRepair * Info.RepairBonuses[activePlayers - 1] / 100), Info.RepairDamageTypes));
+				Actor.InflictDamage(Actor, new Damage(-(hpToRepair * Info.RepairBonuses[activePlayers - 1] / 100), Info.RepairDamageTypes));
 
 				if (health.DamageState == DamageState.Undamaged)
 				{
 					foreach (var repairer in Repairers)
-						if (repairer != self.Owner)
+						if (repairer != Actor.Owner)
 							repairer.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(Info.PlayerExperience);
 
 					Repairers.Clear();
 					RepairActive = false;
-					UpdateCondition(self);
+					UpdateCondition();
 					return;
 				}
 

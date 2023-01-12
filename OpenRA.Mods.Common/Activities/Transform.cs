@@ -31,77 +31,78 @@ namespace OpenRA.Mods.Common.Activities
 		public bool SkipMakeAnims = false;
 		public string Faction = null;
 
-		public Transform(string toActor)
+		public Transform(Actor self, string toActor)
+			: base(self)
 		{
 			ToActor = toActor;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
-			if (self.Info.HasTraitInfo<IFacingInfo>())
-				QueueChild(new Turn(self, Facing));
+			if (Actor.Info.HasTraitInfo<IFacingInfo>())
+				QueueChild(new Turn(Actor, Facing));
 
-			if (self.Info.HasTraitInfo<AircraftInfo>())
-				QueueChild(new Land(self));
+			if (Actor.Info.HasTraitInfo<AircraftInfo>())
+				QueueChild(new Land(Actor));
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling)
 				return true;
 
 			// Prevent deployment in bogus locations
-			var transforms = self.TraitOrDefault<Transforms>();
+			var transforms = Actor.TraitOrDefault<Transforms>();
 			if (transforms != null && !transforms.CanDeploy())
 				return true;
 
-			foreach (var nt in self.TraitsImplementing<INotifyTransform>())
-				nt.BeforeTransform(self);
+			foreach (var nt in Actor.TraitsImplementing<INotifyTransform>())
+				nt.BeforeTransform();
 
-			var makeAnimation = self.TraitOrDefault<WithMakeAnimation>();
+			var makeAnimation = Actor.TraitOrDefault<WithMakeAnimation>();
 			if (!SkipMakeAnims && makeAnimation != null)
 			{
 				// Once the make animation starts the activity must not be stopped anymore.
 				IsInterruptible = false;
 
 				// Wait forever
-				QueueChild(new WaitFor(() => false));
-				makeAnimation.Reverse(self, () => DoTransform(self));
+				QueueChild(new WaitFor(Actor, () => false));
+				makeAnimation.Reverse(Actor, () => DoTransform());
 				return false;
 			}
 
-			DoTransform(self);
+			DoTransform();
 			return true;
 		}
 
-		void DoTransform(Actor self)
+		void DoTransform()
 		{
 			// This activity may be buried as a child within one or more parents
 			// We need to consider the top-level activities when transferring orders to the new actor!
-			var currentActivity = self.CurrentActivity;
+			var currentActivity = Actor.CurrentActivity;
 
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
-				if (self.IsDead || self.WillDispose)
+				if (Actor.IsDead || Actor.WillDispose)
 					return;
 
-				foreach (var nt in self.TraitsImplementing<INotifyTransform>())
-					nt.OnTransform(self);
+				foreach (var nt in Actor.TraitsImplementing<INotifyTransform>())
+					nt.OnTransform();
 
-				var selected = w.Selection.Contains(self);
-				var controlgroup = w.ControlGroups.GetControlGroupForActor(self);
+				var selected = w.Selection.Contains(Actor);
+				var controlgroup = w.ControlGroups.GetControlGroupForActor(Actor);
 
-				self.Dispose();
+				Actor.Dispose();
 				foreach (var s in Sounds)
-					Game.Sound.PlayToPlayer(SoundType.World, self.Owner, s, self.CenterPosition);
+					Game.Sound.PlayToPlayer(SoundType.World, Actor.Owner, s, Actor.CenterPosition);
 
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", Notification, self.Owner.Faction.InternalName);
-				TextNotificationsManager.AddTransientLine(TextNotification, self.Owner);
+				Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech", Notification, Actor.Owner.Faction.InternalName);
+				TextNotificationsManager.AddTransientLine(TextNotification, Actor.Owner);
 
 				var init = new TypeDictionary
 				{
-					new LocationInit(self.Location + Offset),
-					new OwnerInit(self.Owner),
+					new LocationInit(Actor.Location + Offset),
+					new OwnerInit(Actor.Owner),
 					new FacingInit(Facing),
 				};
 
@@ -111,7 +112,7 @@ namespace OpenRA.Mods.Common.Activities
 				if (Faction != null)
 					init.Add(new FactionInit(Faction));
 
-				var health = self.TraitOrDefault<IHealth>();
+				var health = Actor.TraitOrDefault<IHealth>();
 				if (health != null)
 				{
 					// Cast to long to avoid overflow when multiplying by the health
@@ -119,11 +120,11 @@ namespace OpenRA.Mods.Common.Activities
 					init.Add(new HealthInit(newHP));
 				}
 
-				foreach (var modifier in self.TraitsImplementing<ITransformActorInitModifier>())
-					modifier.ModifyTransformActorInit(self, init);
+				foreach (var modifier in Actor.TraitsImplementing<ITransformActorInitModifier>())
+					modifier.ModifyTransformActorInit(init);
 
 				var a = w.CreateActor(ToActor, init);
-				foreach (var nt in self.TraitsImplementing<INotifyTransform>())
+				foreach (var nt in Actor.TraitsImplementing<INotifyTransform>())
 					nt.AfterTransform(a);
 
 				// Use self.CurrentActivity to capture the parent activity if Transform is a child
@@ -134,10 +135,10 @@ namespace OpenRA.Mods.Common.Activities
 
 					var order = transfer.IssueOrderForTransformedActor(a);
 					foreach (var t in a.TraitsImplementing<IResolveOrder>())
-						t.ResolveOrder(a, order);
+						t.ResolveOrder(order);
 				}
 
-				self.ReplacedByActor = a;
+				Actor.ReplacedByActor = a;
 
 				if (selected)
 					w.Selection.Add(a);
@@ -154,7 +155,8 @@ namespace OpenRA.Mods.Common.Activities
 		readonly Target target;
 		readonly Color? targetLineColor;
 
-		public IssueOrderAfterTransform(string orderString, in Target target, Color? targetLineColor = null)
+		public IssueOrderAfterTransform(Actor self, string orderString, in Target target, Color? targetLineColor = null)
+			: base(self)
 		{
 			this.orderString = orderString;
 			this.target = target;
@@ -166,7 +168,7 @@ namespace OpenRA.Mods.Common.Activities
 			return new Order(orderString, newActor, target, true);
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 				yield return new TargetLineNode(target, targetLineColor.Value);

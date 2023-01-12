@@ -42,19 +42,15 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class TransformsIntoEntersTunnels : ConditionalTrait<TransformsIntoEntersTunnelsInfo>, IIssueOrder, IResolveOrder, IOrderVoice
 	{
-		readonly Actor self;
 		Transforms[] transforms;
 
 		public TransformsIntoEntersTunnels(Actor self, TransformsIntoEntersTunnelsInfo info)
-			: base(info)
-		{
-			this.self = self;
-		}
+			: base(info, self) { }
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			transforms = self.TraitsImplementing<Transforms>().ToArray();
-			base.Created(self);
+			transforms = Actor.TraitsImplementing<Transforms>().ToArray();
+			base.Created();
 		}
 
 		IEnumerable<IOrderTargeter> IIssueOrder.Orders
@@ -73,18 +69,18 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool UseEnterCursor(Actor target)
 		{
-			return self.CurrentActivity is Transform || transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused);
+			return Actor.CurrentActivity is Transform || transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused);
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		Order IIssueOrder.IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "EnterTunnel")
-				return new Order(order.OrderID, self, target, queued) { SuppressVisualFeedback = true };
+				return new Order(order.OrderID, Actor, target, queued) { SuppressVisualFeedback = true };
 
 			return null;
 		}
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (IsTraitDisabled || order.OrderString != "EnterTunnel" || order.Target.Type != TargetType.Actor)
 				return;
@@ -93,7 +89,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (tunnel == null || !tunnel.Exit.HasValue)
 				return;
 
-			var currentTransform = self.CurrentActivity as Transform;
+			var currentTransform = Actor.CurrentActivity as Transform;
 			var transform = transforms.FirstOrDefault(t => !t.IsTraitDisabled && !t.IsTraitPaused);
 			if (transform == null && currentTransform == null)
 				return;
@@ -101,17 +97,17 @@ namespace OpenRA.Mods.Common.Traits
 			// Manually manage the inner activity queue
 			var activity = currentTransform ?? transform.GetTransformActivity();
 			if (!order.Queued)
-				activity.NextActivity?.Cancel(self);
+				activity.NextActivity?.Cancel();
 
-			activity.Queue(new IssueOrderAfterTransform(order.OrderString, order.Target, Info.TargetLineColor));
+			activity.Queue(new IssueOrderAfterTransform(Actor, order.OrderString, order.Target, Info.TargetLineColor));
 
 			if (currentTransform == null)
-				self.QueueActivity(order.Queued, activity);
+				Actor.QueueActivity(order.Queued, activity);
 
-			self.ShowTargetLines();
+			Actor.ShowTargetLines();
 		}
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			return order.OrderString == "EnterTunnel" ? Info.Voice : null;
 		}

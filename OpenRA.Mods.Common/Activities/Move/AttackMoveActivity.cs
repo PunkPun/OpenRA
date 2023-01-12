@@ -29,6 +29,7 @@ namespace OpenRA.Mods.Common.Activities
 		Target target = Target.Invalid;
 
 		public AttackMoveActivity(Actor self, Func<Activity> getMove, bool assaultMoving = false)
+			: base(self)
 		{
 			this.getMove = getMove;
 			autoTarget = self.TraitOrDefault<AutoTarget>();
@@ -37,7 +38,7 @@ namespace OpenRA.Mods.Common.Activities
 			ChildHasPriority = false;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			if (attackMove == null || autoTarget == null)
 			{
@@ -46,31 +47,31 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			if (isAssaultMove)
-				token = self.GrantCondition(attackMove.Info.AssaultMoveCondition);
+				token = Actor.GrantCondition(attackMove.Info.AssaultMoveCondition);
 			else
-				token = self.GrantCondition(attackMove.Info.AttackMoveCondition);
+				token = Actor.GrantCondition(attackMove.Info.AttackMoveCondition);
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling || attackMove == null || autoTarget == null)
-				return TickChild(self);
+				return TickChild();
 
 			// We are currently not attacking, so scan for new targets.
 			if (ChildActivity == null || runningMoveActivity)
 			{
 				// Use the standard ScanForTarget rate limit while we are running the move activity to save performance.
 				// Override the rate limit if our attack activity has completed so we can immediately acquire a new target instead of moving.
-				target = autoTarget.ScanForTarget(self, false, true, !runningMoveActivity);
+				target = autoTarget.ScanForTarget(false, true, !runningMoveActivity);
 
 				// Cancel the current move activity and queue attack activities if we find a new target.
 				if (target.Type != TargetType.Invalid)
 				{
 					runningMoveActivity = false;
-					ChildActivity?.Cancel(self);
+					ChildActivity?.Cancel();
 
 					foreach (var ab in autoTarget.ActiveAttackBases)
-						QueueChild(ab.GetAttackActivity(self, AttackSource.AttackMove, target, false, false));
+						QueueChild(ab.GetAttackActivity(AttackSource.AttackMove, target, false, false));
 				}
 
 				// Continue with the move activity (or queue a new one) when there are no targets.
@@ -82,26 +83,26 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			// If the move activity finished, we have reached our destination and there are no more enemies on our path.
-			return TickChild(self) && runningMoveActivity;
+			return TickChild() && runningMoveActivity;
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
 			if (token != Actor.InvalidConditionToken)
-				token = self.RevokeCondition(token);
+				token = Actor.RevokeCondition(token);
 		}
 
-		public override IEnumerable<Target> GetTargets(Actor self)
+		public override IEnumerable<Target> GetTargets()
 		{
 			if (ChildActivity != null)
-				return ChildActivity.GetTargets(self);
+				return ChildActivity.GetTargets();
 
 			return Target.None;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
-			foreach (var n in getMove().TargetLineNodes(self))
+			foreach (var n in getMove().TargetLineNodes())
 				yield return n;
 
 			yield break;

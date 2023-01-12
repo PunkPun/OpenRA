@@ -30,6 +30,7 @@ namespace OpenRA.Mods.Common.Activities
 
 		public FlyFollow(Actor self, in Target target, WDist minRange, WDist maxRange,
 			WPos? initialTargetPosition, Color? targetLineColor = null)
+			: base(self)
 		{
 			this.target = target;
 			aircraft = self.Trait<Aircraft>();
@@ -46,20 +47,20 @@ namespace OpenRA.Mods.Common.Activities
 				lastVisibleTarget = Target.FromPos(initialTargetPosition.Value);
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
-				Cancel(self);
+				Cancel();
 
 			if (IsCanceling)
 				return true;
 
-			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
+			target = target.Recalculate(Actor.Owner, out var targetIsHiddenActor);
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 				lastVisibleTarget = Target.FromTargetPositions(target);
 
-			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(self);
+			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(Actor);
 
 			// If we are ticking again after previously sequencing a MoveWithRange then that move must have completed
 			// Either we are in range and can see the target, or we've lost track of it and should give up
@@ -69,10 +70,10 @@ namespace OpenRA.Mods.Common.Activities
 			wasMovingWithinRange = false;
 
 			// Target is hidden or dead, and we don't have a fallback position to move towards
-			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self))
+			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(Actor))
 				return true;
 
-			var pos = self.CenterPosition;
+			var pos = Actor.CenterPosition;
 			var checkTarget = useLastVisibleTarget ? lastVisibleTarget : target;
 
 			// We've reached the required range - if the target is visible and valid then we wait
@@ -80,7 +81,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (checkTarget.IsInRange(pos, maxRange) && !checkTarget.IsInRange(pos, minRange))
 			{
 				if (!aircraft.Info.CanHover)
-					Fly.FlyTick(self, aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
+					Fly.FlyTick(aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
 
 				return useLastVisibleTarget;
 			}
@@ -90,7 +91,7 @@ namespace OpenRA.Mods.Common.Activities
 			return false;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 				yield return new TargetLineNode(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value);

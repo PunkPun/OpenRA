@@ -44,12 +44,13 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("The condition to grant to self for each ammo point in this pool.")]
 		public readonly string AmmoCondition = null;
 
-		public override object Create(ActorInitializer init) { return new AmmoPool(this); }
+		public override object Create(ActorInitializer init) { return new AmmoPool(this, init.Self); }
 	}
 
 	public class AmmoPool : INotifyCreated, INotifyAttack, ISync
 	{
 		public readonly AmmoPoolInfo Info;
+		public readonly Actor Actor;
 		readonly Stack<int> tokens = new Stack<int>();
 
 		// HACK: Temporarily needed until Rearm activity is gone for good
@@ -62,58 +63,59 @@ namespace OpenRA.Mods.Common.Traits
 		public bool HasAmmo => CurrentAmmoCount > 0;
 		public bool HasFullAmmo => CurrentAmmoCount == Info.Ammo;
 
-		public AmmoPool(AmmoPoolInfo info)
+		public AmmoPool(AmmoPoolInfo info, Actor self)
 		{
 			Info = info;
+			Actor = self;
 			CurrentAmmoCount = Info.InitialAmmo < Info.Ammo && Info.InitialAmmo >= 0 ? Info.InitialAmmo : Info.Ammo;
 		}
 
-		public bool GiveAmmo(Actor self, int count)
+		public bool GiveAmmo(int count)
 		{
 			if (CurrentAmmoCount >= Info.Ammo || count < 0)
 				return false;
 
 			CurrentAmmoCount = (CurrentAmmoCount + count).Clamp(0, Info.Ammo);
-			UpdateCondition(self);
+			UpdateCondition();
 			return true;
 		}
 
-		public bool TakeAmmo(Actor self, int count)
+		public bool TakeAmmo(int count)
 		{
 			if (CurrentAmmoCount <= 0 || count < 0)
 				return false;
 
 			CurrentAmmoCount = (CurrentAmmoCount - count).Clamp(0, Info.Ammo);
-			UpdateCondition(self);
+			UpdateCondition();
 			return true;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			UpdateCondition(self);
+			UpdateCondition();
 
 			// HACK: Temporarily needed until Rearm activity is gone for good
 			RemainingTicks = Info.ReloadDelay;
 		}
 
-		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
+		void INotifyAttack.Attacking(in Target target, Armament a, Barrel barrel)
 		{
 			if (a != null && Info.Armaments.Contains(a.Info.Name))
-				TakeAmmo(self, a.Info.AmmoUsage);
+				TakeAmmo(a.Info.AmmoUsage);
 		}
 
-		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
+		void INotifyAttack.PreparingAttack(in Target target, Armament a, Barrel barrel) { }
 
-		void UpdateCondition(Actor self)
+		void UpdateCondition()
 		{
 			if (string.IsNullOrEmpty(Info.AmmoCondition))
 				return;
 
 			while (CurrentAmmoCount > tokens.Count && tokens.Count < Info.Ammo)
-				tokens.Push(self.GrantCondition(Info.AmmoCondition));
+				tokens.Push(Actor.GrantCondition(Info.AmmoCondition));
 
 			while (CurrentAmmoCount < tokens.Count && tokens.Count > 0)
-				self.RevokeCondition(tokens.Pop());
+				Actor.RevokeCondition(tokens.Pop());
 		}
 	}
 }

@@ -28,7 +28,7 @@ namespace OpenRA.Mods.Common.Activities
 			this.info = info;
 		}
 
-		protected override bool TryStartEnter(Actor self, Actor targetActor)
+		protected override bool TryStartEnter(Actor targetActor)
 		{
 			enterActor = targetActor;
 			enterHealth = targetActor.TraitOrDefault<IHealth>();
@@ -36,17 +36,17 @@ namespace OpenRA.Mods.Common.Activities
 
 			// Make sure we can still repair the target before entering
 			// (but not before, because this may stop the actor in the middle of nowhere)
-			var stance = self.Owner.RelationshipWith(enterActor.Owner);
+			var stance = Actor.Owner.RelationshipWith(enterActor.Owner);
 			if (enterHealth == null || enterHealth.DamageState == DamageState.Undamaged || enterEngineerRepariable == null || enterEngineerRepariable.IsTraitDisabled || !info.ValidRelationships.HasRelationship(stance))
 			{
-				Cancel(self, true);
+				Cancel(true);
 				return false;
 			}
 
 			return true;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
 			// Make sure the target hasn't changed while entering
 			// OnEnterComplete is only called if targetActor is alive
@@ -59,21 +59,21 @@ namespace OpenRA.Mods.Common.Activities
 			if (enterHealth.DamageState == DamageState.Undamaged)
 				return;
 
-			var stance = self.Owner.RelationshipWith(enterActor.Owner);
+			var stance = Actor.Owner.RelationshipWith(enterActor.Owner);
 			if (!info.ValidRelationships.HasRelationship(stance))
 				return;
 
 			if (enterHealth.DamageState == DamageState.Undamaged)
 				return;
 
-			enterActor.InflictDamage(self, new Damage(-enterHealth.MaxHP));
+			enterActor.InflictDamage(Actor, new Damage(-enterHealth.MaxHP));
 			if (!string.IsNullOrEmpty(info.RepairSound))
 				Game.Sound.Play(SoundType.World, info.RepairSound, enterActor.CenterPosition);
 
 			if (info.EnterBehaviour == EnterBehaviour.Dispose)
-				self.Dispose();
+				Actor.Dispose();
 			else if (info.EnterBehaviour == EnterBehaviour.Suicide)
-				self.Kill(self);
+				Actor.Kill(Actor);
 		}
 	}
 }

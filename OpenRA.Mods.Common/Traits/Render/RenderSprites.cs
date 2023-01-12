@@ -140,6 +140,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		}
 
 		public readonly RenderSpritesInfo Info;
+		public readonly Actor Actor;
 		readonly string faction;
 		readonly List<AnimationWrapper> anims = new List<AnimationWrapper>();
 		string cachedImage;
@@ -156,6 +157,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public RenderSprites(ActorInitializer init, RenderSpritesInfo info)
 		{
 			Info = info;
+			Actor = init.Self;
 			faction = init.GetValue<FactionInit, string>(init.Self.Owner.Faction.InternalName);
 		}
 
@@ -173,10 +175,10 @@ namespace OpenRA.Mods.Common.Traits.Render
 				anim.OwnerChanged();
 		}
 
-		public virtual void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner) { UpdatePalette(); }
-		public void OnEffectiveOwnerChanged(Actor self, Player oldEffectiveOwner, Player newEffectiveOwner) { UpdatePalette(); }
+		public virtual void OnOwnerChanged(Player oldOwner, Player newOwner) { UpdatePalette(); }
+		public void OnEffectiveOwnerChanged(Player oldEffectiveOwner, Player newEffectiveOwner) { UpdatePalette(); }
 
-		public virtual IEnumerable<IRenderable> Render(Actor self, WorldRenderer wr)
+		public virtual IEnumerable<IRenderable> Render(WorldRenderer wr)
 		{
 			foreach (var a in anims)
 			{
@@ -185,35 +187,35 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 				if (a.PaletteReference == null)
 				{
-					var owner = self.EffectiveOwner != null && self.EffectiveOwner.Disguised ? self.EffectiveOwner.Owner : self.Owner;
+					var owner = Actor.EffectiveOwner != null && Actor.EffectiveOwner.Disguised ? Actor.EffectiveOwner.Owner : Actor.Owner;
 					a.CachePalette(wr, owner);
 				}
 
-				foreach (var r in a.Animation.Render(self, a.PaletteReference))
+				foreach (var r in a.Animation.Render(Actor, a.PaletteReference))
 					yield return r;
 			}
 		}
 
-		public virtual IEnumerable<Rectangle> ScreenBounds(Actor self, WorldRenderer wr)
+		public virtual IEnumerable<Rectangle> ScreenBounds(WorldRenderer wr)
 		{
 			foreach (var a in anims)
 				if (a.IsVisible)
-					yield return a.Animation.ScreenBounds(self, wr);
+					yield return a.Animation.ScreenBounds(Actor, wr);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			Tick(self);
+			Tick();
 		}
 
-		protected virtual void Tick(Actor self)
+		protected virtual void Tick()
 		{
 			var updated = false;
 			foreach (var a in anims)
 				updated |= a.Tick();
 
 			if (updated)
-				self.World.ScreenMap.AddOrUpdate(self);
+				Actor.World.ScreenMap.AddOrUpdate(Actor);
 		}
 
 		public void Add(AnimationWithOffset anim, string palette = null, bool isPlayerPalette = false)
@@ -275,7 +277,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 					.FirstOrDefault();
 		}
 
-		void IActorPreviewInitModifier.ModifyActorPreviewInit(Actor self, TypeDictionary inits)
+		void IActorPreviewInitModifier.ModifyActorPreviewInit(TypeDictionary inits)
 		{
 			if (!inits.Contains<FactionInit>())
 				inits.Add(new FactionInit(faction));

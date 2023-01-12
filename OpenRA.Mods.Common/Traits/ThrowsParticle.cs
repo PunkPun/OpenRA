@@ -86,7 +86,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			var anim = new Animation(init.World, rs.GetImage(self), () => facing);
 			anim.PlayRepeating(info.Anim);
-			rs.Add(new AnimationWithOffset(anim, () => pos, null));
+			rs.Add(new AnimationWithOffset(Actor, anim, () => pos, null));
 		}
 
 		void ITick.Tick(Actor self)

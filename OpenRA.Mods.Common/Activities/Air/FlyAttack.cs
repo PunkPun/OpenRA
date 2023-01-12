@@ -38,6 +38,7 @@ namespace OpenRA.Mods.Common.Activities
 		bool returnToBase;
 
 		public FlyAttack(Actor self, AttackSource source, in Target target, bool forceAttack, Color? targetLineColor)
+			: base(self)
 		{
 			this.source = source;
 			this.target = target;
@@ -71,13 +72,13 @@ namespace OpenRA.Mods.Common.Activities
 			}
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			returnToBase = false;
 
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
-				Cancel(self);
+				Cancel();
 
 			if (IsCanceling)
 				return true;
@@ -90,7 +91,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (attackAircraft.IsTraitPaused)
 				return false;
 
-			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
+			target = target.Recalculate(Actor.Owner, out var targetIsHiddenActor);
 			attackAircraft.SetRequestedTarget(target, forceAttack);
 			hasTicked = true;
 
@@ -105,7 +106,7 @@ namespace OpenRA.Mods.Common.Activities
 			// The target may become hidden in the same tick the FlyAttack constructor is called,
 			// causing lastVisible* to remain uninitialized.
 			// Fix the fallback values based on the frozen actor properties
-			else if (target.Type == TargetType.FrozenActor && !lastVisibleTarget.IsValidFor(self))
+			else if (target.Type == TargetType.FrozenActor && !lastVisibleTarget.IsValidFor(Actor))
 			{
 				lastVisibleTarget = Target.FromTargetPositions(target);
 				lastVisibleMaximumRange = attackAircraft.GetMaximumRangeVersusTarget(target);
@@ -113,15 +114,15 @@ namespace OpenRA.Mods.Common.Activities
 				lastVisibleTargetTypes = target.FrozenActor.TargetTypes;
 			}
 
-			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(self);
+			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(Actor);
 
 			// Target is hidden or dead, and we don't have a fallback position to move towards
-			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self))
+			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(Actor))
 				return true;
 
 			// If all valid weapons have depleted their ammo and Rearmable trait exists, return to RearmActor to reload
 			// and resume the activity after reloading if AbortOnResupply is set to 'false'
-			if (rearmable != null && !useLastVisibleTarget && attackAircraft.Armaments.All(x => x.IsTraitPaused || !x.Weapon.IsValidAgainst(target, self.World, self)))
+			if (rearmable != null && !useLastVisibleTarget && attackAircraft.Armaments.All(x => x.IsTraitPaused || !x.Weapon.IsValidAgainst(target, Actor.World, Actor)))
 			{
 				// Attack moves never resupply
 				if (source == AttackSource.AttackMove)
@@ -129,14 +130,14 @@ namespace OpenRA.Mods.Common.Activities
 
 				// AbortOnResupply cancels the current activity (after resupplying) plus any queued activities
 				if (attackAircraft.Info.AbortOnResupply)
-					NextActivity?.Cancel(self);
+					NextActivity?.Cancel();
 
-				QueueChild(new ReturnToBase(self));
+				QueueChild(new ReturnToBase(Actor));
 				returnToBase = true;
 				return attackAircraft.Info.AbortOnResupply;
 			}
 
-			var pos = self.CenterPosition;
+			var pos = Actor.CenterPosition;
 			var checkTarget = useLastVisibleTarget ? lastVisibleTarget : target;
 
 			// We don't know where the target actually is, so move to where we last saw it
@@ -146,7 +147,7 @@ namespace OpenRA.Mods.Common.Activities
 				// which means that targetIsHiddenActor is always false, allowing lastVisibleMaximumRange
 				// to be assigned zero range by attackAircraft.GetMaximumRangeVersusTarget for e.g. cloaked actors.
 				// Catch and cancel this edge case to avoid the aircraft stopping mid-air!
-				if (self.Owner.IsBot && lastVisibleMaximumRange == WDist.Zero)
+				if (Actor.Owner.IsBot && lastVisibleMaximumRange == WDist.Zero)
 					return true;
 
 				// We've reached the assumed position but it is not there - give up
@@ -154,14 +155,14 @@ namespace OpenRA.Mods.Common.Activities
 					return true;
 
 				// Fly towards the last known position
-				QueueChild(new Fly(self, target, WDist.Zero, lastVisibleMaximumRange, checkTarget.CenterPosition, Color.Red));
+				QueueChild(new Fly(Actor, target, WDist.Zero, lastVisibleMaximumRange, checkTarget.CenterPosition, Color.Red));
 				return false;
 			}
 
 			var delta = attackAircraft.GetTargetPosition(pos, target) - pos;
 			var desiredFacing = delta.HorizontalLengthSquared != 0 ? delta.Yaw : aircraft.Facing;
 
-			QueueChild(new TakeOff(self));
+			QueueChild(new TakeOff(Actor));
 
 			var minimumRange = attackAircraft.Info.AttackType == AirAttackType.Strafe ? WDist.Zero : attackAircraft.GetMinimumRangeVersusTarget(target);
 
@@ -176,35 +177,35 @@ namespace OpenRA.Mods.Common.Activities
 				QueueChild(new FlyAttackRun(target, lastVisibleMaximumRange, attackAircraft));
 
 			// Turn to face the target if required.
-			else if (!attackAircraft.TargetInFiringArc(self, target, attackAircraft.Info.FacingTolerance))
+			else if (!attackAircraft.TargetInFiringArc(target, attackAircraft.Info.FacingTolerance))
 				aircraft.Facing = Util.TickFacing(aircraft.Facing, desiredFacing, aircraft.TurnSpeed);
 
 			return false;
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
 			// Cancel the requested target, but keep firing on it while in range
 			attackAircraft.ClearRequestedTarget();
 		}
 
-		void IActivityNotifyStanceChanged.StanceChanged(Actor self, AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
+		void IActivityNotifyStanceChanged.StanceChanged(AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
 		{
 			// Cancel non-forced targets when switching to a more restrictive stance if they are no longer valid for auto-targeting
 			if (newStance > oldStance || forceAttack)
 				return;
 
 			// If lastVisibleTarget is invalid we could never view the target in the first place, so we just drop it here too
-			if (!lastVisibleTarget.IsValidFor(self) || !autoTarget.HasValidTargetPriority(self, lastVisibleOwner, lastVisibleTargetTypes))
+			if (!lastVisibleTarget.IsValidFor(Actor) || !autoTarget.HasValidTargetPriority(lastVisibleOwner, lastVisibleTargetTypes))
 				attackAircraft.ClearRequestedTarget();
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 			{
 				if (returnToBase)
-					foreach (var n in ChildActivity.TargetLineNodes(self))
+					foreach (var n in ChildActivity.TargetLineNodes())
 						yield return n;
 				if (!returnToBase || !attackAircraft.Info.AbortOnResupply)
 					yield return new TargetLineNode(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value);
@@ -221,6 +222,7 @@ namespace OpenRA.Mods.Common.Activities
 		bool targetIsVisibleActor;
 
 		public FlyAttackRun(in Target t, WDist exitRange, AttackAircraft attack)
+			: base(attack.Actor)
 		{
 			ChildHasPriority = false;
 
@@ -229,33 +231,33 @@ namespace OpenRA.Mods.Common.Activities
 			this.attack = attack;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			// The target may have died while this activity was queued
-			if (target.IsValidFor(self))
+			if (target.IsValidFor(Actor))
 			{
-				QueueChild(new Fly(self, target, target.CenterPosition));
+				QueueChild(new Fly(Actor, target, target.CenterPosition));
 
 				// Fly a single tick forward so we have passed the target and start flying out of range facing away from it
-				QueueChild(new FlyForward(self, 1));
-				QueueChild(new Fly(self, target, exitRange, WDist.MaxValue, target.CenterPosition));
+				QueueChild(new FlyForward(Actor, 1));
+				QueueChild(new Fly(Actor, target, exitRange, WDist.MaxValue, target.CenterPosition));
 			}
 			else
-				Cancel(self);
+				Cancel();
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
-			if (TickChild(self) || IsCanceling)
+			if (TickChild() || IsCanceling)
 				return true;
 
 			// Cancel the run if the target become invalid (e.g. killed) while visible
 			var targetWasVisibleActor = targetIsVisibleActor;
-			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
+			target = target.Recalculate(Actor.Owner, out var targetIsHiddenActor);
 			targetIsVisibleActor = target.Type == TargetType.Actor && !targetIsHiddenActor;
 
-			if (targetWasVisibleActor && (!target.IsValidFor(self) || !attack.HasAnyValidWeapons(target)))
-				Cancel(self);
+			if (targetWasVisibleActor && (!target.IsValidFor(Actor) || !attack.HasAnyValidWeapons(target)))
+				Cancel();
 
 			return false;
 		}
@@ -270,6 +272,7 @@ namespace OpenRA.Mods.Common.Activities
 		Target target;
 
 		public StrafeAttackRun(AttackAircraft attackAircraft, Aircraft aircraft, in Target t, WDist exitRange)
+			: base(attackAircraft.Actor)
 		{
 			ChildHasPriority = false;
 
@@ -279,30 +282,30 @@ namespace OpenRA.Mods.Common.Activities
 			this.exitRange = exitRange;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			// The target may have died while this activity was queued
-			if (target.IsValidFor(self))
+			if (target.IsValidFor(Actor))
 			{
-				QueueChild(new Fly(self, target, target.CenterPosition));
-				QueueChild(new FlyForward(self, exitRange));
+				QueueChild(new Fly(Actor, target, target.CenterPosition));
+				QueueChild(new FlyForward(Actor, exitRange));
 
 				// Exit the range and then fly enough to turn towards the target for another run
 				var distanceToTurn = new WDist(aircraft.Info.Speed * 256 / aircraft.Info.TurnSpeed.Angle);
-				QueueChild(new Fly(self, target, exitRange + distanceToTurn, WDist.MaxValue, target.CenterPosition));
+				QueueChild(new Fly(Actor, target, exitRange + distanceToTurn, WDist.MaxValue, target.CenterPosition));
 			}
 			else
-				Cancel(self);
+				Cancel();
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
-			if (TickChild(self) || IsCanceling)
+			if (TickChild() || IsCanceling)
 				return true;
 
 			// Strafe attacks target the ground below the original target
 			// Update the position if we seen the target move; keep the previous one if it dies or disappears
-			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
+			target = target.Recalculate(Actor.Owner, out var targetIsHiddenActor);
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 				attackAircraft.SetRequestedTarget(Target.FromTargetPositions(target), true);
 

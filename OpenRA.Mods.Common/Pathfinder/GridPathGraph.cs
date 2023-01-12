@@ -26,7 +26,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 
 		public GridPathGraph(Locomotor locomotor, Actor actor, World world, BlockedByActor check,
 			Func<CPos, int> customCost, Actor ignoreActor, bool laneBias, bool inReverse, Grid grid)
-			: base(locomotor, actor, world, check, customCost, ignoreActor, laneBias, inReverse)
+			: base(locomotor, world, check, customCost, ignoreActor, laneBias, inReverse)
 		{
 			infos = new CellInfo[grid.Width * grid.Height];
 			this.grid = grid;

@@ -15,8 +15,10 @@ namespace OpenRA.Activities
 {
 	public class CallFunc : Activity
 	{
-		public CallFunc(Action a) { this.a = a; }
-		public CallFunc(Action a, bool interruptible)
+		public CallFunc(Actor self, Action a)
+			: base(self) { this.a = a; }
+		public CallFunc(Actor self, Action a, bool interruptible)
+			: base(self)
 		{
 			this.a = a;
 			IsInterruptible = interruptible;
@@ -24,7 +26,7 @@ namespace OpenRA.Activities
 
 		readonly Action a;
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			a.Invoke();
 			return true;

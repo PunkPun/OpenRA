@@ -18,14 +18,16 @@ namespace OpenRA.Mods.Common.Activities
 	{
 		int remainingTicks;
 
-		public Wait(int period) { remainingTicks = period; }
-		public Wait(int period, bool interruptible)
+		public Wait(Actor self, int period)
+			: base(self) { remainingTicks = period; }
+		public Wait(Actor self, int period, bool interruptible)
+			: base(self)
 		{
 			remainingTicks = period;
 			IsInterruptible = interruptible;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling)
 				return true;
@@ -38,14 +40,16 @@ namespace OpenRA.Mods.Common.Activities
 	{
 		readonly Func<bool> f;
 
-		public WaitFor(Func<bool> f) { this.f = f; }
-		public WaitFor(Func<bool> f, bool interruptible)
+		public WaitFor(Actor self, Func<bool> f)
+			: base(self) { this.f = f; }
+		public WaitFor(Actor self, Func<bool> f, bool interruptible)
+			: base(self)
 		{
 			this.f = f;
 			IsInterruptible = interruptible;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling)
 				return true;

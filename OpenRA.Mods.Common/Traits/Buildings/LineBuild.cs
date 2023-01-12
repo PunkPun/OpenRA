@@ -45,8 +45,8 @@ namespace OpenRA.Mods.Common.Traits
 
 	public interface INotifyLineBuildSegmentsChanged
 	{
-		void SegmentAdded(Actor self, Actor segment);
-		void SegmentRemoved(Actor self, Actor segment);
+		void SegmentAdded(Actor segment);
+		void SegmentRemoved(Actor segment);
 	}
 
 	[Desc("Place the second actor in line to build more of the same at once (used for walls).")]
@@ -70,19 +70,21 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class LineBuild : INotifyKilled, INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyLineBuildSegmentsChanged
 	{
+		public readonly Actor Actor;
 		readonly LineBuildInfo info;
 		readonly Actor[] parentNodes = Array.Empty<Actor>();
 		HashSet<Actor> segments;
 
 		public LineBuild(ActorInitializer init, LineBuildInfo info)
 		{
+			Actor = init.Self;
 			this.info = info;
 			var lineBuildParentInit = init.GetOrDefault<LineBuildParentInit>();
 			if (lineBuildParentInit != null)
 				parentNodes = lineBuildParentInit.ActorValue(init.World);
 		}
 
-		void INotifyLineBuildSegmentsChanged.SegmentAdded(Actor self, Actor segment)
+		void INotifyLineBuildSegmentsChanged.SegmentAdded(Actor segment)
 		{
 			if (segments == null)
 				segments = new HashSet<Actor>();
@@ -90,32 +92,32 @@ namespace OpenRA.Mods.Common.Traits
 			segments.Add(segment);
 		}
 
-		void INotifyLineBuildSegmentsChanged.SegmentRemoved(Actor self, Actor segment)
+		void INotifyLineBuildSegmentsChanged.SegmentRemoved(Actor segment)
 		{
 			segments?.Remove(segment);
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
 			foreach (var parent in parentNodes)
 				if (!parent.Disposed)
 					foreach (var n in parent.TraitsImplementing<INotifyLineBuildSegmentsChanged>())
-						n.SegmentAdded(parent, self);
+						n.SegmentAdded(Actor);
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
 			foreach (var parent in parentNodes)
 				if (!parent.Disposed)
 					foreach (var n in parent.TraitsImplementing<INotifyLineBuildSegmentsChanged>())
-						n.SegmentRemoved(parent, self);
+						n.SegmentRemoved(Actor);
 
 			if (info.SegmentsRequireNode && segments != null)
 				foreach (var s in segments)
 					s.Dispose();
 		}
 
-		void INotifyKilled.Killed(Actor self, AttackInfo e)
+		void INotifyKilled.Killed(AttackInfo e)
 		{
 			if (info.SegmentsRequireNode && segments != null)
 				foreach (var s in segments)

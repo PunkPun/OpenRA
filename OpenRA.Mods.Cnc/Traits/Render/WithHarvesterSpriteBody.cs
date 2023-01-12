@@ -36,7 +36,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			harv = init.Self.Trait<Harvester>();
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (harv == null || info.ImageByFullness.Length == 0)
 				return;

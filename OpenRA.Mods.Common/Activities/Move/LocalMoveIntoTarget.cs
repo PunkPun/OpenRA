@@ -26,6 +26,7 @@ namespace OpenRA.Mods.Common.Activities
 		WPos targetStartPos;
 
 		public LocalMoveIntoTarget(Actor self, in Target target, WDist targetMovementThreshold, Color? targetLineColor = null)
+			: base(self)
 		{
 			mobile = self.Trait<Mobile>();
 			this.target = target;
@@ -33,12 +34,12 @@ namespace OpenRA.Mods.Common.Activities
 			this.targetLineColor = targetLineColor;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
-			targetStartPos = target.Positions.PositionClosestTo(self.CenterPosition);
+			targetStartPos = target.Positions.PositionClosestTo(Actor.CenterPosition);
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling || target.Type == TargetType.Invalid)
 				return true;
@@ -46,7 +47,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (mobile.IsTraitDisabled || mobile.IsTraitPaused)
 				return false;
 
-			var currentPos = self.CenterPosition;
+			var currentPos = Actor.CenterPosition;
 			var targetPos = target.Positions.PositionClosestTo(currentPos);
 
 			// Give up if the target has moved too far
@@ -63,24 +64,24 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			// Can complete the move in this step
-			var speed = mobile.MovementSpeedForCell(self.Location);
+			var speed = mobile.MovementSpeedForCell(Actor.Location);
 			if (delta.LengthSquared <= speed * speed)
 			{
-				mobile.SetCenterPosition(self, targetPos);
+				mobile.SetCenterPosition(targetPos);
 				return true;
 			}
 
 			// Move towards the target
-			mobile.SetCenterPosition(self, currentPos + delta * speed / delta.Length);
+			mobile.SetCenterPosition(currentPos + delta * speed / delta.Length);
 			return false;
 		}
 
-		public override IEnumerable<Target> GetTargets(Actor self)
+		public override IEnumerable<Target> GetTargets()
 		{
 			yield return target;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 				yield return new TargetLineNode(target, targetLineColor.Value);

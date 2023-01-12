@@ -25,6 +25,7 @@ namespace OpenRA.Mods.Common.Activities
 		int spin;
 
 		public FallToEarth(Actor self, FallsToEarthInfo info)
+			: base(self)
 		{
 			this.info = info;
 			IsInterruptible = false;
@@ -33,18 +34,18 @@ namespace OpenRA.Mods.Common.Activities
 				acceleration = self.World.SharedRandom.Next(2) * 2 - 1;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
-			if (self.World.Map.DistanceAboveTerrain(self.CenterPosition).Length <= 0)
+			if (Actor.World.Map.DistanceAboveTerrain(Actor.CenterPosition).Length <= 0)
 			{
 				if (info.ExplosionWeapon != null)
 				{
 					// Use .FromPos since this actor is killed. Cannot use Target.FromActor
-					info.ExplosionWeapon.Impact(Target.FromPos(self.CenterPosition), self);
+					info.ExplosionWeapon.Impact(Target.FromPos(Actor.CenterPosition), Actor);
 				}
 
-				self.Kill(self);
-				Cancel(self);
+				Actor.Kill(Actor);
+				Cancel();
 				return true;
 			}
 
@@ -59,7 +60,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			var move = info.Moves ? aircraft.FlyStep(aircraft.Facing) : WVec.Zero;
 			move -= new WVec(WDist.Zero, WDist.Zero, info.Velocity);
-			aircraft.SetPosition(self, aircraft.CenterPosition + move);
+			aircraft.SetPosition(Actor, aircraft.CenterPosition + move);
 
 			return false;
 		}

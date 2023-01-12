@@ -83,7 +83,7 @@ namespace OpenRA.Mods.Cnc.Effects
 
 			// Hide indicator if the actor wouldn't otherwise be visible if there wasn't fog
 			foreach (var visibilityModifier in visibilityModifiers)
-				if (!visibilityModifier.IsVisible(actor, toPlayer))
+				if (!visibilityModifier.IsVisible(toPlayer))
 					return false;
 
 			return true;

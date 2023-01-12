@@ -30,42 +30,44 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 		[Desc("Custom palette is a player palette BaseName")]
 		public readonly bool IsPlayerPalette = false;
 
-		public override object Create(ActorInitializer init) { return new WithTeslaChargeOverlay(init, this); }
+		public override object Create(ActorInitializer init) { return new WithTeslaChargeOverlay(this, init.Self); }
 	}
 
 	public class WithTeslaChargeOverlay : INotifyTeslaCharging, INotifyDamageStateChanged, INotifySold
 	{
+		public readonly Actor Actor;
 		readonly Animation overlay;
 		readonly RenderSprites renderSprites;
 		readonly WithTeslaChargeOverlayInfo info;
 
 		bool charging;
 
-		public WithTeslaChargeOverlay(ActorInitializer init, WithTeslaChargeOverlayInfo info)
+		public WithTeslaChargeOverlay(WithTeslaChargeOverlayInfo info, Actor self)
 		{
+			Actor = self;
 			this.info = info;
 
-			renderSprites = init.Self.Trait<RenderSprites>();
+			renderSprites = Actor.Trait<RenderSprites>();
 
-			overlay = new Animation(init.World, renderSprites.GetImage(init.Self));
+			overlay = new Animation(Actor.World, renderSprites.GetImage(Actor));
 
-			renderSprites.Add(new AnimationWithOffset(overlay, null, () => !charging),
+			renderSprites.Add(new AnimationWithOffset(Actor, overlay, null, () => !charging),
 				info.Palette, info.IsPlayerPalette);
 		}
 
-		void INotifyTeslaCharging.Charging(Actor self, in Target target)
+		void INotifyTeslaCharging.Charging(in Target target)
 		{
 			charging = true;
-			overlay.PlayThen(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), info.Sequence), () => charging = false);
+			overlay.PlayThen(RenderSprites.NormalizeSequence(overlay, Actor.GetDamageState(), info.Sequence), () => charging = false);
 		}
 
-		void INotifyDamageStateChanged.DamageStateChanged(Actor self, AttackInfo e)
+		void INotifyDamageStateChanged.DamageStateChanged(AttackInfo e)
 		{
 			overlay.ReplaceAnim(RenderSprites.NormalizeSequence(overlay, e.DamageState, info.Sequence));
 		}
 
-		void INotifySold.Sold(Actor self) { }
-		void INotifySold.Selling(Actor self)
+		void INotifySold.Sold() { }
+		void INotifySold.Selling()
 		{
 			charging = false;
 		}

@@ -22,13 +22,14 @@ namespace OpenRA.Mods.Common.Activities
 		readonly WAngle desiredFacing;
 
 		public Turn(Actor self, WAngle desiredFacing)
+			: base(self)
 		{
 			mobile = self.TraitOrDefault<Mobile>();
 			facing = self.Trait<IFacing>();
 			this.desiredFacing = desiredFacing;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling)
 				return true;

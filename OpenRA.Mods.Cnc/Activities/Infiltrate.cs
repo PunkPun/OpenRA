@@ -31,19 +31,19 @@ namespace OpenRA.Mods.Cnc.Activities
 			notifiers = self.TraitsImplementing<INotifyInfiltration>().ToArray();
 		}
 
-		protected override void TickInner(Actor self, in Target target, bool targetIsDeadOrHiddenActor)
+		protected override void TickInner(in Target target, bool targetIsDeadOrHiddenActor)
 		{
 			if (infiltrates.IsTraitDisabled)
-				Cancel(self, true);
+				Cancel(true);
 		}
 
-		protected override bool TryStartEnter(Actor self, Actor targetActor)
+		protected override bool TryStartEnter(Actor targetActor)
 		{
 			// Make sure we can still demolish the target before entering
 			// (but not before, because this may stop the actor in the middle of nowhere)
-			if (!infiltrates.CanInfiltrateTarget(self, Target.FromActor(targetActor)))
+			if (!infiltrates.CanInfiltrateTarget(Target.FromActor(targetActor)))
 			{
-				Cancel(self, true);
+				Cancel(true);
 				return false;
 			}
 
@@ -51,32 +51,32 @@ namespace OpenRA.Mods.Cnc.Activities
 			return true;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
 			// Make sure the target hasn't changed while entering
 			// OnEnterComplete is only called if targetActor is alive
-			if (targetActor != enterActor || !infiltrates.CanInfiltrateTarget(self, Target.FromActor(targetActor)))
+			if (targetActor != enterActor || !infiltrates.CanInfiltrateTarget(Target.FromActor(targetActor)))
 				return;
 
 			foreach (var ini in notifiers)
-				ini.Infiltrating(self);
+				ini.Infiltrating();
 
 			foreach (var t in targetActor.TraitsImplementing<INotifyInfiltrated>())
-				t.Infiltrated(targetActor, self, infiltrates.Info.Types);
+				t.Infiltrated(Actor, infiltrates.Info.Types);
 
-			var exp = self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
+			var exp = Actor.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
 			exp?.GiveExperience(infiltrates.Info.PlayerExperience);
 
 			if (!string.IsNullOrEmpty(infiltrates.Info.Notification))
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
-					infiltrates.Info.Notification, self.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech",
+					infiltrates.Info.Notification, Actor.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(infiltrates.Info.TextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(infiltrates.Info.TextNotification, Actor.Owner);
 
 			if (infiltrates.Info.EnterBehaviour == EnterBehaviour.Dispose)
-				self.Dispose();
+				Actor.Dispose();
 			else if (infiltrates.Info.EnterBehaviour == EnterBehaviour.Suicide)
-				self.Kill(self);
+				Actor.Kill(Actor);
 		}
 	}
 }

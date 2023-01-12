@@ -27,13 +27,13 @@ namespace OpenRA.Mods.Cnc.Activities
 			spriteOverlay = refinery.TraitOrDefault<WithDockingOverlay>();
 		}
 
-		public override void OnStateDock(Actor self)
+		public override void OnStateDock()
 		{
 			body.Docked = true;
-			foreach (var trait in self.TraitsImplementing<INotifyHarvesterAction>())
+			foreach (var trait in Actor.TraitsImplementing<INotifyHarvesterAction>())
 				trait.Docked();
 			foreach (var nd in Refinery.TraitsImplementing<INotifyDocking>())
-				nd.Docked(Refinery, self);
+				nd.Docked(Actor);
 
 			if (spriteOverlay != null && !spriteOverlay.Visible)
 			{
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Cnc.Activities
 				dockingState = DockingState.Loop;
 		}
 
-		public override void OnStateUndock(Actor self)
+		public override void OnStateUndock()
 		{
 			// If body.Docked wasn't set, we didn't actually dock and have to skip the undock overlay
 			if (!body.Docked)
@@ -63,12 +63,12 @@ namespace OpenRA.Mods.Cnc.Activities
 					body.Docked = false;
 					spriteOverlay.Visible = false;
 
-					foreach (var trait in self.TraitsImplementing<INotifyHarvesterAction>())
+					foreach (var trait in Actor.TraitsImplementing<INotifyHarvesterAction>())
 						trait.Undocked();
 
 					if (Refinery.IsInWorld && !Refinery.IsDead)
 						foreach (var nd in Refinery.TraitsImplementing<INotifyDocking>())
-							nd.Undocked(Refinery, self);
+							nd.Undocked(Actor);
 				});
 			}
 			else
@@ -76,12 +76,12 @@ namespace OpenRA.Mods.Cnc.Activities
 				dockingState = DockingState.Complete;
 				body.Docked = false;
 
-				foreach (var trait in self.TraitsImplementing<INotifyHarvesterAction>())
+				foreach (var trait in Actor.TraitsImplementing<INotifyHarvesterAction>())
 					trait.Undocked();
 
 				if (Refinery.IsInWorld && !Refinery.IsDead)
 					foreach (var nd in Refinery.TraitsImplementing<INotifyDocking>())
-						nd.Undocked(Refinery, self);
+						nd.Undocked(Actor);
 			}
 		}
 	}

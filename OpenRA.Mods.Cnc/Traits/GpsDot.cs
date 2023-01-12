@@ -27,32 +27,34 @@ namespace OpenRA.Mods.Cnc.Traits
 		[PaletteReference(true)]
 		public readonly string IndicatorPalettePrefix = "player";
 
-		public override object Create(ActorInitializer init) { return new GpsDot(this); }
+		public override object Create(ActorInitializer init) { return new GpsDot(this, init.Self); }
 	}
 
 	class GpsDot : INotifyCreated, INotifyAddedToWorld, INotifyRemovedFromWorld
 	{
+		public readonly Actor Actor;
 		readonly GpsDotInfo info;
 		GpsDotEffect effect;
 
-		public GpsDot(GpsDotInfo info)
+		public GpsDot(GpsDotInfo info, Actor self)
 		{
+			Actor = self;
 			this.info = info;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			effect = new GpsDotEffect(self, info);
+			effect = new GpsDotEffect(Actor, info);
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
-			self.World.AddFrameEndTask(w => w.Add(effect));
+			Actor.World.AddFrameEndTask(w => w.Add(effect));
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
-			self.World.AddFrameEndTask(w => w.Remove(effect));
+			Actor.World.AddFrameEndTask(w => w.Remove(effect));
 		}
 	}
 }

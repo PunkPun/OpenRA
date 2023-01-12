@@ -46,18 +46,18 @@ namespace OpenRA.Mods.Common.Traits
 		SupportPowerManager supportPowerManager;
 
 		public SupportPowerBotModule(Actor self, SupportPowerBotModuleInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			world = self.World;
 			player = self.Owner;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			supportPowerManager = self.Owner.PlayerActor.Trait<SupportPowerManager>();
+			supportPowerManager = Actor.Owner.PlayerActor.Trait<SupportPowerManager>();
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			foreach (var decision in Info.Decisions)
 				powerDecisions.Add(decision.OrderName, decision);
@@ -208,7 +208,7 @@ namespace OpenRA.Mods.Common.Traits
 			return bestLocation;
 		}
 
-		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData(Actor self)
+		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData()
 		{
 			if (IsTraitDisabled)
 				return null;
@@ -223,9 +223,9 @@ namespace OpenRA.Mods.Common.Traits
 			};
 		}
 
-		void IGameSaveTraitData.ResolveTraitData(Actor self, List<MiniYamlNode> data)
+		void IGameSaveTraitData.ResolveTraitData(List<MiniYamlNode> data)
 		{
-			if (self.World.IsReplay)
+			if (Actor.World.IsReplay)
 				return;
 
 			var waitingPowersNode = data.FirstOrDefault(n => n.Key == "WaitingPowers");

@@ -44,12 +44,12 @@ namespace OpenRA.Mods.Common.Scripting
 			context.WorldLoaded();
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			context.Tick();
 		}
 
-		void INotifyActorDisposing.Disposing(Actor self)
+		void INotifyActorDisposing.Disposing()
 		{
 			if (disposed)
 				return;

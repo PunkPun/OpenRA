@@ -38,11 +38,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		public bool IsValidTarget(ActorInfo actorInfo, Actor saboteur) { return false; } // TODO: bridges don't support frozen under fog
 
-		public override object Create(ActorInitializer init) { return new BridgeHut(init.World, this); }
+		public override object Create(ActorInitializer init) { return new BridgeHut(init.Self, this); }
 	}
 
 	public class BridgeHut : INotifyCreated, IDemolishable, ITick
 	{
+		public readonly Actor Actor;
 		public readonly BridgeHutInfo Info;
 		readonly BridgeLayer bridgeLayer;
 
@@ -64,15 +65,16 @@ namespace OpenRA.Mods.Common.Traits
 		Actor demolishSaboteur;
 		BitSet<DamageType> demolishDamageTypes;
 
-		public BridgeHut(World world, BridgeHutInfo info)
+		public BridgeHut(Actor self, BridgeHutInfo info)
 		{
+			Actor = self;
 			Info = info;
-			bridgeLayer = world.WorldActor.Trait<BridgeLayer>();
+			bridgeLayer = self.World.WorldActor.Trait<BridgeLayer>();
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				// Bridge segments and huts are expected to be placed in the map
 				// editor or spawned during the normal actor loading
@@ -82,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 				//
 				// Bridge segment footprints and neighbour offsets are assumed to remain
 				// the same when a segment is destroyed or repaired.
-				var seed = Info.NeighbourOffsets.Select(v => self.Location + v);
+				var seed = Info.NeighbourOffsets.Select(v => Actor.Location + v);
 				var processed = new HashSet<CPos>();
 				while (true)
 				{
@@ -101,7 +103,7 @@ namespace OpenRA.Mods.Common.Traits
 			});
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			// Update any dead segments
 			dirtyLocations.Clear();
@@ -168,22 +170,22 @@ namespace OpenRA.Mods.Common.Traits
 			repairDelay = Info.RepairPropagationDelay;
 		}
 
-		bool IDemolishable.IsValidTarget(Actor self, Actor saboteur)
+		bool IDemolishable.IsValidTarget(Actor saboteur)
 		{
 			return true;
 		}
 
-		void IDemolishable.Demolish(Actor self, Actor saboteur, int delay, BitSet<DamageType> damageTypes)
+		void IDemolishable.Demolish(Actor saboteur, int delay, BitSet<DamageType> damageTypes)
 		{
 			// TODO: Handle using ITick
-			self.World.Add(new DelayedAction(delay, () =>
+			Actor.World.Add(new DelayedAction(delay, () =>
 			{
-				if (self.IsDead)
+				if (Actor.IsDead)
 					return;
 
-				var modifiers = self.TraitsImplementing<IDamageModifier>()
-					.Concat(self.Owner.PlayerActor.TraitsImplementing<IDamageModifier>())
-					.Select(t => t.GetDamageModifier(self, null));
+				var modifiers = Actor.TraitsImplementing<IDamageModifier>()
+					.Concat(Actor.Owner.PlayerActor.TraitsImplementing<IDamageModifier>())
+					.Select(t => t.GetDamageModifier(Actor, null));
 
 				if (Util.ApplyPercentageModifiers(100, modifiers) > 0)
 				{

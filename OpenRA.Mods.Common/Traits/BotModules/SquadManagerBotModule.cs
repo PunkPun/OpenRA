@@ -133,7 +133,7 @@ namespace OpenRA.Mods.Common.Traits
 		int minAttackForceDelayTicks;
 
 		public SquadManagerBotModule(Actor self, SquadManagerBotModuleInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			World = self.World;
 			Player = self.Owner;
@@ -157,7 +157,7 @@ namespace OpenRA.Mods.Common.Traits
 			var visModifiers = a.TraitsImplementing<IVisibilityModifier>();
 			foreach (var v in visModifiers)
 			{
-				if (v.IsVisible(a, Player))
+				if (v.IsVisible(Player))
 					return true;
 
 				hasModifier = true;
@@ -166,13 +166,13 @@ namespace OpenRA.Mods.Common.Traits
 			return !hasModifier;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			notifyPositionsUpdated = self.Owner.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
-			notifyIdleBaseUnits = self.Owner.PlayerActor.TraitsImplementing<IBotNotifyIdleBaseUnits>().ToArray();
+			notifyPositionsUpdated = Actor.Owner.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
+			notifyIdleBaseUnits = Actor.Owner.PlayerActor.TraitsImplementing<IBotNotifyIdleBaseUnits>().ToArray();
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			// Avoid all AIs trying to rush in the same tick, randomize their initial rush a little.
 			var smallFractionOfRushInterval = Info.RushInterval / 20;
@@ -373,12 +373,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		void IBotPositionsUpdated.UpdatedDefenseCenter(CPos newLocation) { }
 
-		void IBotRespondToAttack.RespondToAttack(IBot bot, Actor self, AttackInfo e)
+		void IBotRespondToAttack.RespondToAttack(IBot bot, AttackInfo e)
 		{
 			if (!IsPreferredEnemyUnit(e.Attacker))
 				return;
 
-			if (Info.ProtectionTypes.Contains(self.Info.Name))
+			if (Info.ProtectionTypes.Contains(Actor.Info.Name))
 			{
 				foreach (var n in notifyPositionsUpdated)
 					n.UpdatedDefenseCenter(e.Attacker.Location);
@@ -387,7 +387,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData(Actor self)
+		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData()
 		{
 			if (IsTraitDisabled)
 				return null;
@@ -411,9 +411,9 @@ namespace OpenRA.Mods.Common.Traits
 			};
 		}
 
-		void IGameSaveTraitData.ResolveTraitData(Actor self, List<MiniYamlNode> data)
+		void IGameSaveTraitData.ResolveTraitData(List<MiniYamlNode> data)
 		{
-			if (self.World.IsReplay)
+			if (Actor.World.IsReplay)
 				return;
 
 			var initialBaseCenterNode = data.FirstOrDefault(n => n.Key == "InitialBaseCenter");
@@ -425,7 +425,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				unitsHangingAroundTheBase.Clear();
 				unitsHangingAroundTheBase.AddRange(FieldLoader.GetValue<uint[]>("UnitsHangingAroundTheBase", unitsHangingAroundTheBaseNode.Value.Value)
-					.Select(a => self.World.GetActorById(a)).Where(a => a != null));
+					.Select(a => Actor.World.GetActorById(a)).Where(a => a != null));
 			}
 
 			var activeUnitsNode = data.FirstOrDefault(n => n.Key == "ActiveUnits");
@@ -433,7 +433,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				activeUnits.Clear();
 				activeUnits.AddRange(FieldLoader.GetValue<uint[]>("ActiveUnits", activeUnitsNode.Value.Value)
-					.Select(a => self.World.GetActorById(a)).Where(a => a != null));
+					.Select(a => Actor.World.GetActorById(a)).Where(a => a != null));
 			}
 
 			var rushTicksNode = data.FirstOrDefault(n => n.Key == "RushTicks");

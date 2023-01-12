@@ -48,6 +48,7 @@ namespace OpenRA.Activities
 	 */
 	public abstract class Activity : IActivityInterface
 	{
+		public readonly Actor Actor;
 		public ActivityState State { get; private set; }
 
 		Activity childActivity;
@@ -86,62 +87,63 @@ namespace OpenRA.Activities
 		bool firstRunCompleted;
 		bool lastRun;
 
-		public Activity()
+		public Activity(Actor self)
 		{
 			IsInterruptible = true;
 			ChildHasPriority = true;
+			Actor = self;
 		}
 
-		public Activity TickOuter(Actor self)
+		public Activity TickOuter()
 		{
 			if (State == ActivityState.Done)
-				throw new InvalidOperationException($"Actor {self} attempted to tick activity {GetType()} after it had already completed.");
+				throw new InvalidOperationException($"Actor {Actor} attempted to tick activity {GetType()} after it had already completed.");
 
 			if (State == ActivityState.Queued)
 			{
-				OnFirstRun(self);
+				OnFirstRun();
 				firstRunCompleted = true;
 				State = ActivityState.Active;
 			}
 
 			if (!firstRunCompleted)
-				throw new InvalidOperationException($"Actor {self} attempted to tick activity {GetType()} before running its OnFirstRun method.");
+				throw new InvalidOperationException($"Actor {Actor} attempted to tick activity {GetType()} before running its OnFirstRun method.");
 
 			// Only run the parent tick when the child is done.
 			// We must always let the child finish on its own before continuing.
 			if (ChildHasPriority)
 			{
-				lastRun = TickChild(self) && (finishing || Tick(self));
+				lastRun = TickChild() && (finishing || Tick());
 				finishing |= lastRun;
 			}
 
 			// The parent determines whether the child gets a chance at ticking.
 			else
-				lastRun = Tick(self);
+				lastRun = Tick();
 
 			// Avoid a single tick delay if the childactivity was just queued.
 			var ca = ChildActivity;
 			if (ca != null && ca.State == ActivityState.Queued)
 			{
 				if (ChildHasPriority)
-					lastRun = TickChild(self) && finishing;
+					lastRun = TickChild() && finishing;
 				else
-					TickChild(self);
+					TickChild();
 			}
 
 			if (lastRun)
 			{
 				State = ActivityState.Done;
-				OnLastRun(self);
+				OnLastRun();
 				return NextActivity;
 			}
 
 			return this;
 		}
 
-		protected bool TickChild(Actor self)
+		protected bool TickChild()
 		{
-			ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
+			ChildActivity = ActivityUtils.RunActivity(ChildActivity);
 			return ChildActivity == null;
 		}
 
@@ -159,7 +161,7 @@ namespace OpenRA.Activities
 		/// the activity to be completed immediately (without ticking again) once the
 		/// children have completed.
 		/// </summary>
-		public virtual bool Tick(Actor self)
+		public virtual bool Tick()
 		{
 			return true;
 		}
@@ -167,31 +169,31 @@ namespace OpenRA.Activities
 		/// <summary>
 		/// Runs once immediately before the first Tick() execution.
 		/// </summary>
-		protected virtual void OnFirstRun(Actor self) { }
+		protected virtual void OnFirstRun() { }
 
 		/// <summary>
 		/// Runs once immediately after the last Tick() execution.
 		/// </summary>
-		protected virtual void OnLastRun(Actor self) { }
+		protected virtual void OnLastRun() { }
 
 		/// <summary>
 		/// Runs once on Actor.Dispose() (through OnActorDisposeOuter) and can be used to perform activity clean-up on actor death/disposal,
 		/// for example by force-triggering OnLastRun (which would otherwise be skipped).
 		/// </summary>
-		protected virtual void OnActorDispose(Actor self) { }
+		protected virtual void OnActorDispose() { }
 
 		/// <summary>
 		/// Runs once on Actor.Dispose().
 		/// Main purpose is to ensure ChildActivity.OnActorDispose runs as well (which isn't otherwise accessible due to protection level).
 		/// </summary>
-		internal void OnActorDisposeOuter(Actor self)
+		internal void OnActorDisposeOuter()
 		{
-			ChildActivity?.OnActorDisposeOuter(self);
+			ChildActivity?.OnActorDisposeOuter();
 
-			OnActorDispose(self);
+			OnActorDispose();
 		}
 
-		public virtual void Cancel(Actor self, bool keepQueue = false)
+		public virtual void Cancel(bool keepQueue = false)
 		{
 			if (!keepQueue)
 				NextActivity = null;
@@ -199,7 +201,7 @@ namespace OpenRA.Activities
 			if (!IsInterruptible)
 				return;
 
-			ChildActivity?.Cancel(self);
+			ChildActivity?.Cancel();
 
 			// Directly mark activities that are queued and therefore didn't run yet as done
 			State = State == ActivityState.Queued ? ActivityState.Done : ActivityState.Canceling;
@@ -227,13 +229,12 @@ namespace OpenRA.Activities
 		/// Call this method from any place that's called during a tick, such as the Tick() method itself or
 		/// the Before(First|Last)Run() methods. The origin activity will be marked in the output.
 		/// </summary>
-		/// <param name="self">The actor performing this activity.</param>
 		/// <param name="origin">Activity from which to start traversing, and which to mark. If null, mark the calling activity, and start traversal from the top.</param>
 		/// <param name="level">Initial level of indentation.</param>
-		protected void PrintActivityTree(Actor self, Activity origin = null, int level = 0)
+		protected void PrintActivityTree(Activity origin = null, int level = 0)
 		{
 			if (origin == null)
-				self.CurrentActivity.PrintActivityTree(self, this);
+				Actor.CurrentActivity.PrintActivityTree(this);
 			else
 			{
 				Console.Write(new string(' ', level * 2));
@@ -242,18 +243,18 @@ namespace OpenRA.Activities
 
 				Console.WriteLine(GetType().ToString().Split('.').Last());
 
-				ChildActivity?.PrintActivityTree(self, origin, level + 1);
+				ChildActivity?.PrintActivityTree(origin, level + 1);
 
-				NextActivity?.PrintActivityTree(self, origin, level);
+				NextActivity?.PrintActivityTree(origin, level);
 			}
 		}
 
-		public virtual IEnumerable<Target> GetTargets(Actor self)
+		public virtual IEnumerable<Target> GetTargets()
 		{
 			yield break;
 		}
 
-		public virtual IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public virtual IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			yield break;
 		}

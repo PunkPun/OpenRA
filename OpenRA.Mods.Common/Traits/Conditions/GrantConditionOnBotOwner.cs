@@ -27,33 +27,35 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Bot types that trigger the condition.")]
 		public readonly string[] Bots = Array.Empty<string>();
 
-		public override object Create(ActorInitializer init) { return new GrantConditionOnBotOwner(this); }
+		public override object Create(ActorInitializer init) { return new GrantConditionOnBotOwner(init.Self, this); }
 	}
 
 	public class GrantConditionOnBotOwner : INotifyCreated, INotifyOwnerChanged
 	{
+		public readonly Actor Actor;
 		readonly GrantConditionOnBotOwnerInfo info;
 
 		int conditionToken = Actor.InvalidConditionToken;
 
-		public GrantConditionOnBotOwner(GrantConditionOnBotOwnerInfo info)
+		public GrantConditionOnBotOwner(Actor self, GrantConditionOnBotOwnerInfo info)
 		{
+			Actor = self;
 			this.info = info;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			if (self.Owner.IsBot && info.Bots.Contains(self.Owner.BotType))
-				conditionToken = self.GrantCondition(info.Condition);
+			if (Actor.Owner.IsBot && info.Bots.Contains(Actor.Owner.BotType))
+				conditionToken = Actor.GrantCondition(info.Condition);
 		}
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
 			if (conditionToken != Actor.InvalidConditionToken)
-				conditionToken = self.RevokeCondition(conditionToken);
+				conditionToken = Actor.RevokeCondition(conditionToken);
 
 			if (info.Bots.Contains(newOwner.BotType))
-				conditionToken = self.GrantCondition(info.Condition);
+				conditionToken = Actor.GrantCondition(info.Condition);
 		}
 	}
 }

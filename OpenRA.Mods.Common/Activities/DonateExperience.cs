@@ -30,21 +30,21 @@ namespace OpenRA.Mods.Common.Activities
 			this.playerExperience = playerExperience;
 		}
 
-		protected override bool TryStartEnter(Actor self, Actor targetActor)
+		protected override bool TryStartEnter(Actor targetActor)
 		{
 			enterActor = targetActor;
 			enterGainsExperience = targetActor.TraitOrDefault<GainsExperience>();
 
 			if (enterGainsExperience == null || enterGainsExperience.Level == enterGainsExperience.MaxLevel)
 			{
-				Cancel(self, true);
+				Cancel(true);
 				return false;
 			}
 
 			return true;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
 			// Make sure the target hasn't changed while entering
 			// OnEnterComplete is only called if targetActor is alive
@@ -56,11 +56,11 @@ namespace OpenRA.Mods.Common.Activities
 
 			enterGainsExperience.GiveLevels(level);
 
-			var exp = self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
-			if (exp != null && enterActor.Owner != self.Owner)
+			var exp = Actor.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
+			if (exp != null && enterActor.Owner != Actor.Owner)
 				exp.GiveExperience(playerExperience);
 
-			self.Dispose();
+			Actor.Dispose();
 		}
 	}
 }

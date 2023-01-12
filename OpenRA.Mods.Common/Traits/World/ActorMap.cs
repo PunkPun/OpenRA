@@ -164,6 +164,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		public readonly Actor Actor;
 		readonly ActorMapInfo info;
 		readonly Map map;
 		readonly Dictionary<int, CellTrigger> cellTriggers = new Dictionary<int, CellTrigger>();
@@ -209,9 +210,9 @@ namespace OpenRA.Mods.Common.Traits
 			LargestBlockingActorRadius = blockers.Any() ? blockers.SelectMany(a => a.Value.TraitInfos<HitShapeInfo>()).Max(h => h.Type.OuterRadius) : WDist.Zero;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			var customMovementLayers = self.TraitsImplementing<ICustomMovementLayer>().ToList();
+			var customMovementLayers = Actor.TraitsImplementing<ICustomMovementLayer>().ToList();
 			if (customMovementLayers.Count == 0)
 				return;
 
@@ -222,7 +223,7 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var cml in customMovementLayers)
 			{
 				CustomMovementLayers[cml.Index] = cml;
-				influence[cml.Index] = new CellLayer<InfluenceNode>(self.World.Map);
+				influence[cml.Index] = new CellLayer<InfluenceNode>(Actor.World.Map);
 			}
 		}
 
@@ -414,7 +415,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public void AddInfluence(Actor self, IOccupySpace ios)
+		public void AddInfluence(IOccupySpace ios)
 		{
 			foreach (var c in ios.OccupiedCells())
 			{
@@ -423,7 +424,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!layer.Contains(uv))
 					continue;
 
-				layer[uv] = new InfluenceNode { Next = layer[uv], SubCell = c.SubCell, Actor = self };
+				layer[uv] = new InfluenceNode { Next = layer[uv], SubCell = c.SubCell };
 
 				if (cellTriggerInfluence.TryGetValue(c.Cell, out var triggers))
 					foreach (var t in triggers)
@@ -433,7 +434,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public void RemoveInfluence(Actor self, IOccupySpace ios)
+		public void RemoveInfluence(IOccupySpace ios)
 		{
 			foreach (var c in ios.OccupiedCells())
 			{
@@ -443,7 +444,7 @@ namespace OpenRA.Mods.Common.Traits
 					continue;
 
 				var temp = layer[uv];
-				RemoveInfluenceInner(ref temp, self);
+				RemoveInfluenceInner(ref temp, Actor);
 				layer[uv] = temp;
 
 				if (cellTriggerInfluence.TryGetValue(c.Cell, out var triggers))
@@ -474,7 +475,7 @@ namespace OpenRA.Mods.Common.Traits
 				CellUpdated(c.Cell);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			// Position updates are done in one pass
 			// to ensure consistency during a tick

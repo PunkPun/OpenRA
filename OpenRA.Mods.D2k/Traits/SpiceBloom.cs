@@ -78,13 +78,13 @@ namespace OpenRA.Mods.D2k.Traits
 
 			var rs = self.Trait<RenderSprites>();
 			body = new Animation(self.World, rs.GetImage(self));
-			rs.Add(new AnimationWithOffset(body, null, () => self.IsDead));
+			rs.Add(new AnimationWithOffset(Actor, body, null, () => self.IsDead));
 
 			growTicks = self.World.SharedRandom.Next(info.Lifetime[0], info.Lifetime[1]);
 			body.Play(info.GrowthSequences[0]);
 
 			spurt = new Animation(self.World, rs.GetImage(self));
-			rs.Add(new AnimationWithOffset(spurt, null, () => !showSpurt));
+			rs.Add(new AnimationWithOffset(Actor, spurt, null, () => !showSpurt));
 			spurt.PlayThen(info.SpurtSequence, () => showSpurt = false);
 		}
 

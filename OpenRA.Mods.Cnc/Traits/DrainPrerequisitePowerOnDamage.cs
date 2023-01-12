@@ -26,28 +26,28 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Damage is divided by this number when converting damage to drain ticks.")]
 		public readonly int DamageDivisor = 600;
 
-		public override object Create(ActorInitializer init) { return new DrainPrerequisitePowerOnDamage(this); }
+		public override object Create(ActorInitializer init) { return new DrainPrerequisitePowerOnDamage(this, init.Self); }
 	}
 
 	public class DrainPrerequisitePowerOnDamage : ConditionalTrait<DrainPrerequisitePowerOnDamageInfo>, INotifyOwnerChanged, IDamageModifier
 	{
 		SupportPowerManager spm;
 
-		public DrainPrerequisitePowerOnDamage(DrainPrerequisitePowerOnDamageInfo info)
-			: base(info) { }
+		public DrainPrerequisitePowerOnDamage(DrainPrerequisitePowerOnDamageInfo info, Actor self)
+			: base(info, self) { }
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			base.Created(self);
-			spm = self.Owner.PlayerActor.Trait<SupportPowerManager>();
+			base.Created();
+			spm = Actor.Owner.PlayerActor.Trait<SupportPowerManager>();
 		}
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
 			spm = newOwner.PlayerActor.Trait<SupportPowerManager>();
 		}
 
-		int IDamageModifier.GetDamageModifier(Actor self, Damage damage)
+		int IDamageModifier.GetDamageModifier(Actor attacker, Damage damage)
 		{
 			if (!IsTraitDisabled && damage != null)
 			{

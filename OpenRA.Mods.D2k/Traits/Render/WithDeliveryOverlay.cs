@@ -53,7 +53,7 @@ namespace OpenRA.Mods.D2k.Traits.Render
 			// These translucent overlays should not be included in highlight flashes
 			overlay.IsDecoration = true;
 
-			anim = new AnimationWithOffset(overlay,
+			anim = new AnimationWithOffset(Actor, overlay,
 				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation))),
 				() => IsTraitDisabled || !delivering);
 

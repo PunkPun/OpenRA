@@ -19,7 +19,6 @@ namespace OpenRA.Mods.Common.Activities
 {
 	public class UnloadCargo : Activity
 	{
-		readonly Actor self;
 		readonly Cargo cargo;
 		readonly INotifyUnload[] notifiers;
 		readonly bool unloadAll;
@@ -38,8 +37,8 @@ namespace OpenRA.Mods.Common.Activities
 		}
 
 		public UnloadCargo(Actor self, in Target destination, WDist unloadRange, bool unloadAll = true)
+			: base(self)
 		{
-			this.self = self;
 			cargo = self.Trait<Cargo>();
 			notifiers = self.TraitsImplementing<INotifyUnload>().ToArray();
 			this.unloadAll = unloadAll;
@@ -54,7 +53,7 @@ namespace OpenRA.Mods.Common.Activities
 			var pos = passenger.Trait<IPositionable>();
 
 			return cargo.CurrentAdjacentCells
-				.Shuffle(self.World.SharedRandom)
+				.Shuffle(Actor.World.SharedRandom)
 				.Select(c => (c, pos.GetAvailableSubCell(c)))
 				.Cast<(CPos, SubCell SubCell)?>()
 				.FirstOrDefault(s => s.Value.SubCell != SubCell.Invalid);
@@ -69,28 +68,28 @@ namespace OpenRA.Mods.Common.Activities
 				.Where(c => pos.CanEnterCell(c, null, BlockedByActor.All) != pos.CanEnterCell(c, null, BlockedByActor.None));
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			if (assignTargetOnFirstRun)
-				destination = Target.FromCell(self.World, self.Location);
+				destination = Target.FromCell(Actor.World, Actor.Location);
 
 			// Move to the target destination
 			if (aircraft != null)
 			{
 				// Queue the activity even if already landed in case self.Location != destination
-				QueueChild(new Land(self, destination, unloadRange));
+				QueueChild(new Land(Actor, destination, unloadRange));
 				takeOffAfterUnload = !aircraft.AtLandAltitude;
 			}
 			else if (mobile != null)
 			{
-				var cell = self.World.Map.Clamp(this.self.World.Map.CellContaining(destination.CenterPosition));
-				QueueChild(new Move(self, cell, unloadRange));
+				var cell = Actor.World.Map.Clamp(Actor.World.Map.CellContaining(destination.CenterPosition));
+				QueueChild(new Move(Actor, cell, unloadRange));
 			}
 
-			QueueChild(new Wait(cargo.Info.BeforeUnloadDelay));
+			QueueChild(new Wait(Actor, cargo.Info.BeforeUnloadDelay));
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling || cargo.IsEmpty())
 				return true;
@@ -98,21 +97,21 @@ namespace OpenRA.Mods.Common.Activities
 			if (cargo.CanUnload())
 			{
 				foreach (var inu in notifiers)
-					inu.Unloading(self);
+					inu.Unloading();
 
 				var actor = cargo.Peek();
-				var spawn = self.CenterPosition;
+				var spawn = Actor.CenterPosition;
 
 				var exitSubCell = ChooseExitSubCell(actor);
 				if (exitSubCell == null)
 				{
-					self.NotifyBlocker(BlockedExitCells(actor));
-					QueueChild(new Wait(10));
+					Actor.NotifyBlocker(BlockedExitCells(actor));
+					QueueChild(new Wait(Actor, 10));
 					return false;
 				}
 
-				cargo.Unload(self);
-				self.World.AddFrameEndTask(w =>
+				cargo.Unload();
+				Actor.World.AddFrameEndTask(w =>
 				{
 					if (actor.Disposed)
 						return;
@@ -120,8 +119,8 @@ namespace OpenRA.Mods.Common.Activities
 					var move = actor.Trait<IMove>();
 					var pos = actor.Trait<IPositionable>();
 
-					pos.SetPosition(actor, exitSubCell.Value.Cell, exitSubCell.Value.SubCell);
-					pos.SetCenterPosition(actor, spawn);
+					pos.SetPosition(exitSubCell.Value.Cell, exitSubCell.Value.SubCell);
+					pos.SetCenterPosition(spawn);
 
 					actor.CancelActivity();
 					w.Add(actor);
@@ -131,10 +130,10 @@ namespace OpenRA.Mods.Common.Activities
 			if (!unloadAll || !cargo.CanUnload())
 			{
 				if (cargo.Info.AfterUnloadDelay > 0)
-					QueueChild(new Wait(cargo.Info.AfterUnloadDelay, false));
+					QueueChild(new Wait(Actor, cargo.Info.AfterUnloadDelay, false));
 
 				if (takeOffAfterUnload)
-					QueueChild(new TakeOff(self));
+					QueueChild(new TakeOff(Actor));
 
 				return true;
 			}

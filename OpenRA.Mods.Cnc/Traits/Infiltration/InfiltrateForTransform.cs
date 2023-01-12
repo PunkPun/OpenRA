@@ -38,30 +38,32 @@ namespace OpenRA.Mods.Cnc.Traits
 	{
 		readonly InfiltrateForTransformInfo info;
 		readonly string faction;
+		public readonly Actor Actor;
 
 		public InfiltrateForTransform(ActorInitializer init, InfiltrateForTransformInfo info)
 		{
 			this.info = info;
+			Actor = init.Self;
 			faction = init.GetValue<FactionInit, string>(init.Self.Owner.Faction.InternalName);
 		}
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (!info.Types.Overlaps(types))
 				return;
 
-			var transform = new Transform(info.IntoActor)
+			var transform = new Transform(Actor, info.IntoActor)
 			{
 				ForceHealthPercentage = info.ForceHealthPercentage,
 				Faction = faction,
 				SkipMakeAnims = info.SkipMakeAnims
 			};
 
-			var facing = self.TraitOrDefault<IFacing>();
+			var facing = Actor.TraitOrDefault<IFacing>();
 			if (facing != null)
 				transform.Facing = facing.Facing;
 
-			self.QueueActivity(false, transform);
+			Actor.QueueActivity(false, transform);
 		}
 	}
 }

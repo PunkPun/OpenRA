@@ -16,45 +16,47 @@ namespace OpenRA.Graphics
 {
 	public class AnimationWithOffset
 	{
+		public readonly Actor Actor;
 		public readonly Animation Animation;
 		public readonly Func<WVec> OffsetFunc;
 		public readonly Func<bool> DisableFunc;
 		public readonly Func<WPos, int> ZOffset;
 
-		public AnimationWithOffset(Animation a, Func<WVec> offset, Func<bool> disable)
-			: this(a, offset, disable, null) { }
+		public AnimationWithOffset(Actor self, Animation a, Func<WVec> offset, Func<bool> disable)
+			: this(self, a, offset, disable, null) { }
 
-		public AnimationWithOffset(Animation a, Func<WVec> offset, Func<bool> disable, int zOffset)
-			: this(a, offset, disable, _ => zOffset) { }
+		public AnimationWithOffset(Actor self, Animation a, Func<WVec> offset, Func<bool> disable, int zOffset)
+			: this(self, a, offset, disable, _ => zOffset) { }
 
-		public AnimationWithOffset(Animation a, Func<WVec> offset, Func<bool> disable, Func<WPos, int> zOffset)
+		public AnimationWithOffset(Actor self, Animation a, Func<WVec> offset, Func<bool> disable, Func<WPos, int> zOffset)
 		{
+			Actor = self;
 			Animation = a;
 			OffsetFunc = offset;
 			DisableFunc = disable;
 			ZOffset = zOffset;
 		}
 
-		public IRenderable[] Render(Actor self, PaletteReference pal)
+		public IRenderable[] Render(PaletteReference pal)
 		{
-			var center = self.CenterPosition;
+			var center = Actor.CenterPosition;
 			var offset = OffsetFunc?.Invoke() ?? WVec.Zero;
 
 			var z = ZOffset?.Invoke(center + offset) ?? 0;
 			return Animation.Render(center, offset, z, pal);
 		}
 
-		public Rectangle ScreenBounds(Actor self, WorldRenderer wr)
+		public Rectangle ScreenBounds(WorldRenderer wr)
 		{
-			var center = self.CenterPosition;
+			var center = Actor.CenterPosition;
 			var offset = OffsetFunc?.Invoke() ?? WVec.Zero;
 
 			return Animation.ScreenBounds(wr, center, offset);
 		}
 
-		public static implicit operator AnimationWithOffset(Animation a)
+		public static implicit operator AnimationWithOffset(Actor self, Animation a)
 		{
-			return new AnimationWithOffset(a, null, null, null);
+			return new AnimationWithOffset(self, a, null, null, null);
 		}
 	}
 }

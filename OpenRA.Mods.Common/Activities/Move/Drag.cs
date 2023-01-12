@@ -28,6 +28,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly WAngle? desiredFacing;
 
 		public Drag(Actor self, WPos start, WPos end, int length, WAngle? facing = null)
+			: base(self)
 		{
 			positionable = self.Trait<IPositionable>();
 			disableable = self.TraitOrDefault<IMove>() as IDisabledTrait;
@@ -38,13 +39,13 @@ namespace OpenRA.Mods.Common.Activities
 			IsInterruptible = false;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			if (desiredFacing.HasValue)
-				QueueChild(new Turn(self, desiredFacing.Value));
+				QueueChild(new Turn(Actor, desiredFacing.Value));
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (disableable != null && disableable.IsTraitDisabled)
 				return false;
@@ -53,19 +54,19 @@ namespace OpenRA.Mods.Common.Activities
 				? WPos.Lerp(start, end, ticks, length - 1)
 				: end;
 
-			positionable.SetCenterPosition(self, pos);
+			positionable.SetCenterPosition(pos);
 			if (++ticks >= length)
 				return true;
 
 			return false;
 		}
 
-		public override IEnumerable<Target> GetTargets(Actor self)
+		public override IEnumerable<Target> GetTargets()
 		{
 			yield return Target.FromPos(end);
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			yield return new TargetLineNode(Target.FromPos(end), Color.Green);
 		}

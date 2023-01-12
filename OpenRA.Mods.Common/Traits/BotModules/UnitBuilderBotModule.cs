@@ -54,15 +54,15 @@ namespace OpenRA.Mods.Common.Traits
 		int ticks;
 
 		public UnitBuilderBotModule(Actor self, UnitBuilderBotModuleInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			world = self.World;
 			player = self.Owner;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			requestPause = self.Owner.PlayerActor.TraitsImplementing<IBotRequestPauseUnitProduction>().ToArray();
+			requestPause = Actor.Owner.PlayerActor.TraitsImplementing<IBotRequestPauseUnitProduction>().ToArray();
 		}
 
 		void IBotNotifyIdleBaseUnits.UpdatedIdleBaseUnits(List<Actor> idleUnits)
@@ -209,7 +209,7 @@ namespace OpenRA.Mods.Common.Traits
 			return true;
 		}
 
-		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData(Actor self)
+		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData()
 		{
 			if (IsTraitDisabled)
 				return null;
@@ -221,9 +221,9 @@ namespace OpenRA.Mods.Common.Traits
 			};
 		}
 
-		void IGameSaveTraitData.ResolveTraitData(Actor self, List<MiniYamlNode> data)
+		void IGameSaveTraitData.ResolveTraitData(List<MiniYamlNode> data)
 		{
-			if (self.World.IsReplay)
+			if (Actor.World.IsReplay)
 				return;
 
 			var queuedBuildRequestsNode = data.FirstOrDefault(n => n.Key == "QueuedBuildRequests");

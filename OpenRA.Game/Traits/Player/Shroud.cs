@@ -73,6 +73,7 @@ namespace OpenRA.Traits
 
 	public class Shroud : ISync, INotifyCreated, ITick
 	{
+		public readonly Actor Actor;
 		public enum SourceType : byte { PassiveVisibility, Shroud, Visibility }
 		public event Action<PPos> OnShroudChanged;
 		public int RevealedCells { get; private set; }
@@ -140,6 +141,7 @@ namespace OpenRA.Traits
 
 		public Shroud(Actor self, ShroudInfo info)
 		{
+			Actor = self;
 			this.info = info;
 			map = self.World.Map;
 
@@ -154,20 +156,20 @@ namespace OpenRA.Traits
 			resolvedType = new ProjectedCellLayer<ShroudCellType>(map);
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			var gs = self.World.LobbyInfo.GlobalSettings;
+			var gs = Actor.World.LobbyInfo.GlobalSettings;
 			fogEnabled = gs.OptionOrDefault("fog", info.FogCheckboxEnabled);
 
 			ExploreMapEnabled = gs.OptionOrDefault("explored", info.ExploredMapCheckboxEnabled);
 			if (ExploreMapEnabled)
-				self.World.AddFrameEndTask(w => ExploreAll());
+				Actor.World.AddFrameEndTask(w => ExploreAll());
 
 			if (!fogEnabled && ExploreMapEnabled)
 				RevealedCells = map.ProjectedCells.Length;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (!anyCellTouched && !disabledChanged)
 				return;
@@ -224,12 +226,12 @@ namespace OpenRA.Traits
 							RevealedCells--;
 					}
 
-					if (self.Owner.WinState == WinState.Lost)
+					if (Actor.Owner.WinState == WinState.Lost)
 						RevealedCells = 0;
 				}
 			}
 
-			Hash = Sync.HashPlayer(self.Owner) + self.World.WorldTick;
+			Hash = Sync.HashPlayer(Actor.Owner) + Actor.World.WorldTick;
 			disabledChanged = false;
 		}
 

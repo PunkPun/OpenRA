@@ -38,6 +38,7 @@ namespace OpenRA.Mods.Common.Activities
 		}
 
 		public Fly(Actor self, in Target t, WPos? initialTargetPosition = null, Color? targetLineColor = null)
+			: base(self)
 		{
 			aircraft = self.Trait<Aircraft>();
 			target = t;
@@ -60,9 +61,9 @@ namespace OpenRA.Mods.Common.Activities
 			this.minRange = minRange;
 		}
 
-		public static void FlyTick(Actor self, Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, in WVec moveOverride, bool idleTurn = false)
+		public static void FlyTick(Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, in WVec moveOverride, bool idleTurn = false)
 		{
-			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+			var dat = aircraft.Actor.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
 			var move = aircraft.Info.CanSlide ? aircraft.FlyStep(desiredFacing) : aircraft.FlyStep(aircraft.Facing);
 			if (moveOverride != WVec.Zero)
 				move = moveOverride;
@@ -93,18 +94,18 @@ namespace OpenRA.Mods.Common.Activities
 				move = new WVec(move.X, move.Y, deltaZ);
 			}
 
-			aircraft.SetPosition(self, aircraft.CenterPosition + move);
+			aircraft.SetPosition(aircraft.CenterPosition + move);
 		}
 
-		public static void FlyTick(Actor self, Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, bool idleTurn = false)
+		public static void FlyTick(Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, bool idleTurn = false)
 		{
-			FlyTick(self, aircraft, desiredFacing, desiredAltitude, WVec.Zero, idleTurn);
+			FlyTick(aircraft, desiredFacing, desiredAltitude, WVec.Zero, idleTurn);
 		}
 
 		// Should only be used for vertical-only movement, usually VTOL take-off or land. Terrain-induced altitude changes should always be handled by FlyTick.
-		public static bool VerticalTakeOffOrLandTick(Actor self, Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, bool idleTurn = false)
+		public static bool VerticalTakeOffOrLandTick(Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, bool idleTurn = false)
 		{
-			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+			var dat = aircraft.Actor.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
 			var move = WVec.Zero;
 
 			var turnSpeed = idleTurn ? aircraft.IdleTurnSpeed ?? aircraft.TurnSpeed : aircraft.TurnSpeed;
@@ -119,17 +120,17 @@ namespace OpenRA.Mods.Common.Activities
 			else
 				return false;
 
-			aircraft.SetPosition(self, aircraft.CenterPosition + move);
+			aircraft.SetPosition(aircraft.CenterPosition + move);
 			return true;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
-				Cancel(self);
+				Cancel();
 
-			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+			var dat = Actor.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
 			var isLanded = dat <= aircraft.LandAltitude;
 
 			// HACK: Prevent paused (for example, EMP'd) aircraft from taking off.
@@ -145,13 +146,13 @@ namespace OpenRA.Mods.Common.Activities
 				// If the aircraft lands when idle and is idle, we let the default idle handler manage this.
 				// TODO: Remove this after fixing all activities to work properly with arbitrary starting altitudes.
 				var landWhenIdle = aircraft.Info.IdleBehavior == IdleBehaviorType.Land;
-				var skipHeightAdjustment = landWhenIdle && self.CurrentActivity.IsCanceling && self.CurrentActivity.NextActivity == null;
+				var skipHeightAdjustment = landWhenIdle && Actor.CurrentActivity.IsCanceling && Actor.CurrentActivity.NextActivity == null;
 				if (aircraft.Info.CanHover && !skipHeightAdjustment && dat != aircraft.Info.CruiseAltitude)
 				{
 					if (isLanded)
-						QueueChild(new TakeOff(self));
+						QueueChild(new TakeOff(Actor));
 					else
-						VerticalTakeOffOrLandTick(self, aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
+						VerticalTakeOffOrLandTick(aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
 
 					return false;
 				}
@@ -160,18 +161,18 @@ namespace OpenRA.Mods.Common.Activities
 			}
 			else if (isLanded)
 			{
-				QueueChild(new TakeOff(self));
+				QueueChild(new TakeOff(Actor));
 				return false;
 			}
 
-			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
+			target = target.Recalculate(Actor.Owner, out var targetIsHiddenActor);
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 				lastVisibleTarget = Target.FromTargetPositions(target);
 
-			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(self);
+			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(Actor);
 
 			// Target is hidden or dead, and we don't have a fallback position to move towards
-			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self))
+			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(Actor))
 				return true;
 
 			var checkTarget = useLastVisibleTarget ? lastVisibleTarget : target;
@@ -192,10 +193,10 @@ namespace OpenRA.Mods.Common.Activities
 			if (insideMinRange)
 			{
 				if (isSlider)
-					FlyTick(self, aircraft, desiredFacing, aircraft.Info.CruiseAltitude, -move);
+					FlyTick(aircraft, desiredFacing, aircraft.Info.CruiseAltitude, -move);
 				else
 				{
-					FlyTick(self, aircraft, desiredFacing + new WAngle(512), aircraft.Info.CruiseAltitude, move);
+					FlyTick(aircraft, desiredFacing + new WAngle(512), aircraft.Info.CruiseAltitude, move);
 				}
 
 				return false;
@@ -219,13 +220,13 @@ namespace OpenRA.Mods.Common.Activities
 					{
 						// Ensure we don't include a non-zero vertical component here that would move us away from CruiseAltitude
 						var deltaMove = new WVec(delta.X, delta.Y, 0);
-						FlyTick(self, aircraft, desiredFacing, dat, deltaMove);
+						FlyTick(aircraft, desiredFacing, dat, deltaMove);
 					}
 
 					// Move to CruiseAltitude, if not already there
 					if (dat != aircraft.Info.CruiseAltitude)
 					{
-						Fly.VerticalTakeOffOrLandTick(self, aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
+						VerticalTakeOffOrLandTick(aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
 						return false;
 					}
 				}
@@ -253,21 +254,21 @@ namespace OpenRA.Mods.Common.Activities
 					desiredFacing = aircraft.Facing;
 			}
 
-			positionBuffer.Add(self.CenterPosition);
+			positionBuffer.Add(Actor.CenterPosition);
 			if (positionBuffer.Count > 5)
 				positionBuffer.RemoveAt(0);
 
-			FlyTick(self, aircraft, desiredFacing, aircraft.Info.CruiseAltitude);
+			FlyTick(aircraft, desiredFacing, aircraft.Info.CruiseAltitude);
 
 			return false;
 		}
 
-		public override IEnumerable<Target> GetTargets(Actor self)
+		public override IEnumerable<Target> GetTargets()
 		{
 			yield return target;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor.HasValue)
 				yield return new TargetLineNode(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value);

@@ -73,7 +73,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override void SelectTarget(Actor self, string order, SupportPowerManager manager)
 		{
-			self.World.OrderGenerator = new SelectConditionTarget(Self.World, order, manager, this);
+			self.World.OrderGenerator = new SelectConditionTarget(Actor.World, order, manager, this);
 		}
 
 		public override void Activate(Actor self, Order order, SupportPowerManager manager)
@@ -98,15 +98,15 @@ namespace OpenRA.Mods.Common.Traits
 			var tiles = CellsMatching(xy, footprint, info.Dimensions);
 			var units = new List<Actor>();
 			foreach (var t in tiles)
-				units.AddRange(Self.World.ActorMap.GetActorsAt(t));
+				units.AddRange(Actor.World.ActorMap.GetActorsAt(t));
 
 			return units.Distinct().Where(a =>
 			{
-				if (!info.ValidRelationships.HasRelationship(Self.Owner.RelationshipWith(a.Owner)))
+				if (!info.ValidRelationships.HasRelationship(Actor.Owner.RelationshipWith(a.Owner)))
 					return false;
 
 				return a.TraitsImplementing<ExternalCondition>()
-					.Any(t => t.Info.Condition == info.Condition && t.CanGrantCondition(Self));
+					.Any(t => t.Info.Condition == info.Condition && t.CanGrantCondition(Actor));
 			});
 		}
 

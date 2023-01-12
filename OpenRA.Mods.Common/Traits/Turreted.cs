@@ -163,25 +163,25 @@ namespace OpenRA.Mods.Common.Traits
 		public string Name => Info.Turret;
 
 		public Turreted(ActorInitializer init, TurretedInfo info)
-			: base(info)
+			: base(info, init.Self)
 		{
 			LocalOrientation = WRot.FromYaw(info.LocalFacingFromInit(init)());
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			base.Created(self);
-			attack = self.TraitsImplementing<AttackTurreted>().SingleOrDefault(at => ((AttackTurretedInfo)at.Info).Turrets.Contains(Info.Turret));
-			facing = self.TraitOrDefault<IFacing>();
-			body = self.Trait<BodyOrientation>();
+			base.Created();
+			attack = Actor.TraitsImplementing<AttackTurreted>().SingleOrDefault(at => ((AttackTurretedInfo)at.Info).Turrets.Contains(Info.Turret));
+			facing = Actor.TraitOrDefault<IFacing>();
+			body = Actor.Trait<BodyOrientation>();
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			Tick(self);
+			Tick();
 		}
 
-		protected virtual void Tick(Actor self)
+		protected virtual void Tick()
 		{
 			if (IsTraitDisabled)
 				return;
@@ -250,7 +250,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public bool FaceTarget(Actor self, in Target target)
+		public bool FaceTarget(in Target target)
 		{
 			if (IsTraitDisabled || IsTraitPaused || attack == null || attack.IsTraitDisabled || attack.IsTraitPaused)
 				return false;
@@ -261,7 +261,7 @@ namespace OpenRA.Mods.Common.Traits
 				return false;
 			}
 
-			var turretPos = self.CenterPosition + Position(self);
+			var turretPos = Actor.CenterPosition + Position();
 			var targetPos = attack.GetTargetPosition(turretPos, target);
 			desiredDirection = targetPos - turretPos;
 			realignDesired = false;
@@ -280,26 +280,26 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		// Turret offset in world-space
-		public WVec Position(Actor self)
+		public WVec Position()
 		{
-			var bodyOrientation = body.QuantizeOrientation(self.Orientation);
+			var bodyOrientation = body.QuantizeOrientation(Actor.Orientation);
 			return body.LocalToWorld(Offset.Rotate(bodyOrientation));
 		}
 
-		public void ModifyDeathActorInit(Actor self, TypeDictionary init)
+		public void ModifyDeathActorInit(TypeDictionary init)
 		{
 			init.Add(new TurretFacingInit(Info, LocalOrientation.Yaw));
 		}
 
-		void IActorPreviewInitModifier.ModifyActorPreviewInit(Actor self, TypeDictionary inits)
+		void IActorPreviewInitModifier.ModifyActorPreviewInit(TypeDictionary inits)
 		{
 			inits.Add(new DynamicTurretFacingInit(Info, () => LocalOrientation.Yaw));
 		}
 
-		protected override void TraitDisabled(Actor self)
+		protected override void TraitDisabled()
 		{
 			if (attack != null && attack.IsAiming)
-				attack.OnStopOrder(self);
+				attack.OnStopOrder();
 		}
 	}
 

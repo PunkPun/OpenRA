@@ -56,7 +56,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly List<Actor> activeCapturers = new List<Actor>();
 
 		public CaptureManagerBotModule(Actor self, CaptureManagerBotModuleInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			world = self.World;
 			player = self.Owner;
@@ -74,7 +74,7 @@ namespace OpenRA.Mods.Common.Traits
 			maximumCaptureTargetOptions = Math.Max(1, Info.MaximumCaptureTargetOptions);
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			// Avoid all AIs reevaluating assignments on the same tick, randomize their initial evaluation delay.
 			minCaptureDelayTicks = world.LocalRandom.Next(0, Info.MinimumCaptureDelay);

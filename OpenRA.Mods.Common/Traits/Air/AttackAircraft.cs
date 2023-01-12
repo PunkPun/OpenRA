@@ -39,28 +39,28 @@ namespace OpenRA.Mods.Common.Traits
 		readonly AircraftInfo aircraftInfo;
 
 		public AttackAircraft(Actor self, AttackAircraftInfo info)
-			: base(self, info)
+			: base(info, self)
 		{
 			Info = info;
 			aircraftInfo = self.Info.TraitInfo<AircraftInfo>();
 		}
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
+		public override Activity GetAttackActivity(AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
 		{
-			return new FlyAttack(self, source, newTarget, forceAttack, targetLineColor);
+			return new FlyAttack(Actor, source, newTarget, forceAttack, targetLineColor);
 		}
 
-		protected override bool CanAttack(Actor self, in Target target)
+		protected override bool CanAttack(in Target target)
 		{
 			// Don't fire while landed or when outside the map.
-			if (self.World.Map.DistanceAboveTerrain(self.CenterPosition).Length < aircraftInfo.MinAirborneAltitude
-				|| !self.World.Map.Contains(self.Location))
+			if (Actor.World.Map.DistanceAboveTerrain(Actor.CenterPosition).Length < aircraftInfo.MinAirborneAltitude
+				|| !Actor.World.Map.Contains(Actor.Location))
 				return false;
 
-			if (!base.CanAttack(self, target))
+			if (!base.CanAttack(target))
 				return false;
 
-			return TargetInFiringArc(self, target, Info.FacingTolerance);
+			return TargetInFiringArc(target, Info.FacingTolerance);
 		}
 	}
 }

@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				if (info.LifeTime > -1)
 				{
-					actor.QueueActivity(new Wait(info.LifeTime));
+					actor.QueueActivity(new Wait(Actor, info.LifeTime));
 					actor.QueueActivity(new RemoveSelf());
 				}
 			});

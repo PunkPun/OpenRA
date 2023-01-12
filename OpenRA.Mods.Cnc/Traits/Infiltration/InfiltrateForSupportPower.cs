@@ -38,30 +38,32 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Text notification the perpetrator will see after successful infiltration.")]
 		public readonly string InfiltrationTextNotification = null;
 
-		public override object Create(ActorInitializer init) { return new InfiltrateForSupportPower(this); }
+		public override object Create(ActorInitializer init) { return new InfiltrateForSupportPower(this, init.Self); }
 	}
 
 	class InfiltrateForSupportPower : INotifyInfiltrated
 	{
 		readonly InfiltrateForSupportPowerInfo info;
+		readonly Actor actor;
 
-		public InfiltrateForSupportPower(InfiltrateForSupportPowerInfo info)
+		public InfiltrateForSupportPower(InfiltrateForSupportPowerInfo info, Actor self)
 		{
 			this.info = info;
+			actor = self;
 		}
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (!info.Types.Overlaps(types))
 				return;
 
 			if (info.InfiltratedNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", info.InfiltratedNotification, self.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, actor.Owner, "Speech", info.InfiltratedNotification, actor.Owner.Faction.InternalName);
 
 			if (info.InfiltrationNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, actor.Owner);
 			TextNotificationsManager.AddTransientLine(info.InfiltrationTextNotification, infiltrator.Owner);
 
 			infiltrator.World.AddFrameEndTask(w => w.CreateActor(info.Proxy, new TypeDictionary

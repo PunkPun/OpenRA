@@ -27,13 +27,11 @@ namespace OpenRA.Mods.Cnc.Traits
 
 	class DisguiseTooltip : ConditionalTrait<DisguiseTooltipInfo>, ITooltip
 	{
-		readonly Actor self;
 		readonly Disguise disguise;
 
 		public DisguiseTooltip(Actor self, DisguiseTooltipInfo info)
-			: base(info)
+			: base(info, self)
 		{
-			this.self = self;
 			disguise = self.Trait<Disguise>();
 		}
 
@@ -43,8 +41,8 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			get
 			{
-				if (!disguise.Disguised || self.Owner.IsAlliedWith(self.World.RenderPlayer))
-					return self.Owner;
+				if (!disguise.Disguised || Actor.Owner.IsAlliedWith(Actor.World.RenderPlayer))
+					return Actor.Owner;
 
 				return disguise.AsPlayer;
 			}
@@ -108,7 +106,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public bool Disguised => AsPlayer != null;
 		public Player Owner => AsPlayer;
 
-		readonly Actor self;
+		public readonly Actor Actor;
 		readonly DisguiseInfo info;
 
 		int disguisedToken = Actor.InvalidConditionToken;
@@ -117,7 +115,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public Disguise(Actor self, DisguiseInfo info)
 		{
-			this.self = self;
+			Actor = self;
 			this.info = info;
 
 			AsActor = self.Info;
@@ -127,42 +125,42 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			get
 			{
-				yield return new DisguiseOrderTargeter(info);
+				yield return new DisguiseOrderTargeter(Actor, info);
 			}
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		Order IIssueOrder.IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "Disguise")
-				return new Order(order.OrderID, self, target, queued);
+				return new Order(order.OrderID, Actor, target, queued);
 
 			return null;
 		}
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (order.OrderString == "Disguise")
 			{
 				var target = order.Target;
 				if (target.Type == TargetType.Actor)
-					DisguiseAs((target.Actor != self && target.Actor.IsInWorld) ? target.Actor : null);
+					DisguiseAs((target.Actor != Actor && target.Actor.IsInWorld) ? target.Actor : null);
 
 				if (target.Type == TargetType.FrozenActor)
 					DisguiseAs(target.FrozenActor.Info, target.FrozenActor.Owner);
 			}
 		}
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			return order.OrderString == "Disguise" ? info.Voice : null;
 		}
 
-		Color IRadarColorModifier.RadarColorOverride(Actor self, Color color)
+		Color IRadarColorModifier.RadarColorOverride(Color color)
 		{
-			if (!Disguised || self.Owner.IsAlliedWith(self.World.RenderPlayer))
+			if (!Disguised || Actor.Owner.IsAlliedWith(Actor.World.RenderPlayer))
 				return color;
 
-			return Game.Settings.Game.UsePlayerStanceColors ? AsPlayer.PlayerRelationshipColor(self) : AsPlayer.Color;
+			return Game.Settings.Game.UsePlayerStanceColors ? AsPlayer.PlayerRelationshipColor(Actor) : AsPlayer.Color;
 		}
 
 		public void DisguiseAs(Actor target)
@@ -197,7 +195,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				AsTooltipInfo = null;
 				AsPlayer = null;
-				AsActor = self.Info;
+				AsActor = Actor.Info;
 			}
 
 			HandleDisguise(oldEffectiveActor, oldEffectiveOwner, oldDisguiseSetting);
@@ -218,65 +216,65 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		void HandleDisguise(ActorInfo oldEffectiveActor, Player oldEffectiveOwner, bool oldDisguiseSetting)
 		{
-			foreach (var t in self.TraitsImplementing<INotifyEffectiveOwnerChanged>())
-				t.OnEffectiveOwnerChanged(self, oldEffectiveOwner, AsPlayer);
+			foreach (var t in Actor.TraitsImplementing<INotifyEffectiveOwnerChanged>())
+				t.OnEffectiveOwnerChanged(oldEffectiveOwner, AsPlayer);
 
 			if (Disguised != oldDisguiseSetting)
 			{
 				if (Disguised && disguisedToken == Actor.InvalidConditionToken)
-					disguisedToken = self.GrantCondition(info.DisguisedCondition);
+					disguisedToken = Actor.GrantCondition(info.DisguisedCondition);
 				else if (!Disguised && disguisedToken != Actor.InvalidConditionToken)
-					disguisedToken = self.RevokeCondition(disguisedToken);
+					disguisedToken = Actor.RevokeCondition(disguisedToken);
 			}
 
 			if (AsActor != oldEffectiveActor)
 			{
 				if (disguisedAsToken != Actor.InvalidConditionToken)
-					disguisedAsToken = self.RevokeCondition(disguisedAsToken);
+					disguisedAsToken = Actor.RevokeCondition(disguisedAsToken);
 
 				if (info.DisguisedAsConditions.TryGetValue(AsActor.Name, out var disguisedAsCondition))
-					disguisedAsToken = self.GrantCondition(disguisedAsCondition);
+					disguisedAsToken = Actor.GrantCondition(disguisedAsCondition);
 			}
 		}
 
-		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
+		void INotifyAttack.PreparingAttack(in Target target, Armament a, Barrel barrel) { }
 
-		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
+		void INotifyAttack.Attacking(in Target target, Armament a, Barrel barrel)
 		{
 			if (info.RevealDisguiseOn.HasFlag(RevealDisguiseType.Attack))
 				DisguiseAs(null);
 		}
 
-		void INotifyDamage.Damaged(Actor self, AttackInfo e)
+		void INotifyDamage.Damaged(AttackInfo e)
 		{
 			if (info.RevealDisguiseOn.HasFlag(RevealDisguiseType.Damaged) && e.Damage.Value > 0)
 				DisguiseAs(null);
 		}
 
-		void INotifyUnload.Unloading(Actor self)
+		void INotifyUnload.Unloading()
 		{
 			if (info.RevealDisguiseOn.HasFlag(RevealDisguiseType.Unload))
 				DisguiseAs(null);
 		}
 
-		void INotifyDemolition.Demolishing(Actor self)
+		void INotifyDemolition.Demolishing()
 		{
 			if (info.RevealDisguiseOn.HasFlag(RevealDisguiseType.Demolish))
 				DisguiseAs(null);
 		}
 
-		void INotifyInfiltration.Infiltrating(Actor self)
+		void INotifyInfiltration.Infiltrating()
 		{
 			if (info.RevealDisguiseOn.HasFlag(RevealDisguiseType.Infiltrate))
 				DisguiseAs(null);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			if (info.RevealDisguiseOn.HasFlag(RevealDisguiseType.Move) && lastPos != null && lastPos.Value != self.Location)
+			if (info.RevealDisguiseOn.HasFlag(RevealDisguiseType.Move) && lastPos != null && lastPos.Value != Actor.Location)
 				DisguiseAs(null);
 
-			lastPos = self.Location;
+			lastPos = Actor.Location;
 		}
 	}
 
@@ -284,25 +282,25 @@ namespace OpenRA.Mods.Cnc.Traits
 	{
 		readonly DisguiseInfo info;
 
-		public DisguiseOrderTargeter(DisguiseInfo info)
-			: base("Disguise", 7, info.Cursor, true, true)
+		public DisguiseOrderTargeter(Actor self, DisguiseInfo info)
+			: base(self, "Disguise", 7, info.Cursor, true, true)
 		{
 			this.info = info;
 			ForceAttack = false;
 		}
 
-		public override bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor)
+		public override bool CanTargetActor(Actor target, TargetModifiers modifiers, ref string cursor)
 		{
-			var relationship = self.Owner.RelationshipWith(target.Owner);
+			var relationship = Actor.Owner.RelationshipWith(target.Owner);
 			if (!info.ValidRelationships.HasRelationship(relationship))
 				return false;
 
 			return info.TargetTypes.Overlaps(target.GetAllTargetTypes());
 		}
 
-		public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
+		public override bool CanTargetFrozenActor(FrozenActor target, TargetModifiers modifiers, ref string cursor)
 		{
-			var relationship = self.Owner.RelationshipWith(target.Owner);
+			var relationship = Actor.Owner.RelationshipWith(target.Owner);
 			if (!info.ValidRelationships.HasRelationship(relationship))
 				return false;
 

@@ -77,7 +77,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public override void SelectTarget(Actor self, string order, SupportPowerManager manager)
 		{
-			self.World.OrderGenerator = new SelectChronoshiftTarget(Self.World, order, manager, this);
+			self.World.OrderGenerator = new SelectChronoshiftTarget(Actor.World, order, manager, this);
 		}
 
 		public override void Activate(Actor self, Order order, SupportPowerManager manager)
@@ -107,14 +107,14 @@ namespace OpenRA.Mods.Cnc.Traits
 			var tiles = CellsMatching(xy, footprint, dimensions);
 			var units = new HashSet<Actor>();
 			foreach (var t in tiles)
-				units.UnionWith(Self.World.ActorMap.GetActorsAt(t));
+				units.UnionWith(Actor.World.ActorMap.GetActorsAt(t));
 
 			return units.Where(a => a.TraitsImplementing<Chronoshiftable>().Any(cs => !cs.IsTraitDisabled));
 		}
 
 		public bool SimilarTerrain(CPos xy, CPos sourceLocation)
 		{
-			if (!Self.Owner.Shroud.IsExplored(xy))
+			if (!Actor.Owner.Shroud.IsExplored(xy))
 				return false;
 
 			var sourceTiles = CellsMatching(xy, footprint, dimensions);
@@ -130,10 +130,10 @@ namespace OpenRA.Mods.Cnc.Traits
 					var a = se.Current;
 					var b = de.Current;
 
-					if (!Self.Owner.Shroud.IsExplored(a) || !Self.Owner.Shroud.IsExplored(b))
+					if (!Actor.Owner.Shroud.IsExplored(a) || !Actor.Owner.Shroud.IsExplored(b))
 						return false;
 
-					if (Self.World.Map.GetTerrainIndex(a) != Self.World.Map.GetTerrainIndex(b))
+					if (Actor.World.Map.GetTerrainIndex(a) != Actor.World.Map.GetTerrainIndex(b))
 						return false;
 				}
 

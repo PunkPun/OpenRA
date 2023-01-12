@@ -39,23 +39,21 @@ namespace OpenRA.Mods.Common.Traits
 	public class FreeActorWithDelivery : FreeActor
 	{
 		readonly FreeActorWithDeliveryInfo info;
-		readonly Actor self;
 
 		public FreeActorWithDelivery(ActorInitializer init, FreeActorWithDeliveryInfo info)
 			: base(init, info)
 		{
-			self = init.Self;
 			this.info = info;
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			if (!allowSpawn)
 				return;
 
 			allowSpawn = info.AllowRespawn;
 
-			DoDelivery(self.Location + info.DeliveryOffset, Info.Actor, info.DeliveringActor);
+			DoDelivery(Actor.Location + info.DeliveryOffset, Info.Actor, info.DeliveringActor);
 		}
 
 		public void DoDelivery(CPos location, string actorName, string carrierActorName)
@@ -67,11 +65,11 @@ namespace OpenRA.Mods.Common.Traits
 
 			var carryall = carrier.Trait<Carryall>();
 			carryall.AttachCarryable(carrier, cargo);
-			carrier.QueueActivity(new DeliverUnit(carrier, Target.FromCell(self.World, location), info.DeliveryRange, carryall.Info.TargetLineColor));
-			carrier.QueueActivity(new Fly(carrier, Target.FromCell(self.World, self.World.Map.ChooseRandomEdgeCell(self.World.SharedRandom))));
-			carrier.QueueActivity(new RemoveSelf());
+			carrier.QueueActivity(new DeliverUnit(carrier, Target.FromCell(Actor.World, location), info.DeliveryRange, carryall.Info.TargetLineColor));
+			carrier.QueueActivity(new Fly(carrier, Target.FromCell(Actor.World, Actor.World.Map.ChooseRandomEdgeCell(Actor.World.SharedRandom))));
+			carrier.QueueActivity(new RemoveSelf(Actor));
 
-			self.World.AddFrameEndTask(w => self.World.Add(carrier));
+			Actor.World.AddFrameEndTask(w => Actor.World.Add(carrier));
 		}
 
 		void CreateActors(string actorName, string deliveringActorName, out Actor cargo, out Actor carrier)
@@ -79,30 +77,30 @@ namespace OpenRA.Mods.Common.Traits
 			// Get a carryall spawn location
 			var location = info.SpawnLocation;
 			if (location == CPos.Zero)
-				location = self.World.Map.ChooseClosestEdgeCell(self.Location);
+				location = Actor.World.Map.ChooseClosestEdgeCell(Actor.Location);
 
-			var spawn = self.World.Map.CenterOfCell(location);
+			var spawn = Actor.World.Map.CenterOfCell(location);
 
-			var initialFacing = self.World.Map.FacingBetween(location, self.Location, WAngle.Zero);
+			var initialFacing = Actor.World.Map.FacingBetween(location, Actor.Location, WAngle.Zero);
 
 			// If aircraft, spawn at cruise altitude
-			var aircraftInfo = self.World.Map.Rules.Actors[deliveringActorName.ToLowerInvariant()].TraitInfoOrDefault<AircraftInfo>();
+			var aircraftInfo = Actor.World.Map.Rules.Actors[deliveringActorName.ToLowerInvariant()].TraitInfoOrDefault<AircraftInfo>();
 			if (aircraftInfo != null)
 				spawn += new WVec(0, 0, aircraftInfo.CruiseAltitude.Length);
 
 			// Create delivery actor
-			carrier = self.World.CreateActor(false, deliveringActorName, new TypeDictionary
+			carrier = Actor.World.CreateActor(false, deliveringActorName, new TypeDictionary
 			{
 				new LocationInit(location),
 				new CenterPositionInit(spawn),
-				new OwnerInit(self.Owner),
+				new OwnerInit(Actor.Owner),
 				new FacingInit(initialFacing)
 			});
 
 			// Create delivered actor
-			cargo = self.World.CreateActor(false, actorName, new TypeDictionary
+			cargo = Actor.World.CreateActor(false, actorName, new TypeDictionary
 			{
-				new OwnerInit(self.Owner),
+				new OwnerInit(Actor.Owner),
 			});
 		}
 	}

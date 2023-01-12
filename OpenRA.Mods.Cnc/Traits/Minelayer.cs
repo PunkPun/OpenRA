@@ -72,7 +72,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public readonly MinelayerInfo Info;
 		public readonly Sprite Tile;
 
-		readonly Actor self;
+		public readonly Actor Actor;
 
 		[Sync]
 		CPos minefieldStart;
@@ -80,7 +80,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public Minelayer(Actor self, MinelayerInfo info)
 		{
 			Info = info;
-			this.self = self;
+			Actor = self;
 
 			var tileset = self.World.Map.Tileset.ToLowerInvariant();
 			if (self.World.Map.Rules.Sequences.HasSequence("overlay", $"{Info.TileValidName}-{tileset}"))
@@ -93,79 +93,79 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			get
 			{
-				yield return new BeginMinefieldOrderTargeter(Info.AbilityCursor);
-				yield return new DeployOrderTargeter("PlaceMine", 5, () => IsCellAcceptable(self, self.Location) ? Info.DeployCursor : Info.DeployBlockedCursor);
+				yield return new BeginMinefieldOrderTargeter(Actor, Info.AbilityCursor);
+				yield return new DeployOrderTargeter(Actor, "PlaceMine", 5, () => IsCellAcceptable(Actor.Location) ? Info.DeployCursor : Info.DeployBlockedCursor);
 			}
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		Order IIssueOrder.IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			switch (order.OrderID)
 			{
 				case "BeginMinefield":
-					var start = self.World.Map.CellContaining(target.CenterPosition);
-					if (self.World.OrderGenerator is MinefieldOrderGenerator generator)
-						generator.AddMinelayer(self);
+					var start = Actor.World.Map.CellContaining(target.CenterPosition);
+					if (Actor.World.OrderGenerator is MinefieldOrderGenerator generator)
+						generator.AddMinelayer(Actor);
 					else
-						self.World.OrderGenerator = new MinefieldOrderGenerator(self, start, queued);
+						Actor.World.OrderGenerator = new MinefieldOrderGenerator(Actor, start, queued);
 
-					return new Order("BeginMinefield", self, Target.FromCell(self.World, start), queued);
+					return new Order("BeginMinefield", Actor, Target.FromCell(Actor.World, start), queued);
 				case "PlaceMine":
-					return new Order("PlaceMine", self, Target.FromCell(self.World, self.Location), queued);
+					return new Order("PlaceMine", Actor, Target.FromCell(Actor.World, Actor.Location), queued);
 				default:
 					return null;
 			}
 		}
 
-		Order IIssueDeployOrder.IssueDeployOrder(Actor self, bool queued)
+		Order IIssueDeployOrder.IssueDeployOrder(bool queued)
 		{
-			return new Order("PlaceMine", self, Target.FromCell(self.World, self.Location), queued);
+			return new Order("PlaceMine", Actor, Target.FromCell(Actor.World, Actor.Location), queued);
 		}
 
-		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued)
+		bool IIssueDeployOrder.CanIssueDeployOrder(bool queued)
 		{
-			return IsCellAcceptable(self, self.Location);
+			return IsCellAcceptable(Actor.Location);
 		}
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (order.OrderString != "BeginMinefield" && order.OrderString != "PlaceMinefield" && order.OrderString != "PlaceMine")
 				return;
 
-			var cell = self.World.Map.CellContaining(order.Target.CenterPosition);
+			var cell = Actor.World.Map.CellContaining(order.Target.CenterPosition);
 			if (order.OrderString == "BeginMinefield")
 				minefieldStart = cell;
 			else if (order.OrderString == "PlaceMine")
 			{
-				if (IsCellAcceptable(self, cell))
-					self.QueueActivity(order.Queued, new LayMines(self));
+				if (IsCellAcceptable(cell))
+					Actor.QueueActivity(order.Queued, new LayMines(Actor));
 			}
 			else if (order.OrderString == "PlaceMinefield")
 			{
 				// A different minelayer might have started laying the field without this minelayer knowing the start
 				minefieldStart = order.ExtraLocation;
 
-				var movement = self.Trait<IPositionable>();
+				var movement = Actor.Trait<IPositionable>();
 				var mobile = movement as Mobile;
 
 				var minefield = GetMinefieldCells(minefieldStart, cell, Info.MinefieldDepth)
-					.Where(c => IsCellAcceptable(self, c) && self.Owner.Shroud.IsExplored(c)
-						&& movement.CanEnterCell(c, null, BlockedByActor.Immovable) && (mobile != null && mobile.CanStayInCell(c)))
+					.Where(c => IsCellAcceptable(c) && Actor.Owner.Shroud.IsExplored(c)
+						&& movement.CanEnterCell(c, null, BlockedByActor.Immovable) && mobile != null && mobile.CanStayInCell(c))
 					.OrderBy(c => (c - minefieldStart).LengthSquared).ToList();
 
-				self.QueueActivity(order.Queued, new LayMines(self, minefield));
-				self.ShowTargetLines();
+				Actor.QueueActivity(order.Queued, new LayMines(Actor, minefield));
+				Actor.ShowTargetLines();
 			}
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			if (self.CurrentActivity != null)
-				foreach (var field in self.CurrentActivity.ActivitiesImplementing<LayMines>())
-					field.CleanMineField(self);
+			if (Actor.CurrentActivity != null)
+				foreach (var field in Actor.CurrentActivity.ActivitiesImplementing<LayMines>())
+					field.CleanMineField();
 		}
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			if (order.OrderString == "PlaceMine" || order.OrderString == "PlaceMinefield")
 				return Info.Voice;
@@ -192,15 +192,15 @@ namespace OpenRA.Mods.Cnc.Traits
 						yield return new CPos(i, j);
 		}
 
-		public bool IsCellAcceptable(Actor self, CPos cell)
+		public bool IsCellAcceptable(CPos cell)
 		{
-			if (!self.World.Map.Contains(cell))
+			if (!Actor.World.Map.Contains(cell))
 				return false;
 
 			if (Info.TerrainTypes.Count == 0)
 				return true;
 
-			var terrainType = self.World.Map.GetTerrainInfo(cell).Type;
+			var terrainType = Actor.World.Map.GetTerrainInfo(cell).Type;
 			return Info.TerrainTypes.Contains(terrainType);
 		}
 
@@ -327,7 +327,7 @@ namespace OpenRA.Mods.Cnc.Traits
 						tile = unknownTile;
 						alpha = unknownAlpha;
 					}
-					else if (!this.minelayer.IsCellAcceptable(minelayer, c)
+					else if (!this.minelayer.IsCellAcceptable(c)
 						|| !movement.CanEnterCell(c, null, BlockedByActor.Immovable) || (mobile != null && !mobile.CanStayInCell(c)))
 					{
 						tile = blockedTile;
@@ -350,23 +350,25 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			public string OrderID => "BeginMinefield";
 			public int OrderPriority => 5;
+			public readonly Actor Actor;
 
 			readonly string cursor;
 
-			public BeginMinefieldOrderTargeter(string cursor)
+			public BeginMinefieldOrderTargeter(Actor self, string cursor)
 			{
+				Actor = self;
 				this.cursor = cursor;
 			}
 
-			public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
+			public bool TargetOverridesSelection(in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
-			public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
+			public bool CanTarget(in Target target, ref TargetModifiers modifiers, ref string cursor)
 			{
 				if (target.Type != TargetType.Terrain)
 					return false;
 
-				var location = self.World.Map.CellContaining(target.CenterPosition);
-				if (!self.World.Map.Contains(location))
+				var location = Actor.World.Map.CellContaining(target.CenterPosition);
+				if (!Actor.World.Map.Contains(location))
 					return false;
 
 				cursor = this.cursor;

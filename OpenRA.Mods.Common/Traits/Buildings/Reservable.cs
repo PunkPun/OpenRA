@@ -17,26 +17,35 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Reserve landing places for aircraft.")]
-	class ReservableInfo : TraitInfo<Reservable> { }
+	class ReservableInfo : TraitInfo
+	{
+		public override object Create(ActorInitializer init) { return new Reservable(init.Self); }
+	}
 
 	public class Reservable : ITick, INotifyOwnerChanged, INotifySold, INotifyActorDisposing, INotifyCreated
 	{
+		public readonly Actor Actor;
 		Actor reservedFor;
 		Aircraft reservedForAircraft;
 		RallyPoint rallyPoint;
 
-		void INotifyCreated.Created(Actor self)
+		public Reservable(Actor self)
 		{
-			rallyPoint = self.TraitOrDefault<RallyPoint>();
+			Actor = self;
 		}
 
-		void ITick.Tick(Actor self)
+		void INotifyCreated.Created()
+		{
+			rallyPoint = Actor.TraitOrDefault<RallyPoint>();
+		}
+
+		void ITick.Tick()
 		{
 			// Nothing to do.
 			if (reservedFor == null)
 				return;
 
-			if (!Target.FromActor(reservedFor).IsValidFor(self))
+			if (!Target.FromActor(reservedFor).IsValidFor(Actor))
 			{
 				// Not likely to arrive now.
 				reservedForAircraft.UnReserve();
@@ -45,10 +54,10 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public IDisposable Reserve(Actor self, Actor forActor, Aircraft forAircraft)
+		public IDisposable Reserve(Actor forActor, Aircraft forAircraft)
 		{
 			if (reservedForAircraft != null && reservedForAircraft.MayYieldReservation)
-				UnReserve(self);
+				UnReserve();
 
 			reservedFor = forActor;
 			reservedForAircraft = forAircraft;
@@ -59,9 +68,9 @@ namespace OpenRA.Mods.Common.Traits
 				() => { reservedFor = null; reservedForAircraft = null; },
 				() => Game.RunAfterTick(() =>
 				{
-					if (Game.IsCurrentWorld(self.World))
+					if (Game.IsCurrentWorld(Actor.World))
 						throw new InvalidOperationException(
-							$"Attempted to finalize an undisposed DisposableAction. {forActor.Info.Name} ({forActor.ActorID}) reserved {self.Info.Name} ({self.ActorID})");
+							$"Attempted to finalize an undisposed DisposableAction. {forActor.Info.Name} ({forActor.ActorID}) reserved {Actor.Info.Name} ({Actor.ActorID})");
 				}));
 		}
 
@@ -77,11 +86,11 @@ namespace OpenRA.Mods.Common.Traits
 			return res == null || res.reservedForAircraft == null || res.reservedForAircraft.MayYieldReservation || res.reservedFor == forActor;
 		}
 
-		void UnReserve(Actor self)
+		void UnReserve()
 		{
 			if (reservedForAircraft != null)
 			{
-				if (reservedForAircraft.GetActorBelow() == self)
+				if (reservedForAircraft.GetActorBelow() == Actor)
 				{
 					// HACK: Cache this in a local var, such that the inner activity of AttackMoveActivity can access the trait easily after reservedForAircraft was nulled
 					var aircraft = reservedForAircraft;
@@ -96,11 +105,11 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		void INotifyActorDisposing.Disposing(Actor self) { UnReserve(self); }
+		void INotifyActorDisposing.Disposing() { UnReserve(); }
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner) { UnReserve(self); }
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner) { UnReserve(); }
 
-		void INotifySold.Selling(Actor self) { UnReserve(self); }
-		void INotifySold.Sold(Actor self) { UnReserve(self); }
+		void INotifySold.Selling() { UnReserve(); }
+		void INotifySold.Sold() { UnReserve(); }
 	}
 }

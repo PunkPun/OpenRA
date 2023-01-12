@@ -20,13 +20,13 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Types of buildable area this actor gives.")]
 		public readonly HashSet<string> AreaTypes = new HashSet<string>();
 
-		public override object Create(ActorInitializer init) { return new GivesBuildableArea(this); }
+		public override object Create(ActorInitializer init) { return new GivesBuildableArea(init.Self, this); }
 	}
 
 	public class GivesBuildableArea : ConditionalTrait<GivesBuildableAreaInfo>
 	{
-		public GivesBuildableArea(GivesBuildableAreaInfo info)
-			: base(info) { }
+		public GivesBuildableArea(Actor self, GivesBuildableAreaInfo info)
+			: base(info, self) { }
 
 		readonly HashSet<string> noAreaTypes = new HashSet<string>();
 

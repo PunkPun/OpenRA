@@ -39,7 +39,6 @@ namespace OpenRA.Mods.Common.Traits
 	public class Gate : PausableConditionalTrait<GateInfo>, ITick, ITemporaryBlocker, IBlocksProjectiles,
 		INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyBlockingMove
 	{
-		readonly Actor self;
 		readonly Building building;
 		IEnumerable<CPos> blockedPositions;
 		public readonly IEnumerable<CPos> Footprint;
@@ -53,16 +52,15 @@ namespace OpenRA.Mods.Common.Traits
 		int remainingOpenTime;
 
 		public Gate(ActorInitializer init, GateInfo info)
-			: base(info)
+			: base(info, init.Self)
 		{
-			self = init.Self;
 			Position = OpenPosition = Info.TransitionDelay;
-			building = self.Trait<Building>();
-			blockedPositions = building.Info.Tiles(self.Location);
+			building = Actor.Trait<Building>();
+			blockedPositions = building.Info.Tiles(Actor.Location);
 			Footprint = blockedPositions;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (IsTraitDisabled || IsTraitPaused)
 				return;
@@ -72,8 +70,8 @@ namespace OpenRA.Mods.Common.Traits
 				// Gate was fully open
 				if (Position == OpenPosition)
 				{
-					Game.Sound.Play(SoundType.World, Info.ClosingSound, self.CenterPosition);
-					self.World.ActorMap.AddInfluence(self, building);
+					Game.Sound.Play(SoundType.World, Info.ClosingSound, Actor.CenterPosition);
+					Actor.World.ActorMap.AddInfluence(building);
 				}
 
 				Position--;
@@ -82,14 +80,14 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				// Gate was fully closed
 				if (Position == 0)
-					Game.Sound.Play(SoundType.World, Info.OpeningSound, self.CenterPosition);
+					Game.Sound.Play(SoundType.World, Info.OpeningSound, Actor.CenterPosition);
 
 				Position++;
 
 				// Gate is now fully open
 				if (Position == OpenPosition)
 				{
-					self.World.ActorMap.RemoveInfluence(self, building);
+					Actor.World.ActorMap.RemoveInfluence(building);
 					remainingOpenTime = Info.CloseDelay;
 				}
 			}
@@ -103,40 +101,40 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		bool ITemporaryBlocker.IsBlocking(Actor self, CPos cell)
+		bool ITemporaryBlocker.IsBlocking(CPos cell)
 		{
 			return Position != OpenPosition && blockedPositions.Contains(cell);
 		}
 
-		bool ITemporaryBlocker.CanRemoveBlockage(Actor self, Actor blocking)
+		bool ITemporaryBlocker.CanRemoveBlockage(Actor blocking)
 		{
-			return CanRemoveBlockage(self, blocking);
+			return CanRemoveBlockage(blocking);
 		}
 
-		void INotifyBlockingMove.OnNotifyBlockingMove(Actor self, Actor blocking)
+		void INotifyBlockingMove.OnNotifyBlockingMove(Actor blocking)
 		{
-			if (Position != OpenPosition && CanRemoveBlockage(self, blocking))
+			if (Position != OpenPosition && CanRemoveBlockage(blocking))
 				desiredPosition = OpenPosition;
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
 			blockedPositions = Footprint;
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
 			blockedPositions = Enumerable.Empty<CPos>();
 		}
 
-		bool CanRemoveBlockage(Actor self, Actor blocking)
+		bool CanRemoveBlockage(Actor blocking)
 		{
-			return !IsTraitDisabled && !IsTraitPaused && blocking.AppearsFriendlyTo(self);
+			return !IsTraitDisabled && !IsTraitPaused && blocking.AppearsFriendlyTo(Actor);
 		}
 
 		bool IsBlocked()
 		{
-			return blockedPositions.Any(loc => self.World.ActorMap.GetActorsAt(loc).Any(a => a != self));
+			return blockedPositions.Any(loc => Actor.World.ActorMap.GetActorsAt(loc).Any(a => a != Actor));
 		}
 
 		WDist IBlocksProjectiles.BlockingHeight => new WDist(Info.BlocksProjectilesHeight.Length * (OpenPosition - Position) / OpenPosition);

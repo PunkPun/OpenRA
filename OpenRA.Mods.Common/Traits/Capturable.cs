@@ -36,18 +36,18 @@ namespace OpenRA.Mods.Common.Traits
 		readonly CaptureManager captureManager;
 
 		public Capturable(Actor self, CapturableInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			captureManager = self.Trait<CaptureManager>();
 		}
 
-		void INotifyCapture.OnCapture(Actor self, Actor captor, Player oldOwner, Player newOwner, BitSet<CaptureType> captureTypes)
+		void INotifyCapture.OnCapture(Actor captor, Player oldOwner, Player newOwner, BitSet<CaptureType> captureTypes)
 		{
 			if (Info.CancelActivity)
-				self.CancelActivity();
+				Actor.CancelActivity();
 		}
 
-		protected override void TraitEnabled(Actor self) { captureManager.RefreshCapturable(); }
-		protected override void TraitDisabled(Actor self) { captureManager.RefreshCapturable(); }
+		protected override void TraitEnabled() { captureManager.RefreshCapturable(); }
+		protected override void TraitDisabled() { captureManager.RefreshCapturable(); }
 	}
 }

@@ -72,20 +72,20 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.info = info;
 		}
 
-		public override void Activate(Actor self, Order order, SupportPowerManager manager)
+		public override void Activate(Order order, SupportPowerManager manager)
 		{
-			base.Activate(self, order, manager);
+			base.Activate(order, manager);
 
-			Activate(self, order.Target);
+			Activate(order.Target);
 		}
 
-		public void Activate(Actor self, Target target)
+		public void Activate(Target target)
 		{
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				PlayLaunchSounds();
 				Game.Sound.Play(SoundType.World, info.OnFireSound, target.CenterPosition);
-				w.Add(new IonCannon(self.Owner, info.WeaponInfo, w, self.CenterPosition, target,
+				w.Add(new IonCannon(Actor.Owner, info.WeaponInfo, w, Actor.CenterPosition, target,
 					info.Effect, info.EffectSequence, info.EffectPalette, info.WeaponDelay));
 
 				if (info.CameraActor == null)
@@ -93,11 +93,11 @@ namespace OpenRA.Mods.Cnc.Traits
 
 				var camera = w.CreateActor(info.CameraActor, new TypeDictionary
 				{
-					new LocationInit(self.World.Map.CellContaining(target.CenterPosition)),
-					new OwnerInit(self.Owner),
+					new LocationInit(Actor.World.Map.CellContaining(target.CenterPosition)),
+					new OwnerInit(Actor.Owner),
 				});
 
-				camera.QueueActivity(new Wait(info.CameraRemoveDelay));
+				camera.QueueActivity(new Wait(Actor, info.CameraRemoveDelay));
 				camera.QueueActivity(new RemoveSelf());
 			});
 		}

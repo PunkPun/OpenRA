@@ -146,26 +146,24 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class SupportPower : PausableConditionalTrait<SupportPowerInfo>
 	{
-		public readonly Actor Self;
 		readonly SupportPowerInfo info;
 		protected RadarPing ping;
 
 		public SupportPower(Actor self, SupportPowerInfo info)
-			: base(info)
+			: base(info, self)
 		{
-			Self = self;
 			this.info = info;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			base.Created(self);
+			base.Created();
 
-			var player = self.World.LocalPlayer;
-			if (player != null && player != self.Owner)
+			var player = Actor.World.LocalPlayer;
+			if (player != null && player != Actor.Owner)
 			{
 				Game.Sound.Play(SoundType.UI, Info.DetectedSound);
-				Game.Sound.PlayNotification(self.World.Map.Rules, player, "Speech", info.DetectedSpeechNotification, player.Faction.InternalName);
+				Game.Sound.PlayNotification(Actor.World.Map.Rules, player, "Speech", info.DetectedSpeechNotification, player.Faction.InternalName);
 				TextNotificationsManager.AddTransientLine(info.DetectedTextNotification, player);
 			}
 		}
@@ -175,58 +173,58 @@ namespace OpenRA.Mods.Common.Traits
 			return new SupportPowerInstance(key, info, manager);
 		}
 
-		public virtual void Charging(Actor self, string key)
+		public virtual void Charging(string key)
 		{
-			Game.Sound.PlayToPlayer(SoundType.UI, self.Owner, Info.BeginChargeSound);
-			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
-				Info.BeginChargeSpeechNotification, self.Owner.Faction.InternalName);
+			Game.Sound.PlayToPlayer(SoundType.UI, Actor.Owner, Info.BeginChargeSound);
+			Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech",
+				Info.BeginChargeSpeechNotification, Actor.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(Info.BeginChargeTextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(Info.BeginChargeTextNotification, Actor.Owner);
 		}
 
-		public virtual void Charged(Actor self, string key)
+		public virtual void Charged(string key)
 		{
-			Game.Sound.PlayToPlayer(SoundType.UI, self.Owner, Info.EndChargeSound);
-			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
-				Info.EndChargeSpeechNotification, self.Owner.Faction.InternalName);
+			Game.Sound.PlayToPlayer(SoundType.UI, Actor.Owner, Info.EndChargeSound);
+			Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech",
+				Info.EndChargeSpeechNotification, Actor.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(Info.EndChargeTextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(Info.EndChargeTextNotification, Actor.Owner);
 
-			foreach (var notify in self.TraitsImplementing<INotifySupportPower>())
-				notify.Charged(self);
+			foreach (var notify in Actor.TraitsImplementing<INotifySupportPower>())
+				notify.Charged();
 		}
 
-		public virtual void SelectTarget(Actor self, string order, SupportPowerManager manager)
+		public virtual void SelectTarget(string order, SupportPowerManager manager)
 		{
-			self.World.OrderGenerator = new SelectGenericPowerTarget(order, manager, info.Cursor, MouseButton.Left);
+			Actor.World.OrderGenerator = new SelectGenericPowerTarget(order, manager, info.Cursor, MouseButton.Left);
 		}
 
-		public virtual void Activate(Actor self, Order order, SupportPowerManager manager)
+		public virtual void Activate(Order order, SupportPowerManager manager)
 		{
 			if (Info.DisplayRadarPing && manager.RadarPings != null)
 			{
 				ping = manager.RadarPings.Value.Add(
-					() => order.Player.IsAlliedWith(self.World.RenderPlayer),
+					() => order.Player.IsAlliedWith(Actor.World.RenderPlayer),
 					order.Target.CenterPosition,
 					order.Player.Color,
 					Info.RadarPingDuration);
 			}
 
-			foreach (var notify in self.TraitsImplementing<INotifySupportPower>())
-				notify.Activated(self);
+			foreach (var notify in Actor.TraitsImplementing<INotifySupportPower>())
+				notify.Activated();
 		}
 
 		public virtual void PlayLaunchSounds()
 		{
-			var localPlayer = Self.World.LocalPlayer;
+			var localPlayer = Actor.World.LocalPlayer;
 			if (localPlayer == null || localPlayer.Spectating)
 				return;
 
-			var isAllied = Self.Owner.IsAlliedWith(localPlayer);
+			var isAllied = Actor.Owner.IsAlliedWith(localPlayer);
 			Game.Sound.Play(SoundType.UI, isAllied ? Info.LaunchSound : Info.IncomingSound);
 
 			var speech = isAllied ? Info.LaunchSpeechNotification : Info.IncomingSpeechNotification;
-			Game.Sound.PlayNotification(Self.World.Map.Rules, localPlayer, "Speech", speech, localPlayer.Faction.InternalName);
+			Game.Sound.PlayNotification(Actor.World.Map.Rules, localPlayer, "Speech", speech, localPlayer.Faction.InternalName);
 
 			TextNotificationsManager.AddTransientLine(isAllied ? Info.LaunchTextNotification : Info.IncomingTextNotification, localPlayer);
 		}

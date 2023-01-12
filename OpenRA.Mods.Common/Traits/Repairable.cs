@@ -72,6 +72,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (!isAircraft)
 					yield return new EnterAlliedActorTargeter<BuildingInfo>(
+						Actor,
 						"Repair",
 						5,
 						Info.EnterCursor,

@@ -23,6 +23,7 @@ namespace OpenRA.Mods.Common.Activities
 		int endingDelay;
 
 		public FlyOffMap(Actor self, int endingDelay = 25)
+			: base(self)
 		{
 			aircraft = self.Trait<Aircraft>();
 			ChildHasPriority = false;
@@ -36,35 +37,35 @@ namespace OpenRA.Mods.Common.Activities
 			hasTarget = true;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			if (hasTarget)
 			{
-				QueueChild(new Fly(self, target));
-				QueueChild(new FlyForward(self));
+				QueueChild(new Fly(Actor, target));
+				QueueChild(new FlyForward(Actor));
 				return;
 			}
 
 			// VTOLs must take off first if they're not at cruise altitude
-			if (aircraft.Info.VTOL && self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition) != aircraft.Info.CruiseAltitude)
-				QueueChild(new TakeOff(self));
+			if (aircraft.Info.VTOL && Actor.World.Map.DistanceAboveTerrain(aircraft.CenterPosition) != aircraft.Info.CruiseAltitude)
+				QueueChild(new TakeOff(Actor));
 
-			QueueChild(new FlyForward(self));
+			QueueChild(new FlyForward(Actor));
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
-				Cancel(self);
+				Cancel();
 
 			if (IsCanceling)
 				return true;
 
-			if (!self.World.Map.Contains(self.Location) && --endingDelay < 0)
-				ChildActivity.Cancel(self);
+			if (!Actor.World.Map.Contains(Actor.Location) && --endingDelay < 0)
+				ChildActivity.Cancel();
 
-			return TickChild(self);
+			return TickChild();
 		}
 	}
 }

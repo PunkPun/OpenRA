@@ -48,29 +48,29 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.info = info;
 		}
 
-		public override void SelectTarget(Actor self, string order, SupportPowerManager manager)
+		public override void SelectTarget(string order, SupportPowerManager manager)
 		{
-			self.World.OrderGenerator = new SelectAttackPowerTarget(self, order, manager, info.Cursor, MouseButton.Left, attack);
+			Actor.World.OrderGenerator = new SelectAttackPowerTarget(Actor, order, manager, info.Cursor, MouseButton.Left, attack);
 		}
 
-		public override void Activate(Actor self, Order order, SupportPowerManager manager)
+		public override void Activate(Order order, SupportPowerManager manager)
 		{
-			base.Activate(self, order, manager);
+			base.Activate(order, manager);
 			PlayLaunchSounds();
 
 			attack.AttackTarget(order.Target, AttackSource.Default, false, false, true);
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			attack = self.Trait<AttackBase>();
+			attack = Actor.Trait<AttackBase>();
 
-			base.Created(self);
+			base.Created();
 		}
 
-		void INotifyBurstComplete.FiredBurst(Actor self, in Target target, Armament a)
+		void INotifyBurstComplete.FiredBurst(in Target target, Armament a)
 		{
-			self.World.IssueOrder(new Order("Stop", self, false));
+			Actor.World.IssueOrder(new Order("Stop", Actor, false));
 		}
 	}
 
@@ -104,7 +104,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			var pos = world.Map.CenterOfCell(cell);
 			var range = attack.GetMaximumRange().LengthSquared;
 
-			return world.Map.Contains(cell) && instance.Instances.Any(a => !a.IsTraitPaused && (a.Self.CenterPosition - pos).HorizontalLengthSquared < range);
+			return world.Map.Contains(cell) && instance.Instances.Any(a => !a.IsTraitPaused && (a.Actor.CenterPosition - pos).HorizontalLengthSquared < range);
 		}
 
 		protected override IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
@@ -133,7 +133,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			foreach (var a in instance.Instances.Where(i => !i.IsTraitPaused))
 			{
 				yield return new RangeCircleAnnotationRenderable(
-					a.Self.CenterPosition,
+					a.Actor.CenterPosition,
 					attack.GetMinimumRange(),
 					0,
 					info.CircleColor,
@@ -142,7 +142,7 @@ namespace OpenRA.Mods.Cnc.Traits
 					info.CircleBorderWidth);
 
 				yield return new RangeCircleAnnotationRenderable(
-					a.Self.CenterPosition,
+					a.Actor.CenterPosition,
 					attack.GetMaximumRange(),
 					0,
 					info.CircleColor,

@@ -61,6 +61,7 @@ namespace OpenRA.Mods.Common.Traits
 			get
 			{
 				yield return new EnterAlliedActorTargeter<BuildingInfo>(
+					Actor,
 					"RepairNear",
 					5,
 					Info.EnterCursor,

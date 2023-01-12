@@ -43,7 +43,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 		public bool Visible;
 
 		public WithDockingOverlay(Actor self, WithDockingOverlayInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			var rs = self.Trait<RenderSprites>();
 			var body = self.Trait<BodyOrientation>();
@@ -51,7 +51,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			var overlay = new Animation(self.World, rs.GetImage(self), () => IsTraitPaused);
 			overlay.Play(info.Sequence);
 
-			WithOffset = new AnimationWithOffset(overlay,
+			WithOffset = new AnimationWithOffset(Actor, overlay,
 				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation))),
 				() => !Visible || IsTraitDisabled);
 

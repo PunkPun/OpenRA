@@ -50,11 +50,13 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class FallsToEarth : IEffectiveOwner, INotifyCreated
 	{
+		public readonly Actor Actor;
 		readonly FallsToEarthInfo info;
 		readonly Player effectiveOwner;
 
 		public FallsToEarth(ActorInitializer init, FallsToEarthInfo info)
 		{
+			Actor = init.Self;
 			this.info = info;
 			effectiveOwner = init.GetValue<EffectiveOwnerInit, Player>(info, init.Self.Owner);
 		}
@@ -63,9 +65,9 @@ namespace OpenRA.Mods.Common.Traits
 		bool IEffectiveOwner.Disguised => true;
 		Player IEffectiveOwner.Owner => effectiveOwner;
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			self.QueueActivity(false, new FallToEarth(self, info));
+			Actor.QueueActivity(false, new FallToEarth(Actor, info));
 		}
 	}
 }

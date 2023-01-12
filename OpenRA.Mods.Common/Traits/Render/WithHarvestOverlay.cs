@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			};
 
 			anim.Play(info.Sequence);
-			rs.Add(new AnimationWithOffset(anim,
+			rs.Add(new AnimationWithOffset(Actor, anim,
 				() => body.LocalToWorld(info.LocalOffset.Rotate(body.QuantizeOrientation(self.Orientation))),
 				() => !visible,
 				p => ZOffsetFromCenter(self, p, 0)), info.Palette);

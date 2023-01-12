@@ -23,6 +23,7 @@ namespace OpenRA.Mods.Common.Activities
 		int ticks;
 
 		FlyForward(Actor self)
+			: base(self)
 		{
 			aircraft = self.Trait<Aircraft>();
 			cruiseAltitude = aircraft.Info.CruiseAltitude;
@@ -40,12 +41,12 @@ namespace OpenRA.Mods.Common.Activities
 			remainingDistance = distance.Length;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
 			{
-				Cancel(self);
+				Cancel();
 				return true;
 			}
 
@@ -57,7 +58,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (remainingDistance != 0)
 				remainingDistance -= aircraft.FlyStep(aircraft.Facing).HorizontalLength;
 
-			Fly.FlyTick(self, aircraft, aircraft.Facing, cruiseAltitude);
+			Fly.FlyTick(aircraft, aircraft.Facing, cruiseAltitude);
 			return false;
 		}
 	}

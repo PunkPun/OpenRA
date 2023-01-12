@@ -20,15 +20,15 @@ namespace OpenRA.Mods.Common.Traits
 		[VoiceReference]
 		public readonly string Voice = "Action";
 
-		public override object Create(ActorInitializer init) { return new TransformsIntoTransforms(this); }
+		public override object Create(ActorInitializer init) { return new TransformsIntoTransforms(init.Self, this); }
 	}
 
 	public class TransformsIntoTransforms : ConditionalTrait<TransformsIntoTransformsInfo>, IResolveOrder, IOrderVoice, IIssueDeployOrder
 	{
-		public TransformsIntoTransforms(TransformsIntoTransformsInfo info)
-			: base(info) { }
+		public TransformsIntoTransforms(Actor self, TransformsIntoTransformsInfo info)
+			: base(info, self) { }
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (IsTraitDisabled || order.OrderString != "AfterDeployTransform")
 				return;
@@ -36,30 +36,30 @@ namespace OpenRA.Mods.Common.Traits
 			// The DeployTransform order does not have a position associated with it,
 			// so we can only queue a new transformation if something else has
 			// already triggered the undeploy.
-			if (!order.Queued || !(self.CurrentActivity is Transform currentTransform))
+			if (!order.Queued || !(Actor.CurrentActivity is Transform currentTransform))
 				return;
 
-			currentTransform.Queue(new IssueOrderAfterTransform("DeployTransform", order.Target));
+			currentTransform.Queue(new IssueOrderAfterTransform(Actor, "DeployTransform", order.Target));
 
-			self.ShowTargetLines();
+			Actor.ShowTargetLines();
 		}
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			return order.OrderString == "DeployTransform" && !IsTraitDisabled ? Info.Voice : null;
 		}
 
-		Order IIssueDeployOrder.IssueDeployOrder(Actor self, bool queued)
+		Order IIssueDeployOrder.IssueDeployOrder(bool queued)
 		{
-			return new Order("AfterDeployTransform", self, queued);
+			return new Order("AfterDeployTransform", Actor, queued);
 		}
 
-		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued)
+		bool IIssueDeployOrder.CanIssueDeployOrder(bool queued)
 		{
 			// The DeployTransform order does not have a position associated with it,
 			// so we can only queue a new transformation if something else has
 			// already triggered the undeploy.
-			return queued && self.CurrentActivity is Transform;
+			return queued && Actor.CurrentActivity is Transform;
 		}
 	}
 }

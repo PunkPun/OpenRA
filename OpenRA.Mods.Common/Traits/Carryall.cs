@@ -316,7 +316,7 @@ namespace OpenRA.Mods.Common.Traits
 			get
 			{
 				yield return new CarryallPickupOrderTargeter(Info);
-				yield return new DeployOrderTargeter("Unload", 10,
+				yield return new DeployOrderTargeter(Actor, "Unload", 10,
 				() => CanUnload() ? Info.UnloadCursor : Info.UnloadBlockedCursor);
 				yield return new CarryallDeliverUnitTargeter(aircraftInfo, Info);
 			}

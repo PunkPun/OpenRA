@@ -55,68 +55,66 @@ namespace OpenRA.Mods.Cnc.Traits
 
 	class GpsPower : SupportPower, INotifyKilled, INotifySold, INotifyOwnerChanged, ITick
 	{
-		readonly Actor self;
 		readonly GpsPowerInfo info;
 		GpsWatcher owner;
 
 		public GpsPower(Actor self, GpsPowerInfo info)
 			: base(self, info)
 		{
-			this.self = self;
 			this.info = info;
 			owner = self.Owner.PlayerActor.Trait<GpsWatcher>();
 			owner.GpsAdd(self);
 		}
 
-		public override void Charged(Actor self, string key)
+		public override void Charged(string key)
 		{
-			self.Owner.PlayerActor.Trait<SupportPowerManager>().Powers[key].Activate(new Order());
+			Actor.Owner.PlayerActor.Trait<SupportPowerManager>().Powers[key].Activate(new Order());
 		}
 
-		public override void Activate(Actor self, Order order, SupportPowerManager manager)
+		public override void Activate(Order order, SupportPowerManager manager)
 		{
-			base.Activate(self, order, manager);
+			base.Activate(order, manager);
 
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				PlayLaunchSounds();
 
-				w.Add(new SatelliteLaunch(self, info));
+				w.Add(new SatelliteLaunch(Actor, info));
 			});
 		}
 
-		void INotifyKilled.Killed(Actor self, AttackInfo e) { RemoveGps(self); }
+		void INotifyKilled.Killed(AttackInfo e) { RemoveGps(); }
 
-		void INotifySold.Selling(Actor self) { }
-		void INotifySold.Sold(Actor self) { RemoveGps(self); }
+		void INotifySold.Selling() { }
+		void INotifySold.Sold() { RemoveGps(); }
 
-		void RemoveGps(Actor self)
+		void RemoveGps()
 		{
 			// Extra function just in case something needs to be added later
-			owner.GpsRemove(self);
+			owner.GpsRemove(Actor);
 		}
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
-			RemoveGps(self);
+			RemoveGps();
 			owner = newOwner.PlayerActor.Trait<GpsWatcher>();
-			owner.GpsAdd(self);
+			owner.GpsAdd(Actor);
 		}
 
-		bool NoActiveRadar { get { return !self.World.ActorsHavingTrait<ProvidesRadar>(r => !r.IsTraitDisabled).Any(a => a.Owner == self.Owner); } }
+		bool NoActiveRadar { get { return !Actor.World.ActorsHavingTrait<ProvidesRadar>(r => !r.IsTraitDisabled).Any(a => a.Owner == Actor.Owner); } }
 		bool wasPaused;
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (!wasPaused && (IsTraitPaused || (info.RequiresActiveRadar && NoActiveRadar)))
 			{
 				wasPaused = true;
-				RemoveGps(self);
+				RemoveGps();
 			}
 			else if (wasPaused && !IsTraitPaused && !(info.RequiresActiveRadar && NoActiveRadar))
 			{
 				wasPaused = false;
-				owner.GpsAdd(self);
+				owner.GpsAdd(Actor);
 			}
 		}
 	}

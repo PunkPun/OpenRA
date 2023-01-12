@@ -65,7 +65,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				yield return new VariableObserver(ActiveConditionChanged, info.ActiveCondition.Variables);
 		}
 
-		void ActiveConditionChanged(Actor self, IReadOnlyDictionary<string, int> conditions)
+		void ActiveConditionChanged(IReadOnlyDictionary<string, int> conditions)
 		{
 			if (info.ActiveCondition == null)
 				return;
@@ -74,38 +74,38 @@ namespace OpenRA.Mods.Cnc.Traits
 			active = info.ActiveCondition.Evaluate(conditions);
 
 			if (!wasActive && active)
-				self.World.ActorMap.AddInfluence(self, this);
+				Actor.World.ActorMap.AddInfluence(this);
 			else if (wasActive && !active)
-				self.World.ActorMap.RemoveInfluence(self, this);
+				Actor.World.ActorMap.RemoveInfluence(this);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (!active)
 				return;
 
 			foreach (var loc in blockedPositions)
 			{
-				var blockers = self.World.ActorMap.GetActorsAt(loc).Where(a => !a.IsDead && a != self);
+				var blockers = Actor.World.ActorMap.GetActorsAt(loc).Where(a => !a.IsDead && a != Actor);
 				foreach (var blocker in blockers)
-					info.WeaponInfo.Impact(Target.FromActor(blocker), self);
+					info.WeaponInfo.Impact(Target.FromActor(blocker), Actor);
 			}
 		}
 
-		bool ITemporaryBlocker.IsBlocking(Actor self, CPos cell)
+		bool ITemporaryBlocker.IsBlocking(CPos cell)
 		{
 			return active && blockedPositions.Contains(cell);
 		}
 
-		bool ITemporaryBlocker.CanRemoveBlockage(Actor self, Actor blocking)
+		bool ITemporaryBlocker.CanRemoveBlockage(Actor blocking)
 		{
 			return !active;
 		}
 
-		protected override void AddedToWorld(Actor self)
+		protected override void AddedToWorld()
 		{
-			base.AddedToWorld(self);
-			blockedPositions = info.Tiles(self.Location);
+			base.AddedToWorld();
+			blockedPositions = info.Tiles(Actor.Location);
 		}
 	}
 }

@@ -85,12 +85,12 @@ namespace OpenRA.Mods.Cnc.Traits
 		int chargeTick = 0;
 
 		public PortableChrono(Actor self, PortableChronoInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			move = self.Trait<IMove>();
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (IsTraitDisabled || IsTraitPaused)
 				return;
@@ -106,49 +106,49 @@ namespace OpenRA.Mods.Cnc.Traits
 				if (IsTraitDisabled)
 					yield break;
 
-				yield return new PortableChronoOrderTargeter(Info.TargetCursor);
-				yield return new DeployOrderTargeter("PortableChronoDeploy", 5,
+				yield return new PortableChronoOrderTargeter(Actor, Info.TargetCursor);
+				yield return new DeployOrderTargeter(Actor, "PortableChronoDeploy", 5,
 					() => CanTeleport ? Info.DeployCursor : Info.DeployBlockedCursor);
 			}
 		}
 
-		public Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		public Order IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "PortableChronoDeploy")
 			{
 				// HACK: Switch the global order generator instead of actually issuing an order
 				if (CanTeleport)
-					self.World.OrderGenerator = new PortableChronoOrderGenerator(self, this);
+					Actor.World.OrderGenerator = new PortableChronoOrderGenerator(Actor, this);
 
 				// HACK: We need to issue a fake order to stop the game complaining about the bodge above
-				return new Order(order.OrderID, self, Target.Invalid, queued);
+				return new Order(order.OrderID, Actor, Target.Invalid, queued);
 			}
 
 			if (order.OrderID == "PortableChronoTeleport")
-				return new Order(order.OrderID, self, target, queued);
+				return new Order(order.OrderID, Actor, target, queued);
 
 			return null;
 		}
 
-		public void ResolveOrder(Actor self, Order order)
+		public void ResolveOrder(Order order)
 		{
 			if (order.OrderString == "PortableChronoTeleport" && order.Target.Type != TargetType.Invalid)
 			{
 				var maxDistance = Info.HasDistanceLimit ? Info.MaxDistance : (int?)null;
 				if (!order.Queued)
-					self.CancelActivity();
+					Actor.CancelActivity();
 
-				var cell = self.World.Map.CellContaining(order.Target.CenterPosition);
+				var cell = Actor.World.Map.CellContaining(order.Target.CenterPosition);
 				if (maxDistance != null)
-					self.QueueActivity(move.MoveWithinRange(order.Target, WDist.FromCells(maxDistance.Value), targetLineColor: Info.TargetLineColor));
+					Actor.QueueActivity(move.MoveWithinRange(order.Target, WDist.FromCells(maxDistance.Value), targetLineColor: Info.TargetLineColor));
 
-				self.QueueActivity(new Teleport(self, cell, maxDistance, Info.KillCargo, Info.FlashScreen, Info.ChronoshiftSound));
-				self.QueueActivity(move.MoveTo(cell, 5, targetLineColor: Info.TargetLineColor));
-				self.ShowTargetLines();
+				Actor.QueueActivity(new Teleport(Actor, Actor, cell, maxDistance, Info.KillCargo, Info.FlashScreen, Info.ChronoshiftSound));
+				Actor.QueueActivity(move.MoveTo(cell, 5, targetLineColor: Info.TargetLineColor));
+				Actor.ShowTargetLines();
 			}
 		}
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			return order.OrderString == "PortableChronoTeleport" ? Info.Voice : null;
 		}
@@ -171,7 +171,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		Color ISelectionBar.GetColor() { return Color.Magenta; }
 		bool ISelectionBar.DisplayWhenEmpty => false;
 
-		protected override void TraitDisabled(Actor self)
+		protected override void TraitDisabled()
 		{
 			chargeTick = 0;
 		}
@@ -179,27 +179,29 @@ namespace OpenRA.Mods.Cnc.Traits
 
 	class PortableChronoOrderTargeter : IOrderTargeter
 	{
+		public readonly Actor Actor;
 		readonly string targetCursor;
 
-		public PortableChronoOrderTargeter(string targetCursor)
+		public PortableChronoOrderTargeter(Actor self, string targetCursor)
 		{
+			Actor = self;
 			this.targetCursor = targetCursor;
 		}
 
 		public string OrderID => "PortableChronoTeleport";
 		public int OrderPriority => 5;
 		public bool IsQueued { get; protected set; }
-		public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
+		public bool TargetOverridesSelection(in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
-		public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
+		public bool CanTarget(in Target target, ref TargetModifiers modifiers, ref string cursor)
 		{
 			if (modifiers.HasModifier(TargetModifiers.ForceMove))
 			{
-				var xy = self.World.Map.CellContaining(target.CenterPosition);
+				var xy = Actor.World.Map.CellContaining(target.CenterPosition);
 
 				IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 
-				if (self.IsInWorld && self.Owner.Shroud.IsExplored(xy))
+				if (Actor.IsInWorld && Actor.Owner.Shroud.IsExplored(xy))
 				{
 					cursor = targetCursor;
 					return true;

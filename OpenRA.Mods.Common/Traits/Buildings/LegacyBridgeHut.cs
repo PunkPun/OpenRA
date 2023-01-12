@@ -26,6 +26,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class LegacyBridgeHut : IDemolishable
 	{
+		public readonly Actor Actor;
 		public Bridge FirstBridge { get; private set; }
 		public Bridge Bridge { get; private set; }
 		public DamageState BridgeDamageState => Bridge.AggregateDamageState();
@@ -49,22 +50,22 @@ namespace OpenRA.Mods.Common.Traits
 			Bridge.Do((b, d) => b.Repair(repairer, d, () => repairDirections--));
 		}
 
-		bool IDemolishable.IsValidTarget(Actor self, Actor saboteur)
+		bool IDemolishable.IsValidTarget(Actor saboteur)
 		{
 			return BridgeDamageState != DamageState.Dead;
 		}
 
-		void IDemolishable.Demolish(Actor self, Actor saboteur, int delay, BitSet<DamageType> damageTypes)
+		void IDemolishable.Demolish(Actor saboteur, int delay, BitSet<DamageType> damageTypes)
 		{
 			// TODO: Handle using ITick
-			self.World.Add(new DelayedAction(delay, () =>
+			Actor.World.Add(new DelayedAction(delay, () =>
 			{
-				if (self.IsDead)
+				if (Actor.IsDead)
 					return;
 
-				var modifiers = self.TraitsImplementing<IDamageModifier>()
-					.Concat(self.Owner.PlayerActor.TraitsImplementing<IDamageModifier>())
-					.Select(t => t.GetDamageModifier(self, null));
+				var modifiers = Actor.TraitsImplementing<IDamageModifier>()
+					.Concat(Actor.Owner.PlayerActor.TraitsImplementing<IDamageModifier>())
+					.Select(t => t.GetDamageModifier(Actor, null));
 
 				if (Util.ApplyPercentageModifiers(100, modifiers) > 0)
 					Bridge.Do((b, d) => b.Demolish(saboteur, d, damageTypes));

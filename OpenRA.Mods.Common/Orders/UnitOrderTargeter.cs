@@ -17,11 +17,13 @@ namespace OpenRA.Mods.Common.Orders
 {
 	public abstract class UnitOrderTargeter : IOrderTargeter
 	{
+		public readonly Actor Actor;
 		readonly string cursor;
 		readonly bool targetEnemyUnits, targetAllyUnits;
 
-		public UnitOrderTargeter(string order, int priority, string cursor, bool targetEnemyUnits, bool targetAllyUnits)
+		public UnitOrderTargeter(Actor self, string order, int priority, string cursor, bool targetEnemyUnits, bool targetAllyUnits)
 		{
+			Actor = self;
 			OrderID = order;
 			OrderPriority = priority;
 			this.cursor = cursor;
@@ -32,12 +34,12 @@ namespace OpenRA.Mods.Common.Orders
 		public string OrderID { get; }
 		public int OrderPriority { get; }
 		public bool? ForceAttack = null;
-		public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
+		public bool TargetOverridesSelection(in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
-		public abstract bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor);
-		public abstract bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor);
+		public abstract bool CanTargetActor(Actor target, TargetModifiers modifiers, ref string cursor);
+		public abstract bool CanTargetFrozenActor(FrozenActor target, TargetModifiers modifiers, ref string cursor);
 
-		public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
+		public bool CanTarget(in Target target, ref TargetModifiers modifiers, ref string cursor)
 		{
 			var type = target.Type;
 			if (type != TargetType.Actor && type != TargetType.FrozenActor)
@@ -50,7 +52,7 @@ namespace OpenRA.Mods.Common.Orders
 				return false;
 
 			var owner = type == TargetType.FrozenActor ? target.FrozenActor.Owner : target.Actor.Owner;
-			var playerRelationship = self.Owner.RelationshipWith(owner);
+			var playerRelationship = Actor.Owner.RelationshipWith(owner);
 			if (!modifiers.HasModifier(TargetModifiers.ForceAttack) && playerRelationship == PlayerRelationship.Ally && !targetAllyUnits)
 				return false;
 
@@ -58,8 +60,8 @@ namespace OpenRA.Mods.Common.Orders
 				return false;
 
 			return type == TargetType.FrozenActor ?
-				CanTargetFrozenActor(self, target.FrozenActor, modifiers, ref cursor) :
-				CanTargetActor(self, target.Actor, modifiers, ref cursor);
+				CanTargetFrozenActor(target.FrozenActor, modifiers, ref cursor) :
+				CanTargetActor(target.Actor, modifiers, ref cursor);
 		}
 
 		public virtual bool IsQueued { get; protected set; }
@@ -69,18 +71,18 @@ namespace OpenRA.Mods.Common.Orders
 	{
 		readonly BitSet<TargetableType> targetTypes;
 
-		public TargetTypeOrderTargeter(BitSet<TargetableType> targetTypes, string order, int priority, string cursor, bool targetEnemyUnits, bool targetAllyUnits)
-			: base(order, priority, cursor, targetEnemyUnits, targetAllyUnits)
+		public TargetTypeOrderTargeter(Actor self, BitSet<TargetableType> targetTypes, string order, int priority, string cursor, bool targetEnemyUnits, bool targetAllyUnits)
+			: base(self, order, priority, cursor, targetEnemyUnits, targetAllyUnits)
 		{
 			this.targetTypes = targetTypes;
 		}
 
-		public override bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor)
+		public override bool CanTargetActor(Actor target, TargetModifiers modifiers, ref string cursor)
 		{
 			return targetTypes.Overlaps(target.GetEnabledTargetTypes());
 		}
 
-		public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
+		public override bool CanTargetFrozenActor(FrozenActor target, TargetModifiers modifiers, ref string cursor)
 		{
 			return target.TargetTypes.Overlaps(targetTypes);
 		}

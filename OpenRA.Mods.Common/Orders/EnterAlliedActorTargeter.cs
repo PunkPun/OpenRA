@@ -21,9 +21,9 @@ namespace OpenRA.Mods.Common.Orders
 		readonly Func<Actor, TargetModifiers, bool> canTarget;
 		readonly Func<Actor, bool> useEnterCursor;
 
-		public EnterAlliedActorTargeter(string order, int priority, string enterCursor, string enterBlockedCursor,
+		public EnterAlliedActorTargeter(Actor self, string order, int priority, string enterCursor, string enterBlockedCursor,
 			Func<Actor, TargetModifiers, bool> canTarget, Func<Actor, bool> useEnterCursor)
-			: base(order, priority, enterCursor, false, true)
+			: base(self, order, priority, enterCursor, false, true)
 		{
 			this.enterCursor = enterCursor;
 			this.enterBlockedCursor = enterBlockedCursor;
@@ -31,16 +31,16 @@ namespace OpenRA.Mods.Common.Orders
 			this.useEnterCursor = useEnterCursor;
 		}
 
-		public override bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor)
+		public override bool CanTargetActor(Actor target, TargetModifiers modifiers, ref string cursor)
 		{
-			if (!self.Owner.IsAlliedWith(target.Owner) || !target.Info.HasTraitInfo<T>() || !canTarget(target, modifiers))
+			if (!Actor.Owner.IsAlliedWith(target.Owner) || !target.Info.HasTraitInfo<T>() || !canTarget(target, modifiers))
 				return false;
 
 			cursor = useEnterCursor(target) ? enterCursor : enterBlockedCursor;
 			return true;
 		}
 
-		public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
+		public override bool CanTargetFrozenActor(FrozenActor target, TargetModifiers modifiers, ref string cursor)
 		{
 			// Allied actors are never frozen
 			return false;

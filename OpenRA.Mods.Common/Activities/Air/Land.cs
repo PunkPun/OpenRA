@@ -50,6 +50,7 @@ namespace OpenRA.Mods.Common.Activities
 			: this(self, target, WDist.Zero, offset, facing, targetLineColor: targetLineColor) { }
 
 		public Land(Actor self, in Target target, WDist landRange, in WVec offset, WAngle? facing = null, CPos[] clearCells = null, Color? targetLineColor = null)
+			: base(self)
 		{
 			aircraft = self.Trait<Aircraft>();
 			this.target = target;
@@ -66,15 +67,15 @@ namespace OpenRA.Mods.Common.Activities
 				desiredFacing = facing;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			// When no target is provided we should land in the most direct manner possible.
 			// TODO: For fixed-wing aircraft self.Location is not necessarily the most direct landing site.
 			if (assignTargetOnFirstRun)
-				target = Target.FromCell(self.World, self.Location);
+				target = Target.FromCell(Actor.World, Actor.Location);
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling || target.Type == TargetType.Invalid)
 			{
@@ -85,13 +86,13 @@ namespace OpenRA.Mods.Common.Activities
 					// otherwise climb back to CruiseAltitude.
 					// TODO: Remove this after fixing all activities to work properly with arbitrary starting altitudes.
 					var shouldLand = aircraft.Info.IdleBehavior == IdleBehaviorType.Land;
-					var continueLanding = shouldLand && self.CurrentActivity.IsCanceling && self.CurrentActivity.NextActivity == null;
+					var continueLanding = shouldLand && Actor.CurrentActivity.IsCanceling && Actor.CurrentActivity.NextActivity == null;
 					if (!continueLanding)
 					{
-						var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+						var dat = Actor.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
 						if (dat > aircraft.LandAltitude && dat < aircraft.Info.CruiseAltitude)
 						{
-							QueueChild(new TakeOff(self));
+							QueueChild(new TakeOff(Actor));
 							return false;
 						}
 
@@ -107,7 +108,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			// Reevaluate target position in case the target has moved.
 			targetPosition = target.CenterPosition + offset;
-			landingCell = self.World.Map.CellContaining(targetPosition);
+			landingCell = Actor.World.Map.CellContaining(targetPosition);
 
 			// We are already at the landing location.
 			if ((targetPosition - pos).LengthSquared == 0)
@@ -127,9 +128,9 @@ namespace OpenRA.Mods.Common.Activities
 
 				if (newLocation.Value != landingCell)
 				{
-					target = Target.FromCell(self.World, newLocation.Value);
+					target = Target.FromCell(Actor.World, newLocation.Value);
 					targetPosition = target.CenterPosition + offset;
-					landingCell = self.World.Map.CellContaining(targetPosition);
+					landingCell = Actor.World.Map.CellContaining(targetPosition);
 				}
 			}
 
@@ -138,13 +139,13 @@ namespace OpenRA.Mods.Common.Activities
 			{
 				if ((pos - targetPosition).HorizontalLengthSquared != 0)
 				{
-					QueueChild(new Fly(self, Target.FromPos(targetPosition)));
+					QueueChild(new Fly(Actor, Target.FromPos(targetPosition)));
 					return false;
 				}
 
 				if (desiredFacing.HasValue && desiredFacing.Value != aircraft.Facing)
 				{
-					QueueChild(new Turn(self, desiredFacing.Value));
+					QueueChild(new Turn(Actor, desiredFacing.Value));
 					return false;
 				}
 			}
@@ -175,14 +176,14 @@ namespace OpenRA.Mods.Common.Activities
 
 				// Work out whether we should turn clockwise or counter-clockwise for approach
 				var side = new WVec(-fwd.Y, fwd.X, fwd.Z);
-				var approachDelta = self.CenterPosition - approachStart;
+				var approachDelta = Actor.CenterPosition - approachStart;
 				var sideTowardBase = new[] { side, -side }
 					.MinBy(a => WVec.Dot(a, approachDelta));
 
 				// Calculate the tangent line that joins the turning circles at the current and approach positions
-				var cp = self.CenterPosition + turnRadius * sideTowardBase / 1024;
+				var cp = Actor.CenterPosition + turnRadius * sideTowardBase / 1024;
 				var posCenter = new WPos(cp.X, cp.Y, altitude);
-				var approachCenter = approachStart + new WVec(0, turnRadius * Math.Sign(self.CenterPosition.Y - approachStart.Y), 0);
+				var approachCenter = approachStart + new WVec(0, turnRadius * Math.Sign(Actor.CenterPosition.Y - approachStart.Y), 0);
 				var tangentDirection = approachCenter - posCenter;
 				var tangentLength = tangentDirection.Length;
 				var tangentOffset = WVec.Zero;
@@ -200,11 +201,11 @@ namespace OpenRA.Mods.Common.Activities
 				turnRadius = Fly.CalculateTurnRadius(aircraft.Info.Speed, aircraft.TurnSpeed);
 
 				// Move along approach trajectory.
-				QueueChild(new Fly(self, Target.FromPos(w1), WDist.Zero, new WDist(turnRadius * 3)));
-				QueueChild(new Fly(self, Target.FromPos(w2)));
+				QueueChild(new Fly(Actor, Target.FromPos(w1), WDist.Zero, new WDist(turnRadius * 3)));
+				QueueChild(new Fly(Actor, Target.FromPos(w2)));
 
 				// Fix a problem when the airplane is sent to land near the landing cell
-				QueueChild(new Fly(self, Target.FromPos(w3), WDist.Zero, new WDist(turnRadius / 2)));
+				QueueChild(new Fly(Actor, Target.FromPos(w3), WDist.Zero, new WDist(turnRadius / 2)));
 				finishedApproach = true;
 				return false;
 			}
@@ -216,29 +217,29 @@ namespace OpenRA.Mods.Common.Activities
 				if (!aircraft.CanLand(blockingCells, target.Actor))
 				{
 					// Maintain holding pattern.
-					QueueChild(new FlyIdle(self, 25));
+					QueueChild(new FlyIdle(Actor, 25));
 
-					self.NotifyBlocker(blockingCells);
+					Actor.NotifyBlocker(blockingCells);
 					finishedApproach = false;
 					return false;
 				}
 
 				if (aircraft.Info.LandingSounds.Length > 0)
-					Game.Sound.Play(SoundType.World, aircraft.Info.LandingSounds, self.World, aircraft.CenterPosition);
+					Game.Sound.Play(SoundType.World, aircraft.Info.LandingSounds, Actor.World, aircraft.CenterPosition);
 
-				foreach (var notify in self.TraitsImplementing<INotifyLanding>())
-					notify.Landing(self);
+				foreach (var notify in Actor.TraitsImplementing<INotifyLanding>())
+					notify.Landing();
 
 				aircraft.AddInfluence(landingCell);
-				aircraft.EnteringCell(self);
+				aircraft.EnteringCell();
 				landingInitiated = true;
 			}
 
 			// Final descent.
 			if (aircraft.Info.VTOL)
 			{
-				var landAltitude = self.World.Map.DistanceAboveTerrain(targetPosition) + aircraft.LandAltitude;
-				if (Fly.VerticalTakeOffOrLandTick(self, aircraft, aircraft.Facing, landAltitude))
+				var landAltitude = Actor.World.Map.DistanceAboveTerrain(targetPosition) + aircraft.LandAltitude;
+				if (Fly.VerticalTakeOffOrLandTick(aircraft, aircraft.Facing, landAltitude))
 					return false;
 
 				return true;
@@ -251,17 +252,17 @@ namespace OpenRA.Mods.Common.Activities
 			if (d.HorizontalLengthSquared < move.HorizontalLengthSquared)
 			{
 				var landingAltVec = new WVec(WDist.Zero, WDist.Zero, aircraft.LandAltitude);
-				aircraft.SetPosition(self, targetPosition + landingAltVec);
+				aircraft.SetPosition(targetPosition + landingAltVec);
 				return true;
 			}
 
-			var landingAlt = self.World.Map.DistanceAboveTerrain(targetPosition) + aircraft.LandAltitude;
-			Fly.FlyTick(self, aircraft, d.Yaw, landingAlt);
+			var landingAlt = Actor.World.Map.DistanceAboveTerrain(targetPosition) + aircraft.LandAltitude;
+			Fly.FlyTick(aircraft, d.Yaw, landingAlt);
 
 			return false;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 				yield return new TargetLineNode(target, targetLineColor.Value);

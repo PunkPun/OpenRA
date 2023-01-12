@@ -53,7 +53,7 @@ namespace OpenRA.Mods.Common.Traits
 		int progress;
 
 		public BaseProvider(Actor self, BaseProviderInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			this.self = self;
 			devMode = self.Owner.PlayerActor.Trait<DeveloperMode>();
@@ -63,7 +63,7 @@ namespace OpenRA.Mods.Common.Traits
 			buildRadiusEnabled = mapBuildRadius != null && mapBuildRadius.BuildRadiusEnabled;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (progress > 0)
 				progress--;
@@ -106,7 +106,7 @@ namespace OpenRA.Mods.Common.Traits
 				Info.CircleBorderWidth);
 		}
 
-		IEnumerable<IRenderable> IRenderAnnotationsWhenSelected.RenderAnnotations(Actor self, WorldRenderer wr)
+		IEnumerable<IRenderable> IRenderAnnotationsWhenSelected.RenderAnnotations(WorldRenderer wr)
 		{
 			return RangeCircleRenderables();
 		}

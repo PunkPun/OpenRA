@@ -69,7 +69,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Cursor to display when able to set up the detonation sequence.")]
 		public readonly string DeployCursor = "deploy";
 
-		public override object Create(ActorInitializer init) { return new MadTank(this); }
+		public override object Create(ActorInitializer init) { return new MadTank(this, init.Self); }
 
 		public void RulesetLoaded(Ruleset rules, ActorInfo ai)
 		{
@@ -89,12 +89,14 @@ namespace OpenRA.Mods.Cnc.Traits
 
 	class MadTank : IIssueOrder, IResolveOrder, IOrderVoice, IIssueDeployOrder
 	{
+		public readonly Actor Actor;
 		readonly MadTankInfo info;
 
 		bool initiated;
 
-		public MadTank(MadTankInfo info)
+		public MadTank(MadTankInfo info, Actor self)
 		{
+			Actor = self;
 			this.info = info;
 		}
 
@@ -102,29 +104,29 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			get
 			{
-				yield return new TargetTypeOrderTargeter(new BitSet<TargetableType>("DetonateAttack"), "DetonateAttack", 5, info.AttackCursor, true, false) { ForceAttack = false };
+				yield return new TargetTypeOrderTargeter(Actor, new BitSet<TargetableType>("DetonateAttack"), "DetonateAttack", 5, info.AttackCursor, true, false) { ForceAttack = false };
 
 				if (!initiated)
-					yield return new DeployOrderTargeter("Detonate", 5, () => info.DeployCursor);
+					yield return new DeployOrderTargeter(Actor, "Detonate", 5, () => info.DeployCursor);
 			}
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		Order IIssueOrder.IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID != "DetonateAttack" && order.OrderID != "Detonate")
 				return null;
 
-			return new Order(order.OrderID, self, target, queued);
+			return new Order(order.OrderID, Actor, target, queued);
 		}
 
-		Order IIssueDeployOrder.IssueDeployOrder(Actor self, bool queued)
+		Order IIssueDeployOrder.IssueDeployOrder(bool queued)
 		{
-			return new Order("Detonate", self, queued);
+			return new Order("Detonate", Actor, queued);
 		}
 
-		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued) { return true; }
+		bool IIssueDeployOrder.CanIssueDeployOrder(bool queued) { return true; }
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			if (order.OrderString != "DetonateAttack" && order.OrderString != "Detonate")
 				return null;
@@ -132,20 +134,19 @@ namespace OpenRA.Mods.Cnc.Traits
 			return info.Voice;
 		}
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (order.OrderString == "DetonateAttack")
 			{
-				self.QueueActivity(order.Queued, new DetonationSequence(self, this, order.Target));
-				self.ShowTargetLines();
+				Actor.QueueActivity(order.Queued, new DetonationSequence(Actor, this, order.Target));
+				Actor.ShowTargetLines();
 			}
 			else if (order.OrderString == "Detonate")
-				self.QueueActivity(order.Queued, new DetonationSequence(self, this));
+				Actor.QueueActivity(order.Queued, new DetonationSequence(Actor, this));
 		}
 
 		class DetonationSequence : Activity
 		{
-			readonly Actor self;
 			readonly MadTank mad;
 			readonly IMove move;
 			readonly WithFacingSpriteBody wfsb;
@@ -161,8 +162,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 
 			public DetonationSequence(Actor self, MadTank mad, in Target target)
+				: base(self)
 			{
-				this.self = self;
 				this.mad = mad;
 				this.target = target;
 
@@ -170,20 +171,20 @@ namespace OpenRA.Mods.Cnc.Traits
 				wfsb = self.Trait<WithFacingSpriteBody>();
 			}
 
-			protected override void OnFirstRun(Actor self)
+			protected override void OnFirstRun()
 			{
 				if (assignTargetOnFirstRun)
-					target = Target.FromCell(self.World, self.Location);
+					target = Target.FromCell(Actor.World, Actor.Location);
 			}
 
-			public override bool Tick(Actor self)
+			public override bool Tick()
 			{
 				if (IsCanceling)
 					return true;
 
-				if (target.Type != TargetType.Invalid && !move.CanEnterTargetNow(self, target))
+				if (target.Type != TargetType.Invalid && !move.CanEnterTargetNow(target))
 				{
-					QueueChild(new MoveAdjacentTo(self, target, targetLineColor: Color.Red));
+					QueueChild(new MoveAdjacentTo(Actor, target, targetLineColor: Color.Red));
 					return false;
 				}
 
@@ -193,11 +194,11 @@ namespace OpenRA.Mods.Cnc.Traits
 					if (target.Type == TargetType.Invalid)
 						return true;
 
-					self.GrantCondition(mad.info.DeployedCondition);
+					Actor.GrantCondition(mad.info.DeployedCondition);
 
-					self.World.AddFrameEndTask(w => EjectDriver());
+					Actor.World.AddFrameEndTask(w => EjectDriver());
 					if (mad.info.ThumpSequence != null)
-						wfsb.PlayCustomAnimationRepeating(self, mad.info.ThumpSequence);
+						wfsb.PlayCustomAnimationRepeating(mad.info.ThumpSequence);
 
 					IsInterruptible = false;
 					mad.initiated = true;
@@ -208,46 +209,46 @@ namespace OpenRA.Mods.Cnc.Traits
 					if (mad.info.ThumpDamageWeapon != null)
 					{
 						// Use .FromPos since this weapon needs to affect more than just the MadTank actor
-						mad.info.ThumpDamageWeaponInfo.Impact(Target.FromPos(self.CenterPosition), self);
+						mad.info.ThumpDamageWeaponInfo.Impact(Target.FromPos(Actor.CenterPosition), Actor);
 					}
 				}
 
 				if (ticks == mad.info.ChargeDelay)
-					Game.Sound.Play(SoundType.World, mad.info.ChargeSound, self.CenterPosition);
+					Game.Sound.Play(SoundType.World, mad.info.ChargeSound, Actor.CenterPosition);
 
 				return ticks == mad.info.ChargeDelay + mad.info.DetonationDelay;
 			}
 
-			protected override void OnLastRun(Actor self)
+			protected override void OnLastRun()
 			{
 				if (!mad.initiated)
 					return;
 
-				Game.Sound.Play(SoundType.World, mad.info.DetonationSound, self.CenterPosition);
+				Game.Sound.Play(SoundType.World, mad.info.DetonationSound, Actor.CenterPosition);
 
-				self.World.AddFrameEndTask(w =>
+				Actor.World.AddFrameEndTask(w =>
 				{
 					if (mad.info.DetonationWeapon != null)
 					{
 						// Use .FromPos since this actor is killed. Cannot use Target.FromActor
-						mad.info.DetonationWeaponInfo.Impact(Target.FromPos(self.CenterPosition), self);
+						mad.info.DetonationWeaponInfo.Impact(Target.FromPos(Actor.CenterPosition), Actor);
 					}
 
-					self.Kill(self, mad.info.DamageTypes);
+					Actor.Kill(Actor, mad.info.DamageTypes);
 				});
 			}
 
-			public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+			public override IEnumerable<TargetLineNode> TargetLineNodes()
 			{
 				yield return new TargetLineNode(target, Color.Crimson);
 			}
 
 			void EjectDriver()
 			{
-				var driver = self.World.CreateActor(mad.info.DriverActor.ToLowerInvariant(), new TypeDictionary
+				var driver = Actor.World.CreateActor(mad.info.DriverActor.ToLowerInvariant(), new TypeDictionary
 				{
-					new LocationInit(self.Location),
-					new OwnerInit(self.Owner)
+					new LocationInit(Actor.Location),
+					new OwnerInit(Actor.Owner)
 				});
 				driver.TraitOrDefault<Mobile>()?.Nudge(driver);
 			}

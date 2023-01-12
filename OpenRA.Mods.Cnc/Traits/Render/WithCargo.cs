@@ -34,6 +34,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 
 	public class WithCargo : ITick, IRender, INotifyPassengerEntered, INotifyPassengerExited
 	{
+		public readonly Actor Actor;
 		readonly WithCargoInfo info;
 		readonly Cargo cargo;
 		readonly BodyOrientation body;
@@ -44,6 +45,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 
 		public WithCargo(Actor self, WithCargoInfo info)
 		{
+			Actor = self;
 			this.info = info;
 
 			cargo = self.Trait<Cargo>();
@@ -51,7 +53,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			facing = self.TraitOrDefault<IFacing>();
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			foreach (var actorPreviews in previews.Values)
 				if (actorPreviews != null)
@@ -63,15 +65,15 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			// (only) when the facing changes
 			if (facing.Facing != cachedFacing && previews.Count > 0)
 			{
-				self.World.ScreenMap.AddOrUpdate(self);
+				Actor.World.ScreenMap.AddOrUpdate(Actor);
 				cachedFacing = facing.Facing;
 			}
 		}
 
-		IEnumerable<IRenderable> IRender.Render(Actor self, WorldRenderer wr)
+		IEnumerable<IRenderable> IRender.Render(WorldRenderer wr)
 		{
-			var bodyOrientation = body.QuantizeOrientation(self.Orientation);
-			var pos = self.CenterPosition;
+			var bodyOrientation = body.QuantizeOrientation(Actor.Orientation);
+			var pos = Actor.CenterPosition;
 			var i = 0;
 
 			// Generate missing previews
@@ -89,7 +91,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 				};
 
 				foreach (var api in p.TraitsImplementing<IActorPreviewInitModifier>())
-					api.ModifyActorPreviewInit(p, passengerInits);
+					api.ModifyActorPreviewInit(passengerInits);
 
 				var init = new ActorPreviewInitializer(p.Info, wr, passengerInits);
 				previews[p] = p.Info.TraitInfos<IRenderActorPreviewInfo>()
@@ -113,9 +115,9 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			}
 		}
 
-		IEnumerable<Rectangle> IRender.ScreenBounds(Actor self, WorldRenderer wr)
+		IEnumerable<Rectangle> IRender.ScreenBounds(WorldRenderer wr)
 		{
-			var pos = self.CenterPosition;
+			var pos = Actor.CenterPosition;
 			foreach (var actorPreviews in previews.Values)
 				if (actorPreviews != null)
 					foreach (var p in actorPreviews)
@@ -123,19 +125,19 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 							yield return b;
 		}
 
-		void INotifyPassengerEntered.OnPassengerEntered(Actor self, Actor passenger)
+		void INotifyPassengerEntered.OnPassengerEntered(Actor passenger)
 		{
 			if (info.DisplayTypes.Contains(passenger.Trait<Passenger>().Info.CargoType))
 			{
 				previews.Add(passenger, null);
-				self.World.ScreenMap.AddOrUpdate(self);
+				Actor.World.ScreenMap.AddOrUpdate(Actor);
 			}
 		}
 
-		void INotifyPassengerExited.OnPassengerExited(Actor self, Actor passenger)
+		void INotifyPassengerExited.OnPassengerExited(Actor passenger)
 		{
 			previews.Remove(passenger);
-			self.World.ScreenMap.AddOrUpdate(self);
+			Actor.World.ScreenMap.AddOrUpdate(Actor);
 		}
 	}
 }

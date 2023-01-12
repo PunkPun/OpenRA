@@ -39,7 +39,7 @@ namespace OpenRA.Traits
 
 		void IWorldLoaded.WorldLoaded(World w, WorldRenderer wr) { worldRenderer = wr; }
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (shakeEffects.Count > 0)
 			{

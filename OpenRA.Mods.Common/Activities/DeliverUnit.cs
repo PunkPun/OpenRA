@@ -33,6 +33,7 @@ namespace OpenRA.Mods.Common.Activities
 		}
 
 		public DeliverUnit(Actor self, in Target destination, WDist deliverRange, Color? targetLineColor)
+			: base(self)
 		{
 			this.destination = destination;
 			this.deliverRange = deliverRange;
@@ -41,7 +42,7 @@ namespace OpenRA.Mods.Common.Activities
 			carryall = self.Trait<Carryall>();
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			// In case this activity was queued (either via queued order of via AutoCarryall)
 			// something might have happened to the cargo in the time between the activity being
@@ -50,15 +51,15 @@ namespace OpenRA.Mods.Common.Activities
 				return;
 
 			if (assignTargetOnFirstRun)
-				destination = Target.FromCell(self.World, self.Location);
+				destination = Target.FromCell(Actor.World, Actor.Location);
 
-			QueueChild(new Land(self, destination, deliverRange));
-			QueueChild(new Wait(carryall.Info.BeforeUnloadDelay, false));
-			QueueChild(new ReleaseUnit(self));
-			QueueChild(new TakeOff(self));
+			QueueChild(new Land(Actor, destination, deliverRange));
+			QueueChild(new Wait(Actor, carryall.Info.BeforeUnloadDelay, false));
+			QueueChild(new ReleaseUnit(Actor));
+			QueueChild(new TakeOff(Actor));
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 				yield return new TargetLineNode(destination, targetLineColor.Value);
@@ -71,29 +72,30 @@ namespace OpenRA.Mods.Common.Activities
 			readonly IFacing facing;
 
 			public ReleaseUnit(Actor self)
+				: base(self)
 			{
 				facing = self.Trait<IFacing>();
 				carryall = self.Trait<Carryall>();
 				body = self.Trait<BodyOrientation>();
 			}
 
-			protected override void OnFirstRun(Actor self)
+			protected override void OnFirstRun()
 			{
 				// HACK: Activities still tick between the actor being killed and being disposed
 				// Thus the carryable might have changed since queuing because the death handler set it to null
 				if (carryall.Carryable == null)
 					return;
 
-				var localOffset = carryall.CarryableOffset.Rotate(body.QuantizeOrientation(self.Orientation));
-				var targetPosition = self.CenterPosition + body.LocalToWorld(localOffset);
-				var targetLocation = self.World.Map.CellContaining(targetPosition);
-				carryall.Carryable.Trait<IPositionable>().SetPosition(carryall.Carryable, targetLocation, SubCell.FullCell);
+				var localOffset = carryall.CarryableOffset.Rotate(body.QuantizeOrientation(Actor.Orientation));
+				var targetPosition = Actor.CenterPosition + body.LocalToWorld(localOffset);
+				var targetLocation = Actor.World.Map.CellContaining(targetPosition);
+				carryall.Carryable.Trait<IPositionable>().SetPosition(targetLocation, SubCell.FullCell);
 				carryall.Carryable.Trait<IFacing>().Facing = facing.Facing;
 
 				// Put back into world
-				self.World.AddFrameEndTask(w =>
+				Actor.World.AddFrameEndTask(w =>
 				{
-					if (self.IsDead)
+					if (Actor.IsDead)
 						return;
 
 					var cargo = carryall.Carryable;
@@ -102,7 +104,7 @@ namespace OpenRA.Mods.Common.Activities
 
 					var carryable = cargo.Trait<Carryable>();
 					w.Add(cargo);
-					carryall.DetachCarryable(self);
+					carryall.DetachCarryable(Actor);
 					carryable.UnReserve(cargo);
 					carryable.Detached(cargo);
 				});

@@ -38,7 +38,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.info = info;
 		}
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (!info.Types.Overlaps(types))
 				return;

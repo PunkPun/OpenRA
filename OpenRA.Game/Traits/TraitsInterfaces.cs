@@ -54,8 +54,8 @@ namespace OpenRA.Traits
 		int DisplayHP { get; }
 		bool IsDead { get; }
 
-		void InflictDamage(Actor self, Actor attacker, Damage damage, bool ignoreModifiers);
-		void Kill(Actor self, Actor attacker, BitSet<DamageType> damageTypes);
+		void InflictDamage(Actor attacker, Damage damage, bool ignoreModifiers);
+		void Kill(Actor attacker, BitSet<DamageType> damageTypes);
 	}
 
 	[Flags]
@@ -103,23 +103,23 @@ namespace OpenRA.Traits
 	}
 
 	[RequireExplicitImplementation]
-	public interface ITick { void Tick(Actor self); }
+	public interface ITick { void Tick(); }
 	[RequireExplicitImplementation]
-	public interface ITickRender { void TickRender(WorldRenderer wr, Actor self); }
+	public interface ITickRender { void TickRender(WorldRenderer wr); }
 	public interface IRender
 	{
-		IEnumerable<IRenderable> Render(Actor self, WorldRenderer wr);
-		IEnumerable<Rectangle> ScreenBounds(Actor self, WorldRenderer wr);
+		IEnumerable<IRenderable> Render(WorldRenderer wr);
+		IEnumerable<Rectangle> ScreenBounds(WorldRenderer wr);
 	}
 
-	public interface IMouseBounds { Polygon MouseoverBounds(Actor self, WorldRenderer wr); }
+	public interface IMouseBounds { Polygon MouseoverBounds(WorldRenderer wr); }
 	public interface IMouseBoundsInfo : ITraitInfoInterface { }
-	public interface IAutoMouseBounds { Rectangle AutoMouseoverBounds(Actor self, WorldRenderer wr); }
+	public interface IAutoMouseBounds { Rectangle AutoMouseoverBounds(WorldRenderer wr); }
 
 	public interface IIssueOrder
 	{
 		IEnumerable<IOrderTargeter> Orders { get; }
-		Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued);
+		Order IssueOrder(IOrderTargeter order, in Target target, bool queued);
 	}
 
 	[Flags]
@@ -138,36 +138,36 @@ namespace OpenRA.Traits
 	{
 		string OrderID { get; }
 		int OrderPriority { get; }
-		bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor);
+		bool CanTarget(in Target target, ref TargetModifiers modifiers, ref string cursor);
 		bool IsQueued { get; }
-		bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers);
+		bool TargetOverridesSelection(in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers);
 	}
 
-	public interface IResolveOrder { void ResolveOrder(Actor self, Order order); }
+	public interface IResolveOrder { void ResolveOrder(Order order); }
 	public interface IValidateOrder { bool OrderValidation(OrderManager orderManager, World world, int clientId, Order order); }
-	public interface IOrderVoice { string VoicePhraseForOrder(Actor self, Order order); }
+	public interface IOrderVoice { string VoicePhraseForOrder(Order order); }
 
 	[RequireExplicitImplementation]
-	public interface INotifyCreated { void Created(Actor self); }
+	public interface INotifyCreated { void Created(); }
 
 	[RequireExplicitImplementation]
-	public interface INotifyAddedToWorld { void AddedToWorld(Actor self); }
+	public interface INotifyAddedToWorld { void AddedToWorld(); }
 	[RequireExplicitImplementation]
-	public interface INotifyRemovedFromWorld { void RemovedFromWorld(Actor self); }
+	public interface INotifyRemovedFromWorld { void RemovedFromWorld(); }
 
 	[RequireExplicitImplementation]
-	public interface INotifyActorDisposing { void Disposing(Actor self); }
-	public interface INotifyOwnerChanged { void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner); }
-	public interface INotifyEffectiveOwnerChanged { void OnEffectiveOwnerChanged(Actor self, Player oldEffectiveOwner, Player newEffectiveOwner); }
-	public interface INotifyOwnerLost { void OnOwnerLost(Actor self); }
+	public interface INotifyActorDisposing { void Disposing(); }
+	public interface INotifyOwnerChanged { void OnOwnerChanged(Player oldOwner, Player newOwner); }
+	public interface INotifyEffectiveOwnerChanged { void OnEffectiveOwnerChanged(Player oldEffectiveOwner, Player newEffectiveOwner); }
+	public interface INotifyOwnerLost { void OnOwnerLost(); }
 
 	[RequireExplicitImplementation]
 	public interface IVoiced
 	{
 		string VoiceSet { get; }
-		bool PlayVoice(Actor self, string phrase, string variant);
-		bool PlayVoiceLocal(Actor self, string phrase, string variant, float volume);
-		bool HasVoice(Actor self, string voice);
+		bool PlayVoice(string phrase, string variant);
+		bool PlayVoiceLocal(string phrase, string variant, float volume);
+		bool HasVoice(string voice);
 	}
 
 	[RequireExplicitImplementation]
@@ -200,8 +200,8 @@ namespace OpenRA.Traits
 	public interface IDisabledTrait { bool IsTraitDisabled { get; } }
 
 	public interface IDefaultVisibilityInfo : ITraitInfoInterface { }
-	public interface IDefaultVisibility { bool IsVisible(Actor self, Player byPlayer); }
-	public interface IVisibilityModifier { bool IsVisible(Actor self, Player byPlayer); }
+	public interface IDefaultVisibility { bool IsVisible(Player byPlayer); }
+	public interface IVisibilityModifier { bool IsVisible(Player byPlayer); }
 
 	public interface IActorMap
 	{
@@ -214,8 +214,8 @@ namespace OpenRA.Traits
 		bool AnyActorsAt(CPos a, SubCell sub, bool checkTransient = true);
 		bool AnyActorsAt(CPos a, SubCell sub, Func<Actor, bool> withCondition);
 		IEnumerable<Actor> AllActors();
-		void AddInfluence(Actor self, IOccupySpace ios);
-		void RemoveInfluence(Actor self, IOccupySpace ios);
+		void AddInfluence(IOccupySpace ios);
+		void RemoveInfluence(IOccupySpace ios);
 		int AddCellTrigger(CPos[] cells, Action<Actor> onEntry, Action<Actor> onExit);
 		IEnumerable<CPos> TriggerPositions();
 		void RemoveCellTrigger(int id);
@@ -237,11 +237,11 @@ namespace OpenRA.Traits
 	[RequireExplicitImplementation]
 	public interface IRenderModifier
 	{
-		IEnumerable<IRenderable> ModifyRender(Actor self, WorldRenderer wr, IEnumerable<IRenderable> r);
+		IEnumerable<IRenderable> ModifyRender(WorldRenderer wr, IEnumerable<IRenderable> r);
 
 		// HACK: This is here to support the WithShadow trait.
 		// That trait should be rewritten using standard techniques, and then this interface method removed
-		IEnumerable<Rectangle> ModifyScreenBounds(Actor self, WorldRenderer wr, IEnumerable<Rectangle> r);
+		IEnumerable<Rectangle> ModifyScreenBounds(WorldRenderer wr, IEnumerable<Rectangle> r);
 	}
 
 	[RequireExplicitImplementation]
@@ -266,8 +266,8 @@ namespace OpenRA.Traits
 
 	public interface ISelectionDecorations
 	{
-		IEnumerable<IRenderable> RenderSelectionAnnotations(Actor self, WorldRenderer worldRenderer, Color color);
-		int2 GetDecorationOrigin(Actor self, WorldRenderer wr, string pos, int2 margin);
+		IEnumerable<IRenderable> RenderSelectionAnnotations(WorldRenderer worldRenderer, Color color);
+		int2 GetDecorationOrigin(WorldRenderer wr, string pos, int2 margin);
 	}
 
 	public interface IMapPreviewSignatureInfo : ITraitInfoInterface
@@ -295,8 +295,8 @@ namespace OpenRA.Traits
 	[RequireExplicitImplementation]
 	public interface ITemporaryBlocker
 	{
-		bool CanRemoveBlockage(Actor self, Actor blocking);
-		bool IsBlocking(Actor self, CPos cell);
+		bool CanRemoveBlockage(Actor blocking);
+		bool IsBlocking(CPos cell);
 	}
 
 	public interface IFacing
@@ -310,6 +310,12 @@ namespace OpenRA.Traits
 
 	public interface ITraitInfoInterface { }
 
+	// public abstract class Trait<T> where T : TraitInfo
+	// {
+	// 	public readonly T Info;
+	// 	public readonly Actor Actor;
+	// 	public Trait(T info, ActorInitializer init) { Info = info; Actor = init.Self; }
+	// }
 	public abstract class TraitInfo : ITraitInfoInterface
 	{
 		// Value is set using reflection during TraitInfo creation
@@ -335,7 +341,7 @@ namespace OpenRA.Traits
 	public interface IActivityInterface { }
 
 	[RequireExplicitImplementation]
-	public interface INotifySelected { void Selected(Actor self); }
+	public interface INotifySelected { void Selected(); }
 	[RequireExplicitImplementation]
 	public interface INotifySelection { void SelectionChanged(); }
 
@@ -346,8 +352,8 @@ namespace OpenRA.Traits
 
 	public interface IGameSaveTraitData
 	{
-		List<MiniYamlNode> IssueTraitData(Actor self);
-		void ResolveTraitData(Actor self, List<MiniYamlNode> data);
+		List<MiniYamlNode> IssueTraitData();
+		void ResolveTraitData(List<MiniYamlNode> data);
 	}
 
 	[RequireExplicitImplementation]
@@ -391,12 +397,12 @@ namespace OpenRA.Traits
 	public interface IRenderOverlay { void Render(WorldRenderer wr); }
 
 	[RequireExplicitImplementation]
-	public interface INotifyBecomingIdle { void OnBecomingIdle(Actor self); }
+	public interface INotifyBecomingIdle { void OnBecomingIdle(); }
 
 	[RequireExplicitImplementation]
-	public interface INotifyIdle { void TickIdle(Actor self); }
+	public interface INotifyIdle { void TickIdle(); }
 
-	public interface IRenderAboveWorld { void RenderAboveWorld(Actor self, WorldRenderer wr); }
+	public interface IRenderAboveWorld { void RenderAboveWorld(WorldRenderer wr); }
 	public interface IRenderShroud { void RenderShroud(WorldRenderer wr); }
 
 	[RequireExplicitImplementation]
@@ -411,25 +417,25 @@ namespace OpenRA.Traits
 
 	public interface IRenderAboveShroud
 	{
-		IEnumerable<IRenderable> RenderAboveShroud(Actor self, WorldRenderer wr);
+		IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr);
 		bool SpatiallyPartitionable { get; }
 	}
 
 	public interface IRenderAboveShroudWhenSelected
 	{
-		IEnumerable<IRenderable> RenderAboveShroud(Actor self, WorldRenderer wr);
+		IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr);
 		bool SpatiallyPartitionable { get; }
 	}
 
 	public interface IRenderAnnotations
 	{
-		IEnumerable<IRenderable> RenderAnnotations(Actor self, WorldRenderer wr);
+		IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr);
 		bool SpatiallyPartitionable { get; }
 	}
 
 	public interface IRenderAnnotationsWhenSelected
 	{
-		IEnumerable<IRenderable> RenderAnnotations(Actor self, WorldRenderer wr);
+		IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr);
 		bool SpatiallyPartitionable { get; }
 	}
 
@@ -496,14 +502,14 @@ namespace OpenRA.Traits
 	{
 		// Check IsTraitEnabled or !IsTraitDisabled first
 		BitSet<TargetableType> TargetTypes { get; }
-		bool TargetableBy(Actor self, Actor byActor);
+		bool TargetableBy(Actor byActor);
 		bool RequiresForceFire { get; }
 	}
 
 	[RequireExplicitImplementation]
 	public interface ITargetablePositions
 	{
-		IEnumerable<WPos> TargetablePositions(Actor self);
+		IEnumerable<WPos> TargetablePositions();
 	}
 
 	public interface IMoveInfo : ITraitInfoInterface
@@ -587,7 +593,7 @@ namespace OpenRA.Traits
 	[RequireExplicitImplementation]
 	public interface IObservesVariablesInfo : ITraitInfoInterface { }
 
-	public delegate void VariableObserverNotifier(Actor self, IReadOnlyDictionary<string, int> variables);
+	public delegate void VariableObserverNotifier(IReadOnlyDictionary<string, int> variables);
 	public struct VariableObserver
 	{
 		public VariableObserverNotifier Notifier;
@@ -607,6 +613,6 @@ namespace OpenRA.Traits
 	[RequireExplicitImplementation]
 	public interface INotifyPlayerDisconnected
 	{
-		void PlayerDisconnected(Actor self, Player p);
+		void PlayerDisconnected(Player p);
 	}
 }

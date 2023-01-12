@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("How often the cash ticks can appear.")]
 		public readonly int TickRate = 10;
 
-		public override object Create(ActorInitializer init) { return new ResourcePurifier(this); }
+		public override object Create(ActorInitializer init) { return new ResourcePurifier(this, init.Self); }
 	}
 
 	public class ResourcePurifier : ConditionalTrait<ResourcePurifierInfo>, INotifyResourceAccepted, ITick, INotifyOwnerChanged
@@ -42,21 +42,21 @@ namespace OpenRA.Mods.Cnc.Traits
 		int currentDisplayTick;
 		int currentDisplayValue;
 
-		public ResourcePurifier(ResourcePurifierInfo info)
-			: base(info)
+		public ResourcePurifier(ResourcePurifierInfo info, Actor self)
+			: base(info, self)
 		{
 			modifier = new int[] { Info.Modifier };
 			currentDisplayTick = Info.TickRate;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			playerResources = self.Owner.PlayerActor.Trait<PlayerResources>();
+			playerResources = Actor.Owner.PlayerActor.Trait<PlayerResources>();
 
-			base.Created(self);
+			base.Created();
 		}
 
-		void INotifyResourceAccepted.OnResourceAccepted(Actor self, Actor refinery, string resourceType, int count, int value)
+		void INotifyResourceAccepted.OnResourceAccepted(Actor refinery, string resourceType, int count, int value)
 		{
 			if (IsTraitDisabled)
 				return;
@@ -64,24 +64,24 @@ namespace OpenRA.Mods.Cnc.Traits
 			var cash = Common.Util.ApplyPercentageModifiers(value, modifier);
 			playerResources.GiveCash(cash);
 
-			if (Info.ShowTicks && self.Info.HasTraitInfo<IOccupySpaceInfo>())
+			if (Info.ShowTicks && Actor.Info.HasTraitInfo<IOccupySpaceInfo>())
 				currentDisplayValue += cash;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (currentDisplayValue > 0 && --currentDisplayTick <= 0)
 			{
 				var temp = currentDisplayValue;
-				if (self.Owner.IsAlliedWith(self.World.RenderPlayer))
-					self.World.AddFrameEndTask(w => w.Add(new FloatingText(self.CenterPosition, self.Owner.Color, FloatingText.FormatCashTick(temp), Info.TickLifetime)));
+				if (Actor.Owner.IsAlliedWith(Actor.World.RenderPlayer))
+					Actor.World.AddFrameEndTask(w => w.Add(new FloatingText(Actor.CenterPosition, Actor.Owner.Color, FloatingText.FormatCashTick(temp), Info.TickLifetime)));
 
 				currentDisplayTick = Info.TickRate;
 				currentDisplayValue = 0;
 			}
 		}
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
 			playerResources = newOwner.PlayerActor.Trait<PlayerResources>();
 			currentDisplayTick = Info.TickRate;

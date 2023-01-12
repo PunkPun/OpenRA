@@ -81,6 +81,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 	public class WithBuildingBib : INotifyAddedToWorld, INotifyRemovedFromWorld
 	{
+		public readonly Actor Actor;
 		readonly WithBuildingBibInfo info;
 		readonly RenderSprites rs;
 		readonly BuildingInfo bi;
@@ -89,23 +90,24 @@ namespace OpenRA.Mods.Cnc.Traits
 		public WithBuildingBib(Actor self, WithBuildingBibInfo info)
 		{
 			this.info = info;
+			Actor = self;
 			rs = self.Trait<RenderSprites>();
 			bi = self.Info.TraitInfo<BuildingInfo>();
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
 			var rows = info.HasMinibib ? 1 : 2;
 			var width = bi.Dimensions.X;
 			var bibOffset = bi.Dimensions.Y - rows;
-			var centerOffset = bi.CenterOffset(self.World);
-			var location = self.Location;
-			var map = self.World.Map;
+			var centerOffset = bi.CenterOffset(Actor.World);
+			var location = Actor.Location;
+			var map = Actor.World.Map;
 
 			for (var i = 0; i < rows * width; i++)
 			{
 				var index = i;
-				var anim = new Animation(self.World, rs.GetImage(self));
+				var anim = new Animation(Actor.World, rs.GetImage(Actor));
 				var cellOffset = new CVec(i % width, i / width + bibOffset);
 				var cell = location + cellOffset;
 
@@ -117,14 +119,14 @@ namespace OpenRA.Mods.Cnc.Traits
 				anim.IsDecoration = true;
 
 				// Z-order is one set to the top of the footprint
-				var offset = self.World.Map.CenterOfCell(cell) - self.World.Map.CenterOfCell(location) - centerOffset;
-				var awo = new AnimationWithOffset(anim, () => offset, null, -(offset.Y + centerOffset.Y + 512));
+				var offset = Actor.World.Map.CenterOfCell(cell) - Actor.World.Map.CenterOfCell(location) - centerOffset;
+				var awo = new AnimationWithOffset(Actor, anim, () => offset, null, -(offset.Y + centerOffset.Y + 512));
 				anims.Add(awo);
 				rs.Add(awo, info.Palette);
 			}
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
 			foreach (var a in anims)
 				rs.Remove(a);

@@ -23,32 +23,33 @@ namespace OpenRA.Mods.Common.Activities
 		readonly bool moving;
 
 		public DeployForGrantedCondition(Actor self, GrantConditionOnDeploy deploy, bool moving = false)
+			: base(self)
 		{
 			this.deploy = deploy;
 			this.moving = moving;
 			canTurn = self.Info.HasTraitInfo<IFacingInfo>();
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			// Turn to the required facing.
 			if (deploy.DeployState == DeployState.Undeployed && deploy.Info.Facing.HasValue && canTurn && !moving)
-				QueueChild(new Turn(self, deploy.Info.Facing.Value));
+				QueueChild(new Turn(Actor, deploy.Info.Facing.Value));
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling || (deploy.DeployState != DeployState.Deployed && moving))
 				return true;
 
-			QueueChild(new DeployInner(deploy));
+			QueueChild(new DeployInner(Actor, deploy));
 			return true;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (NextActivity != null)
-				foreach (var n in NextActivity.TargetLineNodes(self))
+				foreach (var n in NextActivity.TargetLineNodes())
 					yield return n;
 
 			yield break;
@@ -60,7 +61,8 @@ namespace OpenRA.Mods.Common.Activities
 		readonly GrantConditionOnDeploy deployment;
 		bool initiated;
 
-		public DeployInner(GrantConditionOnDeploy deployment)
+		public DeployInner(Actor self, GrantConditionOnDeploy deployment)
+			: base(self)
 		{
 			this.deployment = deployment;
 
@@ -68,7 +70,7 @@ namespace OpenRA.Mods.Common.Activities
 			IsInterruptible = false;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Wait for deployment
 			if (deployment.DeployState == DeployState.Deploying || deployment.DeployState == DeployState.Undeploying)

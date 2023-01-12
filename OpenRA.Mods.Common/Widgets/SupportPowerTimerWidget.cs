@@ -45,14 +45,14 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			var displayedPowers = powers.Where(p =>
 			{
-				var owner = p.Instances[0].Self.Owner;
+				var owner = p.Instances[0].Actor.Owner;
 				var viewer = owner.World.RenderPlayer ?? owner.World.LocalPlayer;
 				return viewer == null || p.Info.DisplayTimerRelationships.HasRelationship(owner.RelationshipWith(viewer));
 			});
 
 			texts = displayedPowers.Select(p =>
 			{
-				var self = p.Instances[0].Self;
+				var self = p.Instances[0].Actor;
 				var time = WidgetUtils.FormatTime(p.RemainingTicks, false, self.World.Timestep);
 				var text = Format.F(p.Info.Name, time);
 				var playerColor = self.Owner.Color;

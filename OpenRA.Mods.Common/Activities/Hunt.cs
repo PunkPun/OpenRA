@@ -23,6 +23,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly IMove move;
 
 		public Hunt(Actor self)
+			: base(self)
 		{
 			move = self.Trait<IMove>();
 			var attack = self.Trait<AttackBase>();
@@ -31,17 +32,17 @@ namespace OpenRA.Mods.Common.Activities
 				&& a.IsTargetableBy(self) && attack.HasAnyValidWeapons(Target.FromActor(a)));
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling)
 				return true;
 
-			var target = targets.ClosestTo(self);
+			var target = targets.ClosestTo(Actor);
 			if (target == null)
 				return false;
 
-			QueueChild(new AttackMoveActivity(self, () => move.MoveTo(target.Location, 2)));
-			QueueChild(new Wait(25));
+			QueueChild(new AttackMoveActivity(Actor, () => move.MoveTo(target.Location, 2)));
+			QueueChild(new Wait(Actor, 25));
 			return false;
 		}
 	}

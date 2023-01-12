@@ -59,7 +59,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		readonly bool skippedMakeAnimation;
 
 		public AttackPopupTurreted(ActorInitializer init, AttackPopupTurretedInfo info)
-			: base(init.Self, info)
+			: base(info, init.Self)
 		{
 			this.info = info;
 			turret = turrets.FirstOrDefault();
@@ -67,20 +67,20 @@ namespace OpenRA.Mods.Cnc.Traits
 			skippedMakeAnimation = init.Contains<SkipMakeAnimsInit>(info);
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			base.Created(self);
+			base.Created();
 
 			// Map placed actors are created in the closed state
 			if (skippedMakeAnimation)
 			{
 				state = PopupState.Closed;
-				wsb.PlayCustomAnimationRepeating(self, info.ClosedIdleSequence);
-				turret.FaceTarget(self, Target.Invalid);
+				wsb.PlayCustomAnimationRepeating(info.ClosedIdleSequence);
+				turret.FaceTarget(Target.Invalid);
 			}
 		}
 
-		protected override bool CanAttack(Actor self, in Target target)
+		protected override bool CanAttack(in Target target)
 		{
 			if (IsTraitPaused)
 				return false;
@@ -88,23 +88,23 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (state == PopupState.Closed)
 			{
 				state = PopupState.Transitioning;
-				wsb.PlayCustomAnimation(self, info.OpeningSequence, () =>
+				wsb.PlayCustomAnimation(info.OpeningSequence, () =>
 				{
 					state = PopupState.Open;
-					wsb.PlayCustomAnimationRepeating(self, wsb.Info.Sequence);
+					wsb.PlayCustomAnimationRepeating(wsb.Info.Sequence);
 				});
 
 				idleTicks = 0;
 			}
 
-			if (state == PopupState.Transitioning || !base.CanAttack(self, target))
+			if (state == PopupState.Transitioning || !base.CanAttack(target))
 				return false;
 
 			idleTicks = 0;
 			return true;
 		}
 
-		void INotifyIdle.TickIdle(Actor self)
+		void INotifyIdle.TickIdle()
 		{
 			if (IsTraitDisabled || IsTraitPaused)
 				return;
@@ -112,17 +112,17 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (state == PopupState.Open && idleTicks++ > info.CloseDelay)
 			{
 				var facingOffset = new WVec(0, -1024, 0).Rotate(WRot.FromYaw(info.DefaultFacing));
-				turret.FaceTarget(self, Target.FromPos(self.CenterPosition + facingOffset));
+				turret.FaceTarget(Target.FromPos(Actor.CenterPosition + facingOffset));
 				state = PopupState.Rotating;
 			}
 			else if (state == PopupState.Rotating && turret.HasAchievedDesiredFacing)
 			{
 				state = PopupState.Transitioning;
-				wsb.PlayCustomAnimation(self, info.ClosingSequence, () =>
+				wsb.PlayCustomAnimation(info.ClosingSequence, () =>
 				{
 					state = PopupState.Closed;
-					wsb.PlayCustomAnimationRepeating(self, info.ClosedIdleSequence);
-					turret.FaceTarget(self, Target.Invalid);
+					wsb.PlayCustomAnimationRepeating(info.ClosedIdleSequence);
+					turret.FaceTarget(Target.Invalid);
 				});
 			}
 		}

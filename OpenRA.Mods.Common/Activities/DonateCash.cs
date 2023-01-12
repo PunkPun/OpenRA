@@ -28,25 +28,25 @@ namespace OpenRA.Mods.Common.Activities
 			this.playerExperience = playerExperience;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
 			var targetOwner = targetActor.Owner;
 			var donated = targetOwner.PlayerActor.Trait<PlayerResources>().ChangeCash(payload);
 
-			var exp = self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
-			if (exp != null && targetOwner != self.Owner)
+			var exp = Actor.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
+			if (exp != null && targetOwner != Actor.Owner)
 				exp.GiveExperience(playerExperience);
 
-			if (self.Owner.IsAlliedWith(self.World.RenderPlayer))
-				self.World.AddFrameEndTask(w => w.Add(new FloatingText(targetActor.CenterPosition, targetOwner.Color, FloatingText.FormatCashTick(donated), 30)));
+			if (Actor.Owner.IsAlliedWith(Actor.World.RenderPlayer))
+				Actor.World.AddFrameEndTask(w => w.Add(new FloatingText(targetActor.CenterPosition, targetOwner.Color, FloatingText.FormatCashTick(donated), 30)));
 
 			foreach (var nct in targetActor.TraitsImplementing<INotifyCashTransfer>())
-				nct.OnAcceptingCash(targetActor, self);
+				nct.OnAcceptingCash(Actor);
 
-			foreach (var nct in self.TraitsImplementing<INotifyCashTransfer>())
-				nct.OnDeliveringCash(self, targetActor);
+			foreach (var nct in Actor.TraitsImplementing<INotifyCashTransfer>())
+				nct.OnDeliveringCash(targetActor);
 
-			self.Dispose();
+			Actor.Dispose();
 		}
 	}
 }

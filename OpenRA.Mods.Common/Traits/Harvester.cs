@@ -296,6 +296,7 @@ namespace OpenRA.Mods.Common.Traits
 					yield break;
 
 				yield return new EnterAlliedActorTargeter<IAcceptResourcesInfo>(
+					Actor,
 					"Deliver",
 					5,
 					Info.EnterCursor,

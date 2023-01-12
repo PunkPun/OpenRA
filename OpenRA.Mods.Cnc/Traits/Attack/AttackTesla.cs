@@ -36,7 +36,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Sound to play when actor charges.")]
 		public readonly string ChargeAudio = null;
 
-		public override object Create(ActorInitializer init) { return new AttackTesla(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new AttackTesla(this, init.Self); }
 	}
 
 	class AttackTesla : AttackBase, ITick, INotifyAttack
@@ -49,38 +49,38 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Sync]
 		int timeToRecharge;
 
-		public AttackTesla(Actor self, AttackTeslaInfo info)
-			: base(self, info)
+		public AttackTesla(AttackTeslaInfo info, Actor self)
+			: base(info, self)
 		{
 			this.info = info;
 			charges = info.MaxCharges;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (--timeToRecharge <= 0)
 				charges = info.MaxCharges;
 		}
 
-		protected override bool CanAttack(Actor self, in Target target)
+		protected override bool CanAttack(in Target target)
 		{
 			if (!IsReachableTarget(target, true))
 				return false;
 
-			return base.CanAttack(self, target);
+			return base.CanAttack(target);
 		}
 
-		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
+		void INotifyAttack.Attacking(in Target target, Armament a, Barrel barrel)
 		{
 			--charges;
 			timeToRecharge = info.ReloadDelay;
 		}
 
-		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
+		void INotifyAttack.PreparingAttack(in Target target, Armament a, Barrel barrel) { }
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
+		public override Activity GetAttackActivity(AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
 		{
-			return new ChargeAttack(this, newTarget, forceAttack, targetLineColor);
+			return new ChargeAttack(Actor, this, newTarget, forceAttack, targetLineColor);
 		}
 
 		class ChargeAttack : Activity, IActivityNotifyStanceChanged
@@ -90,7 +90,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			readonly bool forceAttack;
 			readonly Color? targetLineColor;
 
-			public ChargeAttack(AttackTesla attack, in Target target, bool forceAttack, Color? targetLineColor = null)
+			public ChargeAttack(Actor self, AttackTesla attack, in Target target, bool forceAttack, Color? targetLineColor = null)
+				: base(self)
 			{
 				this.attack = attack;
 				this.target = target;
@@ -98,26 +99,26 @@ namespace OpenRA.Mods.Cnc.Traits
 				this.targetLineColor = targetLineColor;
 			}
 
-			public override bool Tick(Actor self)
+			public override bool Tick()
 			{
-				if (IsCanceling || !attack.CanAttack(self, target))
+				if (IsCanceling || !attack.CanAttack(target))
 					return true;
 
 				if (attack.charges == 0)
 					return false;
 
-				foreach (var notify in self.TraitsImplementing<INotifyTeslaCharging>())
-					notify.Charging(self, target);
+				foreach (var notify in Actor.TraitsImplementing<INotifyTeslaCharging>())
+					notify.Charging(target);
 
 				if (!string.IsNullOrEmpty(attack.info.ChargeAudio))
-					Game.Sound.Play(SoundType.World, attack.info.ChargeAudio, self.CenterPosition);
+					Game.Sound.Play(SoundType.World, attack.info.ChargeAudio, Actor.CenterPosition);
 
-				QueueChild(new Wait(attack.info.InitialChargeDelay));
-				QueueChild(new ChargeFire(attack, target));
+				QueueChild(new Wait(Actor, attack.info.InitialChargeDelay));
+				QueueChild(new ChargeFire(Actor, attack, target));
 				return false;
 			}
 
-			void IActivityNotifyStanceChanged.StanceChanged(Actor self, AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
+			void IActivityNotifyStanceChanged.StanceChanged(AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
 			{
 				// Cancel non-forced targets when switching to a more restrictive stance if they are no longer valid for auto-targeting
 				if (newStance > oldStance || forceAttack)
@@ -126,18 +127,18 @@ namespace OpenRA.Mods.Cnc.Traits
 				if (target.Type == TargetType.Actor)
 				{
 					var a = target.Actor;
-					if (!autoTarget.HasValidTargetPriority(self, a.Owner, a.GetEnabledTargetTypes()))
-						Cancel(self, true);
+					if (!autoTarget.HasValidTargetPriority(a.Owner, a.GetEnabledTargetTypes()))
+						Cancel(true);
 				}
 				else if (target.Type == TargetType.FrozenActor)
 				{
 					var fa = target.FrozenActor;
-					if (!autoTarget.HasValidTargetPriority(self, fa.Owner, fa.TargetTypes))
-						Cancel(self, true);
+					if (!autoTarget.HasValidTargetPriority(fa.Owner, fa.TargetTypes))
+						Cancel(true);
 				}
 			}
 
-			public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+			public override IEnumerable<TargetLineNode> TargetLineNodes()
 			{
 				if (targetLineColor != null)
 					yield return new TargetLineNode(target, targetLineColor.Value);
@@ -149,23 +150,24 @@ namespace OpenRA.Mods.Cnc.Traits
 			readonly AttackTesla attack;
 			readonly Target target;
 
-			public ChargeFire(AttackTesla attack, in Target target)
+			public ChargeFire(Actor self, AttackTesla attack, in Target target)
+				: base(self)
 			{
 				this.attack = attack;
 				this.target = target;
 			}
 
-			public override bool Tick(Actor self)
+			public override bool Tick()
 			{
-				if (IsCanceling || !attack.CanAttack(self, target))
+				if (IsCanceling || !attack.CanAttack(target))
 					return true;
 
 				if (attack.charges == 0)
 					return true;
 
-				attack.DoAttack(self, target);
+				attack.DoAttack(target);
 
-				QueueChild(new Wait(attack.info.ChargeDelay));
+				QueueChild(new Wait(Actor, attack.info.ChargeDelay));
 				return false;
 			}
 		}

@@ -64,10 +64,10 @@ namespace OpenRA.Mods.Cnc.Traits
 	public class ConyardChronoReturn : ITick, ISync, IObservesVariables, ISelectionBar, INotifySold,
 		IDeathActorInitModifier, ITransformActorInitModifier
 	{
+		public readonly Actor Actor;
 		readonly ConyardChronoReturnInfo info;
 		readonly WithSpriteBody wsb;
 		readonly Health health;
-		readonly Actor self;
 		readonly string faction;
 
 		int conditionToken = Actor.InvalidConditionToken;
@@ -89,12 +89,12 @@ namespace OpenRA.Mods.Cnc.Traits
 		public ConyardChronoReturn(ActorInitializer init, ConyardChronoReturnInfo info)
 		{
 			this.info = info;
-			self = init.Self;
+			Actor = init.Self;
 
-			health = self.Trait<Health>();
+			health = Actor.Trait<Health>();
 
-			wsb = self.TraitsImplementing<WithSpriteBody>().Single(w => w.Info.Name == info.Body);
-			faction = init.GetValue<FactionInit, string>(self.Owner.Faction.InternalName);
+			wsb = Actor.TraitsImplementing<WithSpriteBody>().Single(w => w.Info.Name == info.Body);
+			faction = init.GetValue<FactionInit, string>(Actor.Owner.Faction.InternalName);
 
 			var returnInit = init.GetOrDefault<ChronoshiftReturnInit>();
 			if (returnInit != null)
@@ -115,7 +115,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				yield return new VariableObserver(ReplacementConditionChanged, info.ReturnOriginalActorOnCondition.Variables);
 		}
 
-		void ReplacementConditionChanged(Actor self, IReadOnlyDictionary<string, int> conditions)
+		void ReplacementConditionChanged(IReadOnlyDictionary<string, int> conditions)
 		{
 			returnOriginal = info.ReturnOriginalActorOnCondition.Evaluate(conditions);
 		}
@@ -123,7 +123,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		void TriggerVortex()
 		{
 			if (conditionToken == Actor.InvalidConditionToken)
-				conditionToken = self.GrantCondition(info.Condition);
+				conditionToken = Actor.GrantCondition(info.Condition);
 
 			triggered = true;
 
@@ -131,11 +131,11 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (selling)
 				return;
 
-			wsb.PlayCustomAnimation(self, info.Sequence, () =>
+			wsb.PlayCustomAnimation(info.Sequence, () =>
 			{
 				triggered = false;
 				if (conditionToken != Actor.InvalidConditionToken)
-					conditionToken = self.RevokeCondition(conditionToken);
+					conditionToken = Actor.RevokeCondition(conditionToken);
 			});
 		}
 
@@ -144,12 +144,12 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (chronosphere == null)
 				return null;
 
-			if (mobileInfo.CanEnterCell(self.World, null, destination))
+			if (mobileInfo.CanEnterCell(Actor.World, destination))
 				return destination;
 
 			var max = chronosphere.World.Map.Grid.MaximumTileSearchRange;
-			foreach (var tile in self.World.Map.FindTilesInCircle(destination, max))
-				if (chronosphere.Owner.Shroud.IsExplored(tile) && mobileInfo.CanEnterCell(self.World, null, tile))
+			foreach (var tile in Actor.World.Map.FindTilesInCircle(destination, max))
+				if (chronosphere.Owner.Shroud.IsExplored(tile) && mobileInfo.CanEnterCell(Actor.World, tile))
 					return tile;
 
 			return null;
@@ -157,9 +157,9 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		void ReturnToOrigin()
 		{
-			var selected = self.World.Selection.Contains(self);
-			var controlgroup = self.World.ControlGroups.GetControlGroupForActor(self);
-			var mobileInfo = self.World.Map.Rules.Actors[info.OriginalActor].TraitInfo<MobileInfo>();
+			var selected = Actor.World.Selection.Contains(Actor);
+			var controlgroup = Actor.World.ControlGroups.GetControlGroupForActor(Actor);
+			var mobileInfo = Actor.World.Map.Rules.Actors[info.OriginalActor].TraitInfo<MobileInfo>();
 			var destination = ChooseBestDestinationCell(mobileInfo, origin);
 
 			// Give up if there is no destination
@@ -167,42 +167,42 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (destination == null)
 				return;
 
-			foreach (var nt in self.TraitsImplementing<INotifyTransform>())
-				nt.OnTransform(self);
+			foreach (var nt in Actor.TraitsImplementing<INotifyTransform>())
+				nt.OnTransform();
 
 			var init = new TypeDictionary
 			{
 				new LocationInit(destination.Value),
-				new OwnerInit(self.Owner),
+				new OwnerInit(Actor.Owner),
 				new FacingInit(info.Facing),
 				new FactionInit(faction),
 				new HealthInit((int)(health.HP * 100L / health.MaxHP))
 			};
 
-			foreach (var modifier in self.TraitsImplementing<ITransformActorInitModifier>())
-				modifier.ModifyTransformActorInit(self, init);
+			foreach (var modifier in Actor.TraitsImplementing<ITransformActorInitModifier>())
+				modifier.ModifyTransformActorInit(init);
 
-			var a = self.World.CreateActor(info.OriginalActor, init);
-			foreach (var nt in self.TraitsImplementing<INotifyTransform>())
+			var a = Actor.World.CreateActor(info.OriginalActor, init);
+			foreach (var nt in Actor.TraitsImplementing<INotifyTransform>())
 				nt.AfterTransform(a);
 
 			if (selected)
-				self.World.Selection.Add(a);
+				Actor.World.Selection.Add(a);
 
 			if (controlgroup.HasValue)
-				self.World.ControlGroups.AddToControlGroup(a, controlgroup.Value);
+				Actor.World.ControlGroups.AddToControlGroup(a, controlgroup.Value);
 
-			Game.Sound.Play(SoundType.World, info.ChronoshiftSound, self.World.Map.CenterOfCell(destination.Value));
-			self.Dispose();
+			Game.Sound.Play(SoundType.World, info.ChronoshiftSound, Actor.World.Map.CenterOfCell(destination.Value));
+			Actor.Dispose();
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			if (self.WillDispose)
+			if (Actor.WillDispose)
 				return;
 
 			if (triggered)
-				health.InflictDamage(self, chronosphere, new Damage(info.Damage, info.DamageTypes), true);
+				health.InflictDamage(Actor, chronosphere, new Damage(info.Damage, info.DamageTypes), true);
 
 			if (returnTicks <= 0 || --returnTicks > 0)
 				return;
@@ -213,16 +213,16 @@ namespace OpenRA.Mods.Cnc.Traits
 				TriggerVortex();
 
 			// Trigger screen desaturate effect
-			foreach (var cpa in self.World.ActorsWithTrait<ChronoshiftPaletteEffect>())
+			foreach (var cpa in Actor.World.ActorsWithTrait<ChronoshiftPaletteEffect>())
 				cpa.Trait.Enable();
 
-			Game.Sound.Play(SoundType.World, info.ChronoshiftSound, self.CenterPosition);
+			Game.Sound.Play(SoundType.World, info.ChronoshiftSound, Actor.CenterPosition);
 
-			if (chronosphere != null && self != chronosphere && !chronosphere.Disposed)
+			if (chronosphere != null && Actor != chronosphere && !chronosphere.Disposed)
 			{
 				var building = chronosphere.TraitOrDefault<WithSpriteBody>();
 				if (building != null && building.DefaultAnimation.HasSequence("active"))
-					building.PlayCustomAnimation(chronosphere, "active");
+					building.PlayCustomAnimation("active");
 			}
 		}
 
@@ -234,11 +234,11 @@ namespace OpenRA.Mods.Cnc.Traits
 			init.Add(new ChronoshiftReturnInit(returnTicks, duration, origin, chronosphere));
 		}
 
-		void IDeathActorInitModifier.ModifyDeathActorInit(Actor self, TypeDictionary init) { ModifyActorInit(init); }
-		void ITransformActorInitModifier.ModifyTransformActorInit(Actor self, TypeDictionary init) { ModifyActorInit(init); }
+		void IDeathActorInitModifier.ModifyDeathActorInit(TypeDictionary init) { ModifyActorInit(init); }
+		void ITransformActorInitModifier.ModifyTransformActorInit(TypeDictionary init) { ModifyActorInit(init); }
 
-		void INotifySold.Sold(Actor self) { }
-		void INotifySold.Selling(Actor self)
+		void INotifySold.Sold() { }
+		void INotifySold.Selling()
 		{
 			selling = true;
 		}
@@ -247,7 +247,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		float ISelectionBar.GetValue()
 		{
 			// Otherwise an empty bar is rendered all the time
-			if (returnTicks == 0 || !self.Owner.IsAlliedWith(self.World.RenderPlayer))
+			if (returnTicks == 0 || !Actor.Owner.IsAlliedWith(Actor.World.RenderPlayer))
 				return 0f;
 
 			return (float)returnTicks / duration;

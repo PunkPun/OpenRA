@@ -43,46 +43,46 @@ namespace OpenRA.Mods.Common.Activities
 			this.enterBehaviour = enterBehaviour;
 		}
 
-		protected override bool TryStartEnter(Actor self, Actor targetActor)
+		protected override bool TryStartEnter(Actor targetActor)
 		{
 			enterActor = targetActor;
 			enterDemolishables = targetActor.TraitsImplementing<IDemolishable>().ToArray();
 
 			// Make sure we can still demolish the target before entering
 			// (but not before, because this may stop the actor in the middle of nowhere)
-			if (!enterDemolishables.Any(i => i.IsValidTarget(enterActor, self)))
+			if (!enterDemolishables.Any(i => i.IsValidTarget(Actor)))
 			{
-				Cancel(self, true);
+				Cancel(true);
 				return false;
 			}
 
 			return true;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				// Make sure the target hasn't changed while entering
 				// OnEnterComplete is only called if targetActor is alive
 				if (targetActor != enterActor)
 					return;
 
-				if (!enterDemolishables.Any(i => i.IsValidTarget(enterActor, self)))
+				if (!enterDemolishables.Any(i => i.IsValidTarget(Actor)))
 					return;
 
 				w.Add(new FlashTarget(enterActor, Color.White, count: flashes, interval: flashInterval, delay: flashesDelay));
 
 				foreach (var ind in notifiers)
-					ind.Demolishing(self);
+					ind.Demolishing();
 
 				foreach (var d in enterDemolishables)
-					d.Demolish(enterActor, self, delay, damageTypes);
+					d.Demolish(Actor, delay, damageTypes);
 
 				if (enterBehaviour == EnterBehaviour.Dispose)
-					self.Dispose();
+					Actor.Dispose();
 				else if (enterBehaviour == EnterBehaviour.Suicide)
-					self.Kill(self);
+					Actor.Kill(Actor);
 			});
 		}
 	}

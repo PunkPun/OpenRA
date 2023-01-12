@@ -24,11 +24,11 @@ namespace OpenRA.Mods.Common.Traits
 	public class AttackOmni : AttackBase
 	{
 		public AttackOmni(Actor self, AttackOmniInfo info)
-			: base(self, info) { }
+			: base(info, self) { }
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
+		public override Activity GetAttackActivity(AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
 		{
-			return new SetTarget(this, newTarget, allowMove, forceAttack, targetLineColor);
+			return new SetTarget(Actor, this, newTarget, allowMove, forceAttack, targetLineColor);
 		}
 
 		// Some 3rd-party mods rely on this being public
@@ -40,7 +40,8 @@ namespace OpenRA.Mods.Common.Traits
 			readonly Color? targetLineColor;
 			Target target;
 
-			public SetTarget(AttackOmni attack, in Target target, bool allowMove, bool forceAttack, Color? targetLineColor = null)
+			public SetTarget(Actor self, AttackOmni attack, in Target target, bool allowMove, bool forceAttack, Color? targetLineColor = null)
+				: base(self)
 			{
 				this.target = target;
 				this.targetLineColor = targetLineColor;
@@ -49,19 +50,19 @@ namespace OpenRA.Mods.Common.Traits
 				this.forceAttack = forceAttack;
 			}
 
-			public override bool Tick(Actor self)
+			public override bool Tick()
 			{
 				// This activity can't move to reacquire hidden targets, so use the
 				// Recalculate overload that invalidates hidden targets.
-				target = target.RecalculateInvalidatingHiddenTargets(self.Owner);
-				if (IsCanceling || !target.IsValidFor(self) || !attack.IsReachableTarget(target, allowMove))
+				target = target.RecalculateInvalidatingHiddenTargets(Actor.Owner);
+				if (IsCanceling || !target.IsValidFor(Actor) || !attack.IsReachableTarget(target, allowMove))
 					return true;
 
-				attack.DoAttack(self, target);
+				attack.DoAttack(target);
 				return false;
 			}
 
-			void IActivityNotifyStanceChanged.StanceChanged(Actor self, AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
+			void IActivityNotifyStanceChanged.StanceChanged(AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
 			{
 				// Cancel non-forced targets when switching to a more restrictive stance if they are no longer valid for auto-targeting
 				if (newStance > oldStance || forceAttack)
@@ -70,18 +71,18 @@ namespace OpenRA.Mods.Common.Traits
 				if (target.Type == TargetType.Actor)
 				{
 					var a = target.Actor;
-					if (!autoTarget.HasValidTargetPriority(self, a.Owner, a.GetEnabledTargetTypes()))
+					if (!autoTarget.HasValidTargetPriority(a.Owner, a.GetEnabledTargetTypes()))
 						target = Target.Invalid;
 				}
 				else if (target.Type == TargetType.FrozenActor)
 				{
 					var fa = target.FrozenActor;
-					if (!autoTarget.HasValidTargetPriority(self, fa.Owner, fa.TargetTypes))
+					if (!autoTarget.HasValidTargetPriority(fa.Owner, fa.TargetTypes))
 						target = Target.Invalid;
 				}
 			}
 
-			public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+			public override IEnumerable<TargetLineNode> TargetLineNodes()
 			{
 				if (targetLineColor != null)
 					yield return new TargetLineNode(target, targetLineColor.Value);

@@ -18,12 +18,13 @@ namespace OpenRA.Mods.Common.Activities
 	{
 		readonly CPos destination;
 
-		public SimpleTeleport(CPos destination) { this.destination = destination; }
+		public SimpleTeleport(Actor self, CPos destination)
+			: base(self) { this.destination = destination; }
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
-			self.Trait<IPositionable>().SetPosition(self, destination);
-			self.Generation++;
+			Actor.Trait<IPositionable>().SetPosition(destination);
+			Actor.Generation++;
 			return true;
 		}
 	}

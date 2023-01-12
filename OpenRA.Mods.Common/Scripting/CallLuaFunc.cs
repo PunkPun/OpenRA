@@ -21,13 +21,14 @@ namespace OpenRA.Mods.Common.Activities
 		readonly ScriptContext context;
 		LuaFunction function;
 
-		public CallLuaFunc(LuaFunction function, ScriptContext context)
+		public CallLuaFunc(Actor self, LuaFunction function, ScriptContext context)
+			: base(self)
 		{
 			this.function = (LuaFunction)function.CopyReference();
 			this.context = context;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			try
 			{
@@ -42,9 +43,9 @@ namespace OpenRA.Mods.Common.Activities
 			return true;
 		}
 
-		public override void Cancel(Actor self, bool keepQueue = false)
+		public override void Cancel(bool keepQueue = false)
 		{
-			base.Cancel(self, keepQueue);
+			base.Cancel(keepQueue);
 			Dispose();
 			return;
 		}

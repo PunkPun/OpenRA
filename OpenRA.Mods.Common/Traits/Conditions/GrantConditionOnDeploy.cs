@@ -169,7 +169,7 @@ namespace OpenRA.Mods.Common.Traits
 			get
 			{
 				if (!IsTraitDisabled)
-					yield return new DeployOrderTargeter("GrantConditionOnDeploy", 5,
+					yield return new DeployOrderTargeter(Actor, "GrantConditionOnDeploy", 5,
 						() => CanDeploy() ? Info.DeployCursor : Info.DeployBlockedCursor);
 			}
 		}

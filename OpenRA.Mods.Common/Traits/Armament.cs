@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Ammo the weapon consumes per shot.")]
 		public readonly int AmmoUsage = 1;
 
-		public override object Create(ActorInitializer init) { return new Armament(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new Armament(this, init.Self); }
 
 		public override void RulesetLoaded(Ruleset rules, ActorInfo ai)
 		{
@@ -133,8 +133,8 @@ namespace OpenRA.Mods.Common.Traits
 		public int FireDelay { get; protected set; }
 		public int Burst { get; protected set; }
 
-		public Armament(Actor self, ArmamentInfo info)
-			: base(info)
+		public Armament(ArmamentInfo info, Actor self)
+			: base(info, self)
 		{
 			this.self = self;
 
@@ -164,7 +164,7 @@ namespace OpenRA.Mods.Common.Traits
 			return new WDist(Util.ApplyPercentageModifiers(Weapon.Range.Length, rangeModifiers.ToArray()));
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
 			turret = self.TraitsImplementing<Turreted>().FirstOrDefault(t => t.Name == Info.Turret);
 			coords = self.Trait<BodyOrientation>();
@@ -176,10 +176,10 @@ namespace OpenRA.Mods.Common.Traits
 			damageModifiers = self.TraitsImplementing<IFirepowerModifier>().ToArray().Select(m => m.GetFirepowerModifier());
 			inaccuracyModifiers = self.TraitsImplementing<IInaccuracyModifier>().ToArray().Select(m => m.GetInaccuracyModifier());
 
-			base.Created(self);
+			base.Created();
 		}
 
-		void UpdateCondition(Actor self)
+		void UpdateCondition()
 		{
 			if (string.IsNullOrEmpty(Info.ReloadingCondition))
 				return;
@@ -192,10 +192,10 @@ namespace OpenRA.Mods.Common.Traits
 				conditionToken = self.RevokeCondition(conditionToken);
 		}
 
-		protected virtual void Tick(Actor self)
+		protected virtual void Tick()
 		{
 			// We need to disable conditions if IsTraitDisabled is true, so we have to update conditions before the return below.
-			UpdateCondition(self);
+			UpdateCondition();
 
 			if (IsTraitDisabled)
 				return;
@@ -219,10 +219,10 @@ namespace OpenRA.Mods.Common.Traits
 			delayedActions.RemoveAll(a => a.Ticks <= 0);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			// Split into a protected method to allow subclassing
-			Tick(self);
+			Tick();
 		}
 
 		protected void ScheduleDelayedAction(int t, int b, Action<int> a)
@@ -233,7 +233,7 @@ namespace OpenRA.Mods.Common.Traits
 				a(b);
 		}
 
-		protected virtual bool CanFire(Actor self, in Target target)
+		protected virtual bool CanFire(in Target target)
 		{
 			if (IsReloading || IsTraitPaused)
 				return false;
@@ -253,9 +253,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		// Note: facing is only used by the legacy positioning code
 		// The world coordinate model uses Actor.Orientation
-		public virtual Barrel CheckFire(Actor self, IFacing facing, in Target target)
+		public virtual Barrel CheckFire(IFacing facing, in Target target)
 		{
-			if (!CanFire(self, target))
+			if (!CanFire(target))
 				return null;
 
 			if (ticksSinceLastShot >= Weapon.ReloadDelay)
@@ -268,20 +268,20 @@ namespace OpenRA.Mods.Common.Traits
 			var barrel = Weapon.Burst == 1 ? Barrels[currentBarrel] : Barrels[Burst % Barrels.Length];
 			currentBarrel++;
 
-			FireBarrel(self, facing, target, barrel);
+			FireBarrel(facing, target, barrel);
 
-			UpdateBurst(self, target);
+			UpdateBurst(target);
 
 			return barrel;
 		}
 
-		protected virtual void FireBarrel(Actor self, IFacing facing, in Target target, Barrel barrel)
+		protected virtual void FireBarrel(IFacing facing, in Target target, Barrel barrel)
 		{
 			foreach (var na in notifyAttacks)
-				na.PreparingAttack(self, target, this, barrel);
+				na.PreparingAttack(target, this, barrel);
 
-			Func<WPos> muzzlePosition = () => self.CenterPosition + MuzzleOffset(self, barrel);
-			Func<WAngle> muzzleFacing = () => MuzzleOrientation(self, barrel).Yaw;
+			Func<WPos> muzzlePosition = () => self.CenterPosition + MuzzleOffset(barrel);
+			Func<WAngle> muzzleFacing = () => MuzzleOrientation(barrel).Yaw;
 			var muzzleOrientation = WRot.FromYaw(muzzleFacing());
 
 			var passiveTarget = Weapon.TargetActorCenter ? target.CenterPosition : target.Positions.PositionClosestTo(muzzlePosition());
@@ -337,14 +337,14 @@ namespace OpenRA.Mods.Common.Traits
 						Game.Sound.Play(SoundType.World, args.Weapon.StartBurstReport, self.World, self.CenterPosition);
 
 					foreach (var na in notifyAttacks)
-						na.Attacking(self, delayedTarget, this, barrel);
+						na.Attacking(delayedTarget, this, barrel);
 
 					Recoil = Info.Recoil;
 				}
 			});
 		}
 
-		protected virtual void UpdateBurst(Actor self, in Target target)
+		protected virtual void UpdateBurst(in Target target)
 		{
 			if (--Burst > 0)
 			{
@@ -363,18 +363,18 @@ namespace OpenRA.Mods.Common.Traits
 					ScheduleDelayedAction(Weapon.AfterFireSoundDelay, Burst, (burst) => Game.Sound.Play(SoundType.World, Weapon.AfterFireSound, self.World, self.CenterPosition));
 
 				foreach (var nbc in notifyBurstComplete)
-					nbc.FiredBurst(self, target, this);
+					nbc.FiredBurst(target, this);
 			}
 		}
 
 		public virtual bool IsReloading => FireDelay > 0 || IsTraitDisabled;
 
-		public WVec MuzzleOffset(Actor self, Barrel b)
+		public WVec MuzzleOffset(Barrel b)
 		{
-			return CalculateMuzzleOffset(self, b);
+			return CalculateMuzzleOffset(b);
 		}
 
-		protected virtual WVec CalculateMuzzleOffset(Actor self, Barrel b)
+		protected virtual WVec CalculateMuzzleOffset(Barrel b)
 		{
 			// Weapon offset in turret coordinates
 			var localOffset = b.Offset + new WVec(-Recoil, WDist.Zero, WDist.Zero);
@@ -390,16 +390,14 @@ namespace OpenRA.Mods.Common.Traits
 			return coords.LocalToWorld(localOffset);
 		}
 
-		public WRot MuzzleOrientation(Actor self, Barrel b)
+		public WRot MuzzleOrientation(Barrel b)
 		{
-			return CalculateMuzzleOrientation(self, b);
+			return CalculateMuzzleOrientation(b);
 		}
 
-		protected virtual WRot CalculateMuzzleOrientation(Actor self, Barrel b)
+		protected virtual WRot CalculateMuzzleOrientation(Barrel b)
 		{
 			return WRot.FromYaw(b.Yaw).Rotate(turret?.WorldOrientation ?? self.Orientation);
 		}
-
-		public Actor Actor => self;
 	}
 }

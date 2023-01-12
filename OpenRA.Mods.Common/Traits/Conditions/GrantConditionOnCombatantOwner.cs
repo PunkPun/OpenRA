@@ -21,33 +21,35 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 
-		public override object Create(ActorInitializer init) { return new GrantConditionOnCombatantOwner(this); }
+		public override object Create(ActorInitializer init) { return new GrantConditionOnCombatantOwner(init.Self, this); }
 	}
 
 	public class GrantConditionOnCombatantOwner : INotifyCreated, INotifyOwnerChanged
 	{
+		public readonly Actor Actor;
 		readonly GrantConditionOnCombatantOwnerInfo info;
 
 		int conditionToken = Actor.InvalidConditionToken;
 
-		public GrantConditionOnCombatantOwner(GrantConditionOnCombatantOwnerInfo info)
+		public GrantConditionOnCombatantOwner(Actor self, GrantConditionOnCombatantOwnerInfo info)
 		{
+			Actor = self;
 			this.info = info;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			if (!self.Owner.NonCombatant)
-				conditionToken = self.GrantCondition(info.Condition);
+			if (!Actor.Owner.NonCombatant)
+				conditionToken = Actor.GrantCondition(info.Condition);
 		}
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
 			if (conditionToken != Actor.InvalidConditionToken)
-				conditionToken = self.RevokeCondition(conditionToken);
+				conditionToken = Actor.RevokeCondition(conditionToken);
 
 			if (!newOwner.NonCombatant)
-				conditionToken = self.GrantCondition(info.Condition);
+				conditionToken = Actor.GrantCondition(info.Condition);
 		}
 	}
 }

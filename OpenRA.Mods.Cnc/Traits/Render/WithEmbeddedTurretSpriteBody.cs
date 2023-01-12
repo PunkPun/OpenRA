@@ -63,15 +63,15 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			turreted = init.Self.TraitsImplementing<Turreted>().FirstOrDefault();
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
-			base.TraitEnabled(self);
+			base.TraitEnabled();
 			turreted.QuantizedFacings = info.QuantizedFacings >= 0 ? info.QuantizedFacings : DefaultAnimation.CurrentSequence.Facings;
 		}
 
-		protected override void DamageStateChanged(Actor self)
+		protected override void DamageStateChanged()
 		{
-			base.DamageStateChanged(self);
+			base.DamageStateChanged();
 			turreted.QuantizedFacings = info.QuantizedFacings >= 0 ? info.QuantizedFacings : DefaultAnimation.CurrentSequence.Facings;
 		}
 	}

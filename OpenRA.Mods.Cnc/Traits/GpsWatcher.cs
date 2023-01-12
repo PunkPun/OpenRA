@@ -23,7 +23,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public override object Create(ActorInitializer init) { return new GpsWatcher(init.Self.Owner); }
 	}
 
-	interface IOnGpsRefreshed { void OnGpsRefresh(Actor self, Player player); }
+	interface IOnGpsRefreshed { void OnGpsRefresh(Player player); }
 
 	class GpsWatcher : ISync, IPreventsShroudReset
 	{
@@ -93,10 +93,10 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			if (wasGranted != Granted || wasGrantedAllies != GrantedAllies)
 				foreach (var tp in notifyOnRefresh.ToList())
-					tp.Trait.OnGpsRefresh(tp.Actor, owner);
+					tp.Trait.OnGpsRefresh(owner);
 		}
 
-		bool IPreventsShroudReset.PreventShroudReset(Actor self)
+		bool IPreventsShroudReset.PreventShroudReset()
 		{
 			return Granted || GrantedAllies;
 		}

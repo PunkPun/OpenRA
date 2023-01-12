@@ -47,9 +47,9 @@ namespace OpenRA.Mods.Common.Scripting
 		public void MoveIntoWorld(CPos cell)
 		{
 			var pos = Self.CenterPosition;
-			mobile.SetPosition(Self, cell);
-			mobile.SetCenterPosition(Self, pos);
-			Self.QueueActivity(mobile.ReturnToCell(Self));
+			mobile.SetPosition(cell);
+			mobile.SetCenterPosition(pos);
+			Self.QueueActivity(mobile.ReturnToCell());
 		}
 
 		[ScriptActorPropertyActivity]

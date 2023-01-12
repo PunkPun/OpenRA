@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			var facing = crusher.TraitOrDefault<IFacing>();
-			var transform = new Transform(info.IntoActor) { Faction = faction };
+			var transform = new Transform(self, info.IntoActor) { Faction = faction };
 			if (facing != null)
 				transform.Facing = facing.Facing;
 

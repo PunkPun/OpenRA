@@ -59,7 +59,7 @@ namespace OpenRA.Mods.Common.Orders
 			yield return new Order("CreateGroup", actorsInvolved.First().Owner.PlayerActor, false, actorsInvolved.ToArray());
 
 			foreach (var o in orders)
-				yield return CheckSameOrder(o.Order, o.Trait.IssueOrder(o.Actor, o.Order, o.Target, mi.Modifiers.HasModifier(Modifiers.Shift)));
+				yield return CheckSameOrder(o.Order, o.Trait.IssueOrder(o.Order, o.Target, mi.Modifiers.HasModifier(Modifiers.Shift)));
 		}
 
 		public virtual void Tick(World world) { }
@@ -120,7 +120,7 @@ namespace OpenRA.Mods.Common.Orders
 			foreach (var a in world.Selection.Actors)
 			{
 				var o = OrderForUnit(a, target, cell, mi);
-				if (o != null && o.Order.TargetOverridesSelection(a, target, actorsAt, cell, modifiers))
+				if (o != null && o.Order.TargetOverridesSelection(target, actorsAt, cell, modifiers))
 					return true;
 			}
 
@@ -173,7 +173,7 @@ namespace OpenRA.Mods.Common.Orders
 				{
 					var localModifiers = modifiers;
 					string cursor = null;
-					if (o.Order.CanTarget(self, target, ref localModifiers, ref cursor))
+					if (o.Order.CanTarget(target, ref localModifiers, ref cursor))
 						return new UnitOrderResult(self, o.Order, o.Trait, cursor, target);
 				}
 

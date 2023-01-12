@@ -62,6 +62,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		const string OrderID = "SetRallyPoint";
 
+		public readonly Actor Actor;
 		public List<CPos> Path;
 
 		public RallyPointInfo Info;
@@ -69,44 +70,45 @@ namespace OpenRA.Mods.Common.Traits
 
 		const uint ForceSet = 1;
 
-		public void ResetPath(Actor self)
+		public void ResetPath()
 		{
-			Path = Info.Path.Select(p => self.Location + p).ToList();
+			Path = Info.Path.Select(p => Actor.Location + p).ToList();
 		}
 
 		public RallyPoint(Actor self, RallyPointInfo info)
 		{
+			Actor = self;
 			Info = info;
-			ResetPath(self);
+			ResetPath();
 			PaletteName = info.IsPlayerPalette ? info.Palette + self.Owner.InternalName : info.Palette;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			self.World.Add(new RallyPointIndicator(self, this));
+			Actor.World.Add(new RallyPointIndicator(Actor, this));
 		}
 
-		public void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		public void OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
 			if (Info.IsPlayerPalette)
 				PaletteName = Info.Palette + newOwner.InternalName;
 
-			ResetPath(self);
+			ResetPath();
 		}
 
 		public IEnumerable<IOrderTargeter> Orders
 		{
-			get { yield return new RallyPointOrderTargeter(Info); }
+			get { yield return new RallyPointOrderTargeter(Actor, Info); }
 		}
 
-		public Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		public Order IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == OrderID)
 			{
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", Info.Notification, self.Owner.Faction.InternalName);
-				TextNotificationsManager.AddTransientLine(Info.TextNotification, self.Owner);
+				Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech", Info.Notification, Actor.Owner.Faction.InternalName);
+				TextNotificationsManager.AddTransientLine(Info.TextNotification, Actor.Owner);
 
-				return new Order(order.OrderID, self, target, queued)
+				return new Order(order.OrderID, Actor, target, queued)
 				{
 					SuppressVisualFeedback = true,
 					ExtraData = ((RallyPointOrderTargeter)order).ForceSet ? ForceSet : 0
@@ -116,7 +118,7 @@ namespace OpenRA.Mods.Common.Traits
 			return null;
 		}
 
-		public void ResolveOrder(Actor self, Order order)
+		public void ResolveOrder(Order order)
 		{
 			if (order.OrderString == "Stop")
 			{
@@ -130,7 +132,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!order.Queued)
 				Path.Clear();
 
-			Path.Add(self.World.Map.CellContaining(order.Target.CenterPosition));
+			Path.Add(Actor.World.Map.CellContaining(order.Target.CenterPosition));
 		}
 
 		public static bool IsForceSet(Order order)
@@ -140,41 +142,43 @@ namespace OpenRA.Mods.Common.Traits
 
 		class RallyPointOrderTargeter : IOrderTargeter
 		{
+			public readonly Actor Actor;
 			readonly RallyPointInfo info;
 
-			public RallyPointOrderTargeter(RallyPointInfo info)
+			public RallyPointOrderTargeter(Actor self, RallyPointInfo info)
 			{
+				Actor = self;
 				this.info = info;
 			}
 
 			public string OrderID => "SetRallyPoint";
 			public int OrderPriority => 0;
-			public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
+			public bool TargetOverridesSelection(in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 			public bool ForceSet { get; private set; }
 			public bool IsQueued { get; protected set; }
 
-			public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
+			public bool CanTarget(in Target target, ref TargetModifiers modifiers, ref string cursor)
 			{
 				if (target.Type != TargetType.Terrain)
 					return false;
 
 				IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 
-				var location = self.World.Map.CellContaining(target.CenterPosition);
-				if (self.World.Map.Contains(location))
+				var location = Actor.World.Map.CellContaining(target.CenterPosition);
+				if (Actor.World.Map.Contains(location))
 				{
 					cursor = info.Cursor;
 
 					// Notify force-set 'RallyPoint' order watchers with Ctrl
 					if (modifiers.HasModifier(TargetModifiers.ForceAttack) && !string.IsNullOrEmpty(info.ForceSetType))
 					{
-						var closest = self.World.Selection.Actors
+						var closest = Actor.World.Selection.Actors
 							.Select<Actor, (Actor Actor, RallyPoint RallyPoint)>(a => (a, a.TraitOrDefault<RallyPoint>()))
 							.Where(x => x.RallyPoint != null && x.RallyPoint.Info.ForceSetType == info.ForceSetType)
 							.OrderBy(x => (location - x.Actor.Location).LengthSquared)
 							.FirstOrDefault().Actor;
 
-						ForceSet = closest == self;
+						ForceSet = closest == Actor;
 					}
 
 					return true;

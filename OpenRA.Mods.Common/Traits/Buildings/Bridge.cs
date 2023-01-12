@@ -95,13 +95,13 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class Bridge : IRender, INotifyDamageStateChanged, IRadarSignature
 	{
+		public readonly Actor Actor;
 		readonly BuildingInfo buildingInfo;
 		readonly Bridge[] neighbours = new Bridge[2];
 		readonly LegacyBridgeHut[] huts = new LegacyBridgeHut[2]; // Huts before this / first & after this / last
 		readonly ITiledTerrainRenderer terrainRenderer;
 		readonly ITemplatedTerrainInfo terrainInfo;
 		readonly Health health;
-		readonly Actor self;
 		readonly BridgeInfo info;
 		readonly string type;
 
@@ -115,7 +115,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Bridge(Actor self, BridgeInfo info)
 		{
-			this.self = self;
+			Actor = self;
 			health = self.Trait<Health>();
 			health.RemoveOnDeath = false;
 			this.info = info;
@@ -155,14 +155,14 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var c in footprint.Keys)
 			{
 				var tileInfo = GetTerrainInfo(c);
-				self.World.Map.CustomTerrain[c] = tileInfo.TerrainType;
-				radarSignature[i++] = (c, tileInfo.GetColor(self.World.LocalRandom));
+				Actor.World.Map.CustomTerrain[c] = tileInfo.TerrainType;
+				radarSignature[i++] = (c, tileInfo.GetColor(Actor.World.LocalRandom));
 			}
 		}
 
 		TerrainTileInfo GetTerrainInfo(CPos cell)
 		{
-			var dx = cell - self.Location;
+			var dx = cell - Actor.Location;
 			var index = dx.X + terrainInfo.Templates[template].Size.X * dx.Y;
 			return terrainInfo.GetTerrainInfo(new TerrainTile(template, (byte)index));
 		}
@@ -208,12 +208,12 @@ namespace OpenRA.Mods.Common.Traits
 			if (offset == null)
 				return null;
 
-			return bridges.GetBridge(self.Location + new CVec(offset[0], offset[1]));
+			return bridges.GetBridge(Actor.Location + new CVec(offset[0], offset[1]));
 		}
 
 		IRenderable[] TemplateRenderables(WorldRenderer wr, PaletteReference palette, ushort template)
 		{
-			var offset = buildingInfo.CenterOffset(self.World).Y + 1024;
+			var offset = buildingInfo.CenterOffset(Actor.World).Y + 1024;
 
 			return footprint.Select(c => (IRenderable)(new SpriteRenderable(
 				terrainRenderer.TileSprite(new TerrainTile(template, c.Value)),
@@ -223,7 +223,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool initialized;
 		Dictionary<ushort, IRenderable[]> renderables;
-		public IEnumerable<IRenderable> Render(Actor self, WorldRenderer wr)
+		public IEnumerable<IRenderable> Render(WorldRenderer wr)
 		{
 			if (!initialized)
 			{
@@ -238,7 +238,7 @@ namespace OpenRA.Mods.Common.Traits
 			return renderables[template];
 		}
 
-		public IEnumerable<Rectangle> ScreenBounds(Actor self, WorldRenderer wr)
+		public IEnumerable<Rectangle> ScreenBounds(WorldRenderer wr)
 		{
 			foreach (var kv in footprint)
 			{
@@ -260,9 +260,9 @@ namespace OpenRA.Mods.Common.Traits
 		void KillUnitsOnBridge()
 		{
 			foreach (var c in footprint.Keys)
-				foreach (var a in self.World.ActorMap.GetActorsAt(c))
+				foreach (var a in Actor.World.ActorMap.GetActorsAt(c))
 					if (a.Info.HasTraitInfo<IPositionableInfo>() && !a.Trait<IPositionable>().CanExistInCell(c))
-						a.Kill(self, info.DamageTypes);
+						a.Kill(Actor, info.DamageTypes);
 		}
 
 		bool NeighbourIsDeadShore(Bridge neighbour)
@@ -319,8 +319,8 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var c in footprint.Keys)
 			{
 				var tileInfo = GetTerrainInfo(c);
-				self.World.Map.CustomTerrain[c] = tileInfo.TerrainType;
-				radarSignature[i++] = (c, tileInfo.GetColor(self.World.LocalRandom));
+				Actor.World.Map.CustomTerrain[c] = tileInfo.TerrainType;
+				radarSignature[i++] = (c, tileInfo.GetColor(Actor.World.LocalRandom));
 			}
 
 			if (LongBridgeSegmentIsDead() && !killedUnits)
@@ -334,16 +334,16 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			// Repair self
 			var initialDamage = health.DamageState;
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				if (health.IsDead)
 				{
-					health.Resurrect(self, repairer);
+					health.Resurrect(Actor, repairer);
 					killedUnits = false;
 					KillUnitsOnBridge();
 				}
 				else
-					health.InflictDamage(self, repairer, new Damage(-health.MaxHP), true);
+					health.InflictDamage(Actor, repairer, new Damage(-health.MaxHP), true);
 				if (direction < 0 ? neighbours[0] == null && neighbours[1] == null : Hut != null || neighbours[direction] == null)
 					onComplete(); // Done if single or reached other hut
 			});
@@ -354,12 +354,12 @@ namespace OpenRA.Mods.Common.Traits
 				var delay = initialDamage == DamageState.Undamaged || NeighbourIsDeadShore(neighbours[direction]) ?
 					0 : info.RepairPropagationDelay;
 
-				self.World.AddFrameEndTask(w => w.Add(new DelayedAction(delay, () =>
+				Actor.World.AddFrameEndTask(w => w.Add(new DelayedAction(delay, () =>
 					neighbours[direction].Repair(repairer, direction, onComplete))));
 			}
 		}
 
-		void INotifyDamageStateChanged.DamageStateChanged(Actor self, AttackInfo e)
+		void INotifyDamageStateChanged.DamageStateChanged(AttackInfo e)
 		{
 			Do((b, d) => b.UpdateState());
 
@@ -390,12 +390,12 @@ namespace OpenRA.Mods.Common.Traits
 		public void Demolish(Actor saboteur, int direction, BitSet<DamageType> damageTypes)
 		{
 			var initialDamage = health.DamageState;
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				// Use .FromPos since this actor is killed. Cannot use Target.FromActor
-				info.DemolishWeaponInfo.Impact(Target.FromPos(self.CenterPosition), saboteur);
+				info.DemolishWeaponInfo.Impact(Target.FromPos(Actor.CenterPosition), saboteur);
 
-				self.Kill(saboteur, damageTypes);
+				Actor.Kill(saboteur, damageTypes);
 			});
 
 			// Destroy adjacent spans between (including) huts
@@ -404,12 +404,12 @@ namespace OpenRA.Mods.Common.Traits
 				var delay = initialDamage == DamageState.Dead || NeighbourIsDeadShore(neighbours[direction]) ?
 					0 : info.RepairPropagationDelay;
 
-				self.World.AddFrameEndTask(w => w.Add(new DelayedAction(delay, () =>
+				Actor.World.AddFrameEndTask(w => w.Add(new DelayedAction(delay, () =>
 					neighbours[direction].Demolish(saboteur, direction, damageTypes))));
 			}
 		}
 
-		void IRadarSignature.PopulateRadarSignatureCells(Actor self, List<(CPos Cell, Color Color)> destinationBuffer)
+		void IRadarSignature.PopulateRadarSignatureCells(List<(CPos Cell, Color Color)> destinationBuffer)
 		{
 			destinationBuffer.AddRange(radarSignature);
 		}

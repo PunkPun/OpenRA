@@ -31,9 +31,10 @@ namespace OpenRA.Mods.Cnc.Activities
 		readonly bool screenFlash;
 		readonly string sound;
 
-		public Teleport(Actor teleporter, CPos destination, int? maximumDistance,
+		public Teleport(Actor self, Actor teleporter, CPos destination, int? maximumDistance,
 			bool killCargo, bool screenFlash, string sound, bool interruptable = true,
 			bool killOnFailure = false, BitSet<DamageType> killDamageTypes = default)
+			: base(self)
 		{
 			var max = teleporter.World.Map.Grid.MaximumTileSearchRange;
 			if (maximumDistance > max)
@@ -52,42 +53,42 @@ namespace OpenRA.Mods.Cnc.Activities
 				IsInterruptible = false;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
-			var pc = self.TraitOrDefault<PortableChrono>();
-			if (teleporter == self && pc != null && (!pc.CanTeleport || IsCanceling))
+			var pc = Actor.TraitOrDefault<PortableChrono>();
+			if (teleporter == Actor && pc != null && (!pc.CanTeleport || IsCanceling))
 			{
 				if (killOnFailure)
-					self.Kill(teleporter, killDamageTypes);
+					Actor.Kill(teleporter, killDamageTypes);
 
 				return true;
 			}
 
-			var bestCell = ChooseBestDestinationCell(self, destination);
+			var bestCell = ChooseBestDestinationCell(destination);
 			if (bestCell == null)
 			{
 				if (killOnFailure)
-					self.Kill(teleporter, killDamageTypes);
+					Actor.Kill(teleporter, killDamageTypes);
 
 				return true;
 			}
 
 			destination = bestCell.Value;
 
-			Game.Sound.Play(SoundType.World, sound, self.CenterPosition);
-			Game.Sound.Play(SoundType.World, sound, self.World.Map.CenterOfCell(destination));
+			Game.Sound.Play(SoundType.World, sound, Actor.CenterPosition);
+			Game.Sound.Play(SoundType.World, sound, Actor.World.Map.CenterOfCell(destination));
 
-			self.Trait<IPositionable>().SetPosition(self, destination);
-			self.Generation++;
+			Actor.Trait<IPositionable>().SetPosition(destination);
+			Actor.Generation++;
 
 			if (killCargo)
 			{
-				var cargo = self.TraitOrDefault<Cargo>();
+				var cargo = Actor.TraitOrDefault<Cargo>();
 				if (cargo != null && teleporter != null)
 				{
 					while (!cargo.IsEmpty())
 					{
-						var a = cargo.Unload(self);
+						var a = cargo.Unload();
 
 						// Kill all the units that are unloaded into the void
 						// Kill() handles kill and death statistics
@@ -97,40 +98,40 @@ namespace OpenRA.Mods.Cnc.Activities
 			}
 
 			// Consume teleport charges if this wasn't triggered via chronosphere
-			if (teleporter == self)
+			if (teleporter == Actor)
 				pc?.ResetChargeTime();
 
 			// Trigger screen desaturate effect
 			if (screenFlash)
-				foreach (var a in self.World.ActorsWithTrait<ChronoshiftPaletteEffect>())
+				foreach (var a in Actor.World.ActorsWithTrait<ChronoshiftPaletteEffect>())
 					a.Trait.Enable();
 
-			if (teleporter != null && self != teleporter && !teleporter.Disposed)
+			if (teleporter != null && Actor != teleporter && !teleporter.Disposed)
 			{
 				var building = teleporter.TraitOrDefault<WithSpriteBody>();
 				if (building != null && building.DefaultAnimation.HasSequence("active"))
-					building.PlayCustomAnimation(teleporter, "active");
+					building.PlayCustomAnimation("active");
 			}
 
 			return true;
 		}
 
-		CPos? ChooseBestDestinationCell(Actor self, CPos destination)
+		CPos? ChooseBestDestinationCell(CPos destination)
 		{
 			if (teleporter == null)
 				return null;
 
-			var restrictTo = maximumDistance == null ? null : self.World.Map.FindTilesInCircle(self.Location, maximumDistance.Value);
+			var restrictTo = maximumDistance == null ? null : Actor.World.Map.FindTilesInCircle(Actor.Location, maximumDistance.Value);
 
 			if (maximumDistance != null)
 				destination = restrictTo.MinBy(x => (x - destination).LengthSquared);
 
-			var pos = self.Trait<IPositionable>();
+			var pos = Actor.Trait<IPositionable>();
 			if (pos.CanEnterCell(destination) && teleporter.Owner.Shroud.IsExplored(destination))
 				return destination;
 
 			var max = maximumDistance != null ? maximumDistance.Value : teleporter.World.Map.Grid.MaximumTileSearchRange;
-			foreach (var tile in self.World.Map.FindTilesInCircle(destination, max))
+			foreach (var tile in Actor.World.Map.FindTilesInCircle(destination, max))
 			{
 				if (teleporter.Owner.Shroud.IsExplored(tile)
 					&& (restrictTo == null || restrictTo.Contains(tile))

@@ -40,12 +40,12 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			this.info = info;
 			var rs = init.Self.Trait<RenderSprites>();
 			splitAnimation = new Animation(init.World, rs.GetImage(init.Self), RenderSprites.MakeFacingFunc(init.Self));
-			rs.Add(new AnimationWithOffset(splitAnimation, null, () => IsTraitDisabled || !visible), info.SplitAttackPalette);
+			rs.Add(new AnimationWithOffset(Actor, splitAnimation, null, () => IsTraitDisabled || !visible), info.SplitAttackPalette);
 		}
 
-		protected override void Attacking(Actor self, Armament a, Barrel barrel)
+		protected override void Attacking(Armament a, Barrel barrel)
 		{
-			base.Attacking(self, a, barrel);
+			base.Attacking(a, barrel);
 
 			var sequence = DefaultAnimation.CurrentSequence.Name + "-" + info.SplitAttackSuffix;
 			if (state == AnimationState.Attacking && splitAnimation.HasSequence(sequence))

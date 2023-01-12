@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			// Removes the frozen actor. Once done, we no longer need to track GPS updates.
 			fa.Invalidate();
 			fal.Remove(fa);
-			gps.UnregisterForOnGpsRefreshed(fufubg.self, fufubg);
+			gps.UnregisterForOnGpsRefreshed(fufubg.Actor, fufubg);
 		};
 
 		class Traits
@@ -52,32 +52,32 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				FrozenActorLayer = player.FrozenActorLayer;
 				GpsWatcher = player.PlayerActor.TraitOrDefault<GpsWatcher>();
-				GpsWatcher.RegisterForOnGpsRefreshed(frozenUnderFogUpdatedByGps.self, frozenUnderFogUpdatedByGps);
+				GpsWatcher.RegisterForOnGpsRefreshed(frozenUnderFogUpdatedByGps.Actor, frozenUnderFogUpdatedByGps);
 			}
 		}
 
 		readonly PlayerDictionary<Traits> traits;
-		readonly Actor self;
+		public readonly Actor Actor;
 
 		public FrozenUnderFogUpdatedByGps(ActorInitializer init)
 		{
-			self = init.Self;
+			Actor = init.Self;
 			traits = new PlayerDictionary<Traits>(init.World, player => new Traits(player, this));
 		}
 
-		public void OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		public void OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
 			ActOnFrozenActorsForAllPlayers(Refresh);
 		}
 
-		void INotifyActorDisposing.Disposing(Actor self)
+		void INotifyActorDisposing.Disposing()
 		{
 			ActOnFrozenActorsForAllPlayers(Remove);
 		}
 
-		public void OnGpsRefresh(Actor self, Player player)
+		public void OnGpsRefresh(Player player)
 		{
-			if (self.IsDead)
+			if (Actor.IsDead)
 				ActOnFrozenActorForPlayer(player, Remove);
 			else
 				ActOnFrozenActorForPlayer(player, Refresh);
@@ -100,7 +100,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				!t.GpsWatcher.Granted || !t.GpsWatcher.GrantedAllies)
 				return;
 
-			var fa = t.FrozenActorLayer.FromID(self.ActorID);
+			var fa = t.FrozenActorLayer.FromID(Actor.ActorID);
 			if (fa == null)
 				return;
 

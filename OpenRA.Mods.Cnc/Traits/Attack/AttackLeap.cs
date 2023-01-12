@@ -27,7 +27,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		[GrantedConditionReference]
 		public readonly string LeapCondition = "attacking";
 
-		public override object Create(ActorInitializer init) { return new AttackLeap(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new AttackLeap(this, init.Self); }
 	}
 
 	public class AttackLeap : AttackFrontal
@@ -36,37 +36,37 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		int leapToken = Actor.InvalidConditionToken;
 
-		public AttackLeap(Actor self, AttackLeapInfo info)
-			: base(self, info)
+		public AttackLeap(AttackLeapInfo info, Actor self)
+			: base(info, self)
 		{
 			this.info = info;
 		}
 
-		protected override bool CanAttack(Actor self, in Target target)
+		protected override bool CanAttack(in Target target)
 		{
 			if (target.Type != TargetType.Actor)
 				return false;
 
-			if (self.Location == target.Actor.Location && HasAnyValidWeapons(target))
+			if (Actor.Location == target.Actor.Location && HasAnyValidWeapons(target))
 				return true;
 
-			return base.CanAttack(self, target);
+			return base.CanAttack(target);
 		}
 
-		public void GrantLeapCondition(Actor self)
+		public void GrantLeapCondition()
 		{
-			leapToken = self.GrantCondition(info.LeapCondition);
+			leapToken = Actor.GrantCondition(info.LeapCondition);
 		}
 
-		public void RevokeLeapCondition(Actor self)
+		public void RevokeLeapCondition()
 		{
 			if (leapToken != Actor.InvalidConditionToken)
-				leapToken = self.RevokeCondition(leapToken);
+				leapToken = Actor.RevokeCondition(leapToken);
 		}
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor)
+		public override Activity GetAttackActivity(AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor)
 		{
-			return new LeapAttack(self, newTarget, allowMove, forceAttack, this, info, targetLineColor);
+			return new LeapAttack(Actor, newTarget, allowMove, forceAttack, this, info, targetLineColor);
 		}
 	}
 }

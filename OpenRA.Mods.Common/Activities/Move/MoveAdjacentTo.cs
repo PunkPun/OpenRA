@@ -31,6 +31,7 @@ namespace OpenRA.Mods.Common.Activities
 		bool useLastVisibleTarget;
 
 		public MoveAdjacentTo(Actor self, in Target target, WPos? initialTargetPosition = null, Color? targetLineColor = null)
+			: base(self)
 		{
 			this.target = target;
 			this.targetLineColor = targetLineColor;
@@ -52,74 +53,74 @@ namespace OpenRA.Mods.Common.Activities
 			}
 		}
 
-		protected virtual bool ShouldStop(Actor self)
+		protected virtual bool ShouldStop()
 		{
 			return false;
 		}
 
-		protected virtual bool ShouldRepath(Actor self, CPos targetLocation)
+		protected virtual bool ShouldRepath(CPos targetLocation)
 		{
 			return lastVisibleTargetLocation != targetLocation;
 		}
 
-		protected virtual IEnumerable<CPos> CandidateMovementCells(Actor self)
+		protected virtual IEnumerable<CPos> CandidateMovementCells()
 		{
-			return Util.AdjacentCells(self.World, Target)
+			return Util.AdjacentCells(Actor.World, Target)
 				.Where(c => Mobile.CanStayInCell(c));
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
-			QueueChild(Mobile.MoveTo(check => CalculatePathToTarget(self, check)));
+			QueueChild(Mobile.MoveTo(check => CalculatePathToTarget(check)));
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			var oldTargetLocation = lastVisibleTargetLocation;
-			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
+			target = target.Recalculate(Actor.Owner, out var targetIsHiddenActor);
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 			{
 				lastVisibleTarget = Target.FromTargetPositions(target);
-				lastVisibleTargetLocation = self.World.Map.CellContaining(target.CenterPosition);
+				lastVisibleTargetLocation = Actor.World.Map.CellContaining(target.CenterPosition);
 			}
 
 			// Target is equivalent to checkTarget variable in other activities
 			// value is either lastVisibleTarget or target based on visibility and validity
-			var targetIsValid = Target.IsValidFor(self);
+			var targetIsValid = Target.IsValidFor(Actor);
 			useLastVisibleTarget = targetIsHiddenActor || !targetIsValid;
 
 			// Target is hidden or dead, and we don't have a fallback position to move towards
-			var noTarget = useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self);
+			var noTarget = useLastVisibleTarget && !lastVisibleTarget.IsValidFor(Actor);
 
 			// Cancel the current path if the activity asks to stop, or asks to repath
 			// The repath happens once the move activity stops in the next cell
-			var shouldRepath = targetIsValid && ShouldRepath(self, oldTargetLocation);
-			if (ChildActivity != null && (ShouldStop(self) || shouldRepath || noTarget))
-				ChildActivity.Cancel(self);
+			var shouldRepath = targetIsValid && ShouldRepath(oldTargetLocation);
+			if (ChildActivity != null && (ShouldStop() || shouldRepath || noTarget))
+				ChildActivity.Cancel();
 
 			// Target has moved, and MoveAdjacentTo is still valid.
 			if (!IsCanceling && shouldRepath)
-				QueueChild(Mobile.MoveTo(check => CalculatePathToTarget(self, check)));
+				QueueChild(Mobile.MoveTo(check => CalculatePathToTarget(check)));
 
 			// The last queued childactivity is guaranteed to be the inner move, so if the childactivity
 			// queue is empty it means we have reached our destination.
-			return TickChild(self);
+			return TickChild();
 		}
 
 		readonly List<CPos> searchCells = new List<CPos>();
 		int searchCellsTick = -1;
 
-		List<CPos> CalculatePathToTarget(Actor self, BlockedByActor check)
+		List<CPos> CalculatePathToTarget(BlockedByActor check)
 		{
-			var loc = self.Location;
+			var loc = Actor.Location;
 
 			// PERF: Assume that CandidateMovementCells doesn't change within a tick to avoid repeated queries
 			// when Move enumerates different BlockedByActor values
-			if (searchCellsTick != self.World.WorldTick)
+			if (searchCellsTick != Actor.World.WorldTick)
 			{
 				searchCells.Clear();
-				searchCellsTick = self.World.WorldTick;
-				foreach (var cell in CandidateMovementCells(self))
+				searchCellsTick = Actor.World.WorldTick;
+				foreach (var cell in CandidateMovementCells())
 					if (Mobile.CanEnterCell(cell))
 						searchCells.Add(cell);
 			}
@@ -127,20 +128,20 @@ namespace OpenRA.Mods.Common.Activities
 			if (searchCells.Count == 0)
 				return PathFinder.NoPath;
 
-			var path = Mobile.PathFinder.FindPathToTargetCell(self, searchCells, loc, check);
+			var path = Mobile.PathFinder.FindPathToTargetCell(searchCells, loc, check);
 			path.Reverse();
 			return path;
 		}
 
-		public override IEnumerable<Target> GetTargets(Actor self)
+		public override IEnumerable<Target> GetTargets()
 		{
 			if (ChildActivity != null)
-				return ChildActivity.GetTargets(self);
+				return ChildActivity.GetTargets();
 
 			return Target.None;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor.HasValue)
 				yield return new TargetLineNode(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value);

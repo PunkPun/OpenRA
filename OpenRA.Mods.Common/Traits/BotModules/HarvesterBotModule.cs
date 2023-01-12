@@ -65,19 +65,19 @@ namespace OpenRA.Mods.Common.Traits
 		int scanForIdleHarvestersTicks;
 
 		public HarvesterBotModule(Actor self, HarvesterBotModuleInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			world = self.World;
 			player = self.Owner;
 			unitCannotBeOrdered = a => a.Owner != self.Owner || a.IsDead || !a.IsInWorld;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			requestUnitProduction = self.Owner.PlayerActor.TraitsImplementing<IBotRequestUnitProduction>().ToArray();
+			requestUnitProduction = Actor.Owner.PlayerActor.TraitsImplementing<IBotRequestUnitProduction>().ToArray();
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
 			claimLayer = world.WorldActor.TraitOrDefault<ResourceClaimLayer>();
@@ -143,7 +143,7 @@ namespace OpenRA.Mods.Common.Traits
 				claimLayer.CanClaimCell(actor, cell);
 
 			var path = harv.Mobile.PathFinder.FindPathToTargetCellByPredicate(
-				actor, new[] { actor.Location }, isValidResource, BlockedByActor.Stationary,
+				new[] { actor.Location }, isValidResource, BlockedByActor.Stationary,
 				loc => world.FindActorsInCircle(world.Map.CenterOfCell(loc), Info.HarvesterEnemyAvoidanceRadius)
 					.Where(u => !u.IsDead && actor.Owner.RelationshipWith(u.Owner) == PlayerRelationship.Enemy)
 					.Sum(u => Math.Max(WDist.Zero.Length, Info.HarvesterEnemyAvoidanceRadius.Length - (world.Map.CenterOfCell(loc) - u.CenterPosition).Length)));

@@ -54,7 +54,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 		readonly uint frames;
 
 		public WithVoxelWalkerBody(Actor self, WithVoxelWalkerBodyInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			movement = self.Trait<IMove>();
 
@@ -70,7 +70,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			rv.Add(modelAnimation);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (IsTraitDisabled || IsTraitPaused)
 				return;
@@ -87,14 +87,14 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 				frame = 0;
 		}
 
-		void IActorPreviewInitModifier.ModifyActorPreviewInit(Actor self, TypeDictionary inits)
+		void IActorPreviewInitModifier.ModifyActorPreviewInit(TypeDictionary inits)
 		{
 			inits.Add(new BodyAnimationFrameInit(frame));
 		}
 
-		Rectangle IAutoMouseBounds.AutoMouseoverBounds(Actor self, WorldRenderer wr)
+		Rectangle IAutoMouseBounds.AutoMouseoverBounds(WorldRenderer wr)
 		{
-			return modelAnimation.ScreenBounds(self.CenterPosition, wr, rv.Info.Scale);
+			return modelAnimation.ScreenBounds(Actor.CenterPosition, wr, rv.Info.Scale);
 		}
 	}
 

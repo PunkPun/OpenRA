@@ -46,32 +46,32 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
-		protected override void Tick(Actor self)
+		protected override void Tick()
 		{
 			// Stop charging when we lose our target
-			charging &= self.CurrentActivity is SetTarget;
+			charging &= Actor.CurrentActivity is SetTarget;
 
 			var delta = charging ? info.ChargeRate : -info.DischargeRate;
 			ChargeLevel = (ChargeLevel + delta).Clamp(0, info.ChargeLevel);
 
 			if (ChargeLevel > 0 && chargingToken == Actor.InvalidConditionToken)
-				chargingToken = self.GrantCondition(info.ChargingCondition);
+				chargingToken = Actor.GrantCondition(info.ChargingCondition);
 
 			if (ChargeLevel == 0 && chargingToken != Actor.InvalidConditionToken)
-				chargingToken = self.RevokeCondition(chargingToken);
+				chargingToken = Actor.RevokeCondition(chargingToken);
 
-			base.Tick(self);
+			base.Tick();
 		}
 
-		protected override bool CanAttack(Actor self, in Target target)
+		protected override bool CanAttack(in Target target)
 		{
-			charging = base.CanAttack(self, target) && IsReachableTarget(target, true);
+			charging = base.CanAttack(target) && IsReachableTarget(target, true);
 			return ChargeLevel >= info.ChargeLevel && charging;
 		}
 
-		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel) { ChargeLevel = 0; }
-		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
-		void INotifySold.Selling(Actor self) { ChargeLevel = 0; }
-		void INotifySold.Sold(Actor self) { }
+		void INotifyAttack.Attacking(in Target target, Armament a, Barrel barrel) { ChargeLevel = 0; }
+		void INotifyAttack.PreparingAttack(in Target target, Armament a, Barrel barrel) { }
+		void INotifySold.Selling() { ChargeLevel = 0; }
+		void INotifySold.Sold() { }
 	}
 }

@@ -65,7 +65,7 @@ namespace OpenRA.Mods.Common.Traits
 				var bounds = map.Bounds;
 				var center = new MPos(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2).ToCPos(map);
 				var spawnVec = owner.HomeLocation - center;
-				startPos = owner.HomeLocation + spawnVec * (Exts.ISqrt((bounds.Height * bounds.Height + bounds.Width * bounds.Width) / (4 * spawnVec.LengthSquared)));
+				startPos = owner.HomeLocation + spawnVec * Exts.ISqrt((bounds.Height * bounds.Height + bounds.Width * bounds.Width) / (4 * spawnVec.LengthSquared));
 				endPos = startPos;
 				var spawnDirection = new WVec((self.Location - startPos).X, (self.Location - startPos).Y, 0);
 				spawnFacing = spawnDirection.Yaw;
@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits
 			var exit = self.Info.TraitInfos<ExitInfo>().First();
 
 			foreach (var tower in self.TraitsImplementing<INotifyDelivery>())
-				tower.IncomingDelivery(self);
+				tower.IncomingDelivery();
 
 			owner.World.AddFrameEndTask(w =>
 			{
@@ -103,7 +103,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				var exitCell = self.Location + exit.ExitCell;
 				actor.QueueActivity(new Land(actor, Target.FromActor(self), WDist.Zero, WVec.Zero, info.Facing, clearCells: new CPos[1] { exitCell }));
-				actor.QueueActivity(new CallFunc(() =>
+				actor.QueueActivity(new CallFunc(actor, () =>
 				{
 					if (!self.IsInWorld || self.IsDead)
 					{
@@ -112,7 +112,7 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					foreach (var cargo in self.TraitsImplementing<INotifyDelivery>())
-						cargo.Delivered(self);
+						cargo.Delivered();
 
 					self.World.AddFrameEndTask(ww => DoProduction(self, producee, exit, productionType, inits));
 					Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", info.ReadyAudio, self.Owner.Faction.InternalName);
@@ -120,7 +120,7 @@ namespace OpenRA.Mods.Common.Traits
 				}));
 
 				actor.QueueActivity(new FlyOffMap(actor, Target.FromCell(w, endPos)));
-				actor.QueueActivity(new RemoveSelf());
+				actor.QueueActivity(new RemoveSelf(actor));
 			});
 
 			return true;

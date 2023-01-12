@@ -119,7 +119,7 @@ namespace OpenRA.Mods.Cnc.Traits
 					available = false;
 
 				foreach (var p in Instances)
-					((GrantPrerequisiteChargeDrainPower)p).Deactivate(p.Self);
+					((GrantPrerequisiteChargeDrainPower)p).Deactivate(p.Actor);
 			}
 
 			public override void Tick()
@@ -178,7 +178,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				power.PlayLaunchSounds();
 
 				foreach (var p in Instances)
-					((GrantPrerequisiteChargeDrainPower)p).Activate(p.Self);
+					((GrantPrerequisiteChargeDrainPower)p).Activate(p.Actor);
 			}
 
 			public override string IconOverlayTextOverride()

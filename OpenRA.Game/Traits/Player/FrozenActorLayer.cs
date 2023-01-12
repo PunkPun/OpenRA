@@ -24,12 +24,10 @@ namespace OpenRA.Traits
 
 	[TraitLocation(SystemActors.Player)]
 	[Desc("Required for FrozenUnderFog to work. Attach this to the player actor.")]
-	public class FrozenActorLayerInfo : TraitInfo, Requires<ShroudInfo>
+	public class FrozenActorLayerInfo : TraitInfo<FrozenActorLayer>, Requires<ShroudInfo>
 	{
 		[Desc("Size of partition bins (cells)")]
 		public readonly int BinSize = 10;
-
-		public override object Create(ActorInitializer init) { return new FrozenActorLayer(init.Self, this); }
 	}
 
 	public class FrozenActor
@@ -147,7 +145,7 @@ namespace OpenRA.Traits
 			Hidden = false;
 			foreach (var visibilityModifier in visibilityModifiers)
 			{
-				if (!visibilityModifier.IsVisible(actor, viewer))
+				if (!visibilityModifier.IsVisible(viewer))
 				{
 					Hidden = true;
 					break;
@@ -241,7 +239,7 @@ namespace OpenRA.Traits
 		}
 	}
 
-	public class FrozenActorLayer : IRender, ITick, ISync
+	public class FrozenActorLayer : Trait<FrozenActorLayerInfo>, IRender, ITick, ISync
 	{
 		[Sync]
 		public int VisibilityHash;
@@ -256,17 +254,18 @@ namespace OpenRA.Traits
 		readonly SpatiallyPartitioned<uint> partitionedFrozenActorIds;
 		readonly HashSet<uint> dirtyFrozenActorIds = new HashSet<uint>();
 
-		public FrozenActorLayer(Actor self, FrozenActorLayerInfo info)
+		public FrozenActorLayer(FrozenActorLayerInfo info, ActorInitializer init)
+			: base(info, init)
 		{
 			binSize = info.BinSize;
-			world = self.World;
-			owner = self.Owner;
+			world = init.World;
+			owner = Actor.Owner;
 			frozenActorsById = new Dictionary<uint, FrozenActor>();
 
 			partitionedFrozenActorIds = new SpatiallyPartitioned<uint>(
 				world.Map.MapSize.X, world.Map.MapSize.Y, binSize);
 
-			self.Trait<Shroud>().OnShroudChanged += uv => dirtyFrozenActorIds.UnionWith(partitionedFrozenActorIds.At(new int2(uv.U, uv.V)));
+			Actor.Trait<Shroud>().OnShroudChanged += uv => dirtyFrozenActorIds.UnionWith(partitionedFrozenActorIds.At(new int2(uv.U, uv.V)));
 		}
 
 		public void Add(FrozenActor fa)
@@ -306,7 +305,7 @@ namespace OpenRA.Traits
 			return Rectangle.FromLTRB(minU, minV, maxU + 1, maxV + 1);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			var frozenActorsToRemove = new List<FrozenActor>();
 			VisibilityHash = 0;
@@ -335,14 +334,14 @@ namespace OpenRA.Traits
 				Remove(fa);
 		}
 
-		public virtual IEnumerable<IRenderable> Render(Actor self, WorldRenderer wr)
+		public virtual IEnumerable<IRenderable> Render(WorldRenderer wr)
 		{
 			return world.ScreenMap.RenderableFrozenActorsInBox(owner, wr.Viewport.TopLeft, wr.Viewport.BottomRight)
 				.Where(f => f.Visible)
 				.SelectMany(ff => ff.Render());
 		}
 
-		public IEnumerable<Rectangle> ScreenBounds(Actor self, WorldRenderer wr)
+		public IEnumerable<Rectangle> ScreenBounds(WorldRenderer wr)
 		{
 			// Player-actor render traits don't require screen bounds
 			yield break;

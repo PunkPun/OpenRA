@@ -54,11 +54,11 @@ namespace OpenRA.Mods.Common.Scripting
 			foreach (var wpt in waypoints)
 			{
 				Self.QueueActivity(new AttackMoveActivity(Self, () => move.MoveTo(wpt, 2)));
-				Self.QueueActivity(new Wait(wait));
+				Self.QueueActivity(new Wait(Self, wait));
 			}
 
 			if (loop)
-				Self.QueueActivity(new CallFunc(() => Patrol(waypoints, loop, wait)));
+				Self.QueueActivity(new CallFunc(Self, () => Patrol(waypoints, loop, wait)));
 		}
 
 		[ScriptActorPropertyActivity]
@@ -71,7 +71,7 @@ namespace OpenRA.Mods.Common.Scripting
 			var repeat = func.Call(Self.ToLuaValue(Context)).First().ToBoolean();
 			if (repeat)
 				using (var f = func.CopyReference() as LuaFunction)
-					Self.QueueActivity(new CallFunc(() => PatrolUntil(waypoints, f, wait)));
+					Self.QueueActivity(new CallFunc(Self, () => PatrolUntil(waypoints, f, wait)));
 		}
 	}
 

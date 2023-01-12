@@ -35,13 +35,13 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Exits with larger priorities will be used before lower priorities.")]
 		public readonly int Priority = 1;
 
-		public override object Create(ActorInitializer init) { return new Exit(this); }
+		public override object Create(ActorInitializer init) { return new Exit(this, init.Self); }
 	}
 
 	public class Exit : ConditionalTrait<ExitInfo>
 	{
-		public Exit(ExitInfo info)
-			: base(info) { }
+		public Exit(ExitInfo info, Actor self)
+			: base(info, self) { }
 	}
 
 	public static class ExitExts

@@ -44,11 +44,11 @@ namespace OpenRA.Mods.Common.Scripting
 			if (!a.IsIdle)
 				throw new LuaException("LoadPassenger requires the passenger to be idle.");
 
-			cargo.Load(Self, a);
+			cargo.Load(a);
 		}
 
 		[Desc("Remove an existing actor (or first actor if none specified) from the transport.  This actor is not added to the world.")]
-		public Actor UnloadPassenger(Actor a = null) { return cargo.Unload(Self, a); }
+		public Actor UnloadPassenger(Actor a = null) { return cargo.Unload(a); }
 
 		[ScriptActorPropertyActivity]
 		[Desc("Command transport to unload passengers.")]

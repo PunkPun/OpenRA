@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("If > 0, restrict the number of times that this condition can be granted by any source.")]
 		public readonly int TotalCap = 0;
 
-		public override object Create(ActorInitializer init) { return new ExternalCondition(this); }
+		public override object Create(ActorInitializer init) { return new ExternalCondition(init.Self, this); }
 	}
 
 	public class ExternalCondition : ITick, INotifyCreated
@@ -54,6 +54,8 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		public readonly Actor Actor;
+
 		public readonly ExternalConditionInfo Info;
 		readonly Dictionary<object, HashSet<int>> permanentTokens = new Dictionary<object, HashSet<int>>();
 
@@ -63,8 +65,9 @@ namespace OpenRA.Mods.Common.Traits
 		int duration;
 		int expires;
 
-		public ExternalCondition(ExternalConditionInfo info)
+		public ExternalCondition(Actor self, ExternalConditionInfo info)
 		{
+			Actor = self;
 			Info = info;
 		}
 
@@ -85,12 +88,12 @@ namespace OpenRA.Mods.Common.Traits
 			return true;
 		}
 
-		public int GrantCondition(Actor self, object source, int duration = 0, int remaining = 0)
+		public int GrantCondition(object source, int duration = 0, int remaining = 0)
 		{
 			if (!CanGrantCondition(source))
 				return Actor.InvalidConditionToken;
 
-			var token = self.GrantCondition(Info.Condition);
+			var token = Actor.GrantCondition(Info.Condition);
 			permanentTokens.TryGetValue(source, out var permanent);
 
 			// Callers can override the amount of time remaining by passing a value
@@ -112,8 +115,8 @@ namespace OpenRA.Mods.Common.Traits
 						{
 							var expireToken = timedTokens[expireIndex].Token;
 							timedTokens.RemoveAt(expireIndex);
-							if (self.TokenValid(expireToken))
-								self.RevokeCondition(expireToken);
+							if (Actor.TokenValid(expireToken))
+								Actor.RevokeCondition(expireToken);
 						}
 					}
 				}
@@ -124,14 +127,14 @@ namespace OpenRA.Mods.Common.Traits
 					if (totalCount >= Info.TotalCap && timedTokens.Count > 0)
 					{
 						var expire = timedTokens[0].Token;
-						if (self.TokenValid(expire))
-							self.RevokeCondition(expire);
+						if (Actor.TokenValid(expire))
+							Actor.RevokeCondition(expire);
 
 						timedTokens.RemoveAt(0);
 					}
 				}
 
-				var timedToken = new TimedToken(token, self, source, remaining);
+				var timedToken = new TimedToken(token, Actor, source, remaining);
 				var index = timedTokens.FindIndex(t => t.Expires >= timedToken.Expires);
 				if (index >= 0)
 					timedTokens.Insert(index, timedToken);
@@ -154,7 +157,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		/// <summary>Revokes the external condition with the given token if it was granted by this trait.</summary>
 		/// <returns><c>true</c> if the now-revoked condition was originally granted by this trait.</returns>
-		public bool TryRevokeCondition(Actor self, object source, int token)
+		public bool TryRevokeCondition(object source, int token)
 		{
 			if (source == null)
 				return false;
@@ -173,25 +176,25 @@ namespace OpenRA.Mods.Common.Traits
 					return false;
 			}
 
-			if (self.TokenValid(token))
-				self.RevokeCondition(token);
+			if (Actor.TokenValid(token))
+				Actor.RevokeCondition(token);
 
 			return true;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (timedTokens.Count == 0)
 				return;
 
 			// Remove expired tokens
-			var worldTick = self.World.WorldTick;
+			var worldTick = Actor.World.WorldTick;
 			var count = 0;
 			while (count < timedTokens.Count && timedTokens[count].Expires < worldTick)
 			{
 				var token = timedTokens[count].Token;
-				if (self.TokenValid(token))
-					self.RevokeCondition(token);
+				if (Actor.TokenValid(token))
+					Actor.RevokeCondition(token);
 
 				count++;
 			}
@@ -222,9 +225,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool Notifies(IConditionTimerWatcher watcher) { return watcher.Condition == Info.Condition; }
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			watchers = self.TraitsImplementing<IConditionTimerWatcher>().Where(Notifies).ToArray();
+			watchers = Actor.TraitsImplementing<IConditionTimerWatcher>().Where(Notifies).ToArray();
 		}
 	}
 }

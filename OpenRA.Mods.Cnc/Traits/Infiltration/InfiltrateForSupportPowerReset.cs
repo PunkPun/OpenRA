@@ -35,34 +35,36 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Text notification the perpetrator will see after successful infiltration.")]
 		public readonly string InfiltrationTextNotification = null;
 
-		public override object Create(ActorInitializer init) { return new InfiltrateForSupportPowerReset(this); }
+		public override object Create(ActorInitializer init) { return new InfiltrateForSupportPowerReset(this, init.Self); }
 	}
 
 	class InfiltrateForSupportPowerReset : INotifyInfiltrated
 	{
 		readonly InfiltrateForSupportPowerResetInfo info;
+		readonly Actor actor;
 
-		public InfiltrateForSupportPowerReset(InfiltrateForSupportPowerResetInfo info)
+		public InfiltrateForSupportPowerReset(InfiltrateForSupportPowerResetInfo info, Actor self)
 		{
 			this.info = info;
+			actor = self;
 		}
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (!info.Types.Overlaps(types))
 				return;
 
 			if (info.InfiltratedNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", info.InfiltratedNotification, self.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, actor.Owner, "Speech", info.InfiltratedNotification, actor.Owner.Faction.InternalName);
 
 			if (info.InfiltrationNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, actor.Owner);
 			TextNotificationsManager.AddTransientLine(info.InfiltrationTextNotification, infiltrator.Owner);
 
-			var manager = self.Owner.PlayerActor.Trait<SupportPowerManager>();
-			var powers = manager.GetPowersForActor(self).Where(sp => !sp.Disabled);
+			var manager = actor.Owner.PlayerActor.Trait<SupportPowerManager>();
+			var powers = manager.GetPowersForActor(actor).Where(sp => !sp.Disabled);
 			foreach (var power in powers)
 				power.ResetTimer();
 		}

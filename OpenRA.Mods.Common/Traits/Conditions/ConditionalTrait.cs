@@ -41,6 +41,7 @@ namespace OpenRA.Mods.Common.Traits
 	public abstract class ConditionalTrait<InfoType> : IObservesVariables, IDisabledTrait, INotifyCreated, ISync where InfoType : ConditionalTraitInfo
 	{
 		public readonly InfoType Info;
+		public readonly Actor Actor;
 
 		// Overrides must call `base.GetVariableObservers()` to avoid breaking RequiresCondition.
 		public virtual IEnumerable<VariableObserver> GetVariableObservers()
@@ -52,24 +53,25 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		public bool IsTraitDisabled { get; private set; }
 
-		public ConditionalTrait(InfoType info)
+		public ConditionalTrait(InfoType info, Actor actor)
 		{
 			Info = info;
+			Actor = actor;
 
 			// Conditional traits will be enabled (if appropriate) by the Actor
 			// calling ConditionConsumers after INotifyCreated runs.
 			IsTraitDisabled = Info.RequiresCondition != null;
 		}
 
-		protected virtual void Created(Actor self)
+		protected virtual void Created()
 		{
 			if (Info.RequiresCondition == null)
-				TraitEnabled(self);
+				TraitEnabled();
 		}
 
-		void INotifyCreated.Created(Actor self) { Created(self); }
+		void INotifyCreated.Created() { Created(); }
 
-		void RequiredConditionsChanged(Actor self, IReadOnlyDictionary<string, int> conditions)
+		void RequiredConditionsChanged(IReadOnlyDictionary<string, int> conditions)
 		{
 			if (Info.RequiresCondition == null)
 				return;
@@ -80,14 +82,14 @@ namespace OpenRA.Mods.Common.Traits
 			if (IsTraitDisabled != wasDisabled)
 			{
 				if (wasDisabled)
-					TraitEnabled(self);
+					TraitEnabled();
 				else
-					TraitDisabled(self);
+					TraitDisabled();
 			}
 		}
 
 		// Subclasses can add condition support by querying IsTraitDisabled and/or overriding these methods.
-		protected virtual void TraitEnabled(Actor self) { }
-		protected virtual void TraitDisabled(Actor self) { }
+		protected virtual void TraitEnabled() { }
+		protected virtual void TraitDisabled() { }
 	}
 }

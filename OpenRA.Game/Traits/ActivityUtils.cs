@@ -16,7 +16,7 @@ namespace OpenRA.Traits
 {
 	public static class ActivityUtils
 	{
-		public static Activity RunActivity(Actor self, Activity act)
+		public static Activity RunActivity(Activity act)
 		{
 			// PERF: This is a hot path and must run with minimal added overhead.
 			// If there are no activities we can bail straight away and save ourselves the overhead of setting up the perf logging.
@@ -28,7 +28,7 @@ namespace OpenRA.Traits
 			while (act != null)
 			{
 				var prev = act;
-				act = act.TickOuter(self);
+				act = act.TickOuter();
 				perfLogger.LogTickAndRestartTimer("Activity", prev);
 
 				if (act == prev)

@@ -61,7 +61,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var rs = self.Trait<RenderSprites>();
 
 			anim = new Animation(self.World, info.Image);
-			rs.Add(new AnimationWithOffset(anim, null, () => !isSmoking),
+			rs.Add(new AnimationWithOffset(Actor, anim, null, () => !isSmoking),
 				info.Palette, info.IsPlayerPalette);
 		}
 

@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool IOccupySpaceInfo.SharesCell => false;
 
-		public bool CanEnterCell(World world, Actor self, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
+		public bool CanEnterCell(World world, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
 			// Since crates don't share cells and GetAvailableSubCell only returns SubCell.Full or SubCell.Invalid, we ignore the subCell parameter
 			return GetAvailableSubCell(world, cell, ignoreActor, check) != SubCell.Invalid;
@@ -73,7 +73,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class Crate : ITick, IPositionable, ICrushable, ISync, INotifyCreated,
 		INotifyParachute, INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyCrushed
 	{
-		readonly Actor self;
+		public readonly Actor Actor;
 		readonly CrateInfo info;
 		bool collected;
 		INotifyCenterPositionChanged[] notifyCenterPositionChanged;
@@ -86,22 +86,22 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Crate(ActorInitializer init, CrateInfo info)
 		{
-			self = init.Self;
+			Actor = init.Self;
 			this.info = info;
 
 			var locationInit = init.GetOrDefault<LocationInit>();
 			if (locationInit != null)
-				SetPosition(self, locationInit.Value);
+				SetPosition(locationInit.Value);
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			notifyCenterPositionChanged = self.TraitsImplementing<INotifyCenterPositionChanged>().ToArray();
+			notifyCenterPositionChanged = Actor.TraitsImplementing<INotifyCenterPositionChanged>().ToArray();
 		}
 
-		void INotifyCrushed.WarnCrush(Actor self, Actor crusher, BitSet<CrushClass> crushClasses) { }
+		void INotifyCrushed.WarnCrush(Actor crusher, BitSet<CrushClass> crushClasses) { }
 
-		void INotifyCrushed.OnCrush(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
+		void INotifyCrushed.OnCrush(Actor crusher, BitSet<CrushClass> crushClasses)
 		{
 			if (!crushClasses.Contains(info.CrushClass))
 				return;
@@ -109,12 +109,12 @@ namespace OpenRA.Mods.Common.Traits
 			OnCrushInner(crusher);
 		}
 
-		void INotifyParachute.OnParachute(Actor self) { }
-		void INotifyParachute.OnLanded(Actor self)
+		void INotifyParachute.OnParachute() { }
+		void INotifyParachute.OnLanded()
 		{
 			// Check whether the crate landed on anything
-			var landedOn = self.World.ActorMap.GetActorsAt(self.Location)
-				.Where(a => a != self);
+			var landedOn = Actor.World.ActorMap.GetActorsAt(Actor.Location)
+				.Where(a => a != Actor);
 
 			if (!landedOn.Any())
 				return;
@@ -128,14 +128,14 @@ namespace OpenRA.Mods.Common.Traits
 
 				// Make sure that the actor can collect this crate type
 				// Crate can only be crushed if it is not in the air.
-				return self.IsAtGroundLevel() && mi.LocomotorInfo.Crushes.Contains(info.CrushClass);
+				return Actor.IsAtGroundLevel() && mi.LocomotorInfo.Crushes.Contains(info.CrushClass);
 			});
 
 			// Destroy the crate if none of the units in the cell are valid collectors
 			if (collector != null)
 				OnCrushInner(collector);
 			else
-				self.Dispose();
+				Actor.Dispose();
 		}
 
 		void OnCrushInner(Actor crusher)
@@ -143,9 +143,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (collected)
 				return;
 
-			var crateActions = self.TraitsImplementing<CrateAction>();
+			var crateActions = Actor.TraitsImplementing<CrateAction>();
 
-			self.Dispose();
+			Actor.Dispose();
 			collected = true;
 
 			if (crateActions.Any())
@@ -153,7 +153,7 @@ namespace OpenRA.Mods.Common.Traits
 				var shares = crateActions.Select(a => (Action: a, Shares: a.GetSelectionSharesOuter(crusher)));
 
 				var totalShares = shares.Sum(a => a.Shares);
-				var n = self.World.SharedRandom.Next(totalShares);
+				var n = Actor.World.SharedRandom.Next(totalShares);
 
 				foreach (var s in shares)
 				{
@@ -168,10 +168,10 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			if (info.Duration != 0 && self.IsInWorld && ++ticks >= info.Duration)
-				self.Dispose();
+			if (info.Duration != 0 && Actor.IsInWorld && ++ticks >= info.Duration)
+				Actor.Dispose();
 		}
 
 		public CPos TopLeft => Location;
@@ -180,79 +180,79 @@ namespace OpenRA.Mods.Common.Traits
 		public WPos CenterPosition { get; private set; }
 
 		// Sets the location (Location) and position (CenterPosition)
-		public void SetPosition(Actor self, WPos pos)
+		public void SetPosition(WPos pos)
 		{
-			var cell = self.World.Map.CellContaining(pos);
-			SetLocation(self, cell);
-			SetCenterPosition(self, self.World.Map.CenterOfCell(cell) + new WVec(WDist.Zero, WDist.Zero, self.World.Map.DistanceAboveTerrain(pos)));
+			var cell = Actor.World.Map.CellContaining(pos);
+			SetLocation(cell);
+			SetCenterPosition(Actor.World.Map.CenterOfCell(cell) + new WVec(WDist.Zero, WDist.Zero, Actor.World.Map.DistanceAboveTerrain(pos)));
 		}
 
 		// Sets the location (Location) and position (CenterPosition)
-		public void SetPosition(Actor self, CPos cell, SubCell subCell = SubCell.Any)
+		public void SetPosition(CPos cell, SubCell subCell = SubCell.Any)
 		{
-			SetLocation(self, cell);
-			SetCenterPosition(self, self.World.Map.CenterOfCell(cell));
+			SetLocation(cell);
+			SetCenterPosition(Actor.World.Map.CenterOfCell(cell));
 		}
 
 		// Sets only the CenterPosition
-		public void SetCenterPosition(Actor self, WPos pos)
+		public void SetCenterPosition(WPos pos)
 		{
 			CenterPosition = pos;
-			self.World.UpdateMaps(self, this);
+			Actor.World.UpdateMaps(Actor, this);
 
 			// This can be called from the constructor before notifyCenterPositionChanged is assigned.
 			if (notifyCenterPositionChanged != null)
 				foreach (var n in notifyCenterPositionChanged)
-					n.CenterPositionChanged(self, 0, 0);
+					n.CenterPositionChanged(0, 0);
 		}
 
 		// Sets only the location (Location)
-		void SetLocation(Actor self, CPos cell)
+		void SetLocation(CPos cell)
 		{
-			self.World.ActorMap.RemoveInfluence(self, this);
+			Actor.World.ActorMap.RemoveInfluence(this);
 			Location = cell;
-			self.World.ActorMap.AddInfluence(self, this);
+			Actor.World.ActorMap.AddInfluence(this);
 		}
 
-		public bool IsLeavingCell(CPos location, SubCell subCell = SubCell.Any) { return self.Location == location && ticks + 1 == info.Duration; }
+		public bool IsLeavingCell(CPos location, SubCell subCell = SubCell.Any) { return Actor.Location == location && ticks + 1 == info.Duration; }
 		public SubCell GetValidSubCell(SubCell preferred = SubCell.Any) { return SubCell.FullCell; }
 		public SubCell GetAvailableSubCell(CPos cell, SubCell preferredSubCell = SubCell.Any, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
-			return info.GetAvailableSubCell(self.World, cell, ignoreActor, check);
+			return info.GetAvailableSubCell(Actor.World, cell, ignoreActor, check);
 		}
 
-		public bool CanExistInCell(CPos cell) { return info.CanExistInCell(self.World, cell); }
+		public bool CanExistInCell(CPos cell) { return info.CanExistInCell(Actor.World, cell); }
 
 		public bool CanEnterCell(CPos a, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
 			return GetAvailableSubCell(a, SubCell.Any, ignoreActor, check) != SubCell.Invalid;
 		}
 
-		bool ICrushable.CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
+		bool ICrushable.CrushableBy(Actor crusher, BitSet<CrushClass> crushClasses)
 		{
 			return crushClasses.Contains(info.CrushClass);
 		}
 
-		LongBitSet<PlayerBitMask> ICrushable.CrushableBy(Actor self, BitSet<CrushClass> crushClasses)
+		LongBitSet<PlayerBitMask> ICrushable.CrushableBy(BitSet<CrushClass> crushClasses)
 		{
-			return crushClasses.Contains(info.CrushClass) ? self.World.AllPlayersMask : self.World.NoPlayersMask;
+			return crushClasses.Contains(info.CrushClass) ? Actor.World.AllPlayersMask : Actor.World.NoPlayersMask;
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
-			self.World.AddToMaps(self, this);
+			Actor.World.AddToMaps(Actor, this);
 
-			self.World.WorldActor.TraitOrDefault<CrateSpawner>()?.IncrementCrates();
+			Actor.World.WorldActor.TraitOrDefault<CrateSpawner>()?.IncrementCrates();
 
-			if (self.World.Map.DistanceAboveTerrain(CenterPosition) > WDist.Zero && self.TraitOrDefault<Parachutable>() != null)
-				self.QueueActivity(new Parachute(self));
+			if (Actor.World.Map.DistanceAboveTerrain(CenterPosition) > WDist.Zero && Actor.TraitOrDefault<Parachutable>() != null)
+				Actor.QueueActivity(new Parachute(Actor));
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
-			self.World.RemoveFromMaps(self, this);
+			Actor.World.RemoveFromMaps(Actor, this);
 
-			self.World.WorldActor.TraitOrDefault<CrateSpawner>()?.DecrementCrates();
+			Actor.World.WorldActor.TraitOrDefault<CrateSpawner>()?.DecrementCrates();
 		}
 	}
 }

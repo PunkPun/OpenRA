@@ -41,17 +41,17 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		public bool IsTraitPaused { get; private set; }
 
-		protected PausableConditionalTrait(InfoType info)
-			: base(info)
+		protected PausableConditionalTrait(InfoType info, Actor self)
+			: base(info, self)
 		{
 			IsTraitPaused = info.PausedByDefault;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			base.Created(self);
+			base.Created();
 			if (Info.PauseOnCondition == null)
-				TraitResumed(self);
+				TraitResumed();
 		}
 
 		// Overrides must call `base.GetVariableObservers()` to avoid breaking RequiresCondition or PauseOnCondition.
@@ -64,7 +64,7 @@ namespace OpenRA.Mods.Common.Traits
 				yield return new VariableObserver(PauseConditionsChanged, Info.PauseOnCondition.Variables);
 		}
 
-		void PauseConditionsChanged(Actor self, IReadOnlyDictionary<string, int> conditions)
+		void PauseConditionsChanged(IReadOnlyDictionary<string, int> conditions)
 		{
 			var wasPaused = IsTraitPaused;
 			IsTraitPaused = Info.PauseOnCondition.Evaluate(conditions);
@@ -72,14 +72,14 @@ namespace OpenRA.Mods.Common.Traits
 			if (IsTraitPaused != wasPaused)
 			{
 				if (wasPaused)
-					TraitResumed(self);
+					TraitResumed();
 				else
-					TraitPaused(self);
+					TraitPaused();
 			}
 		}
 
 		// Subclasses can add pause support by querying IsTraitPaused and/or overriding these methods.
-		protected virtual void TraitResumed(Actor self) { }
-		protected virtual void TraitPaused(Actor self) { }
+		protected virtual void TraitResumed() { }
+		protected virtual void TraitPaused() { }
 	}
 }

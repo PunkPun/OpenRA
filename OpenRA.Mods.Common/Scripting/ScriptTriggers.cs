@@ -37,8 +37,8 @@ namespace OpenRA.Mods.Common.Scripting
 		INotifyObjectivesUpdated, INotifyCapture, INotifyInfiltrated, INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyDiscovered, INotifyActorDisposing,
 		INotifyPassengerEntered, INotifyPassengerExited, INotifySold, INotifyWinStateChanged, INotifyTimeLimit
 	{
+		public readonly Actor Actor;
 		readonly World world;
-		readonly Actor self;
 
 		public event Action<Actor> OnKilledInternal = _ => { };
 		public event Action<Actor> OnCapturedInternal = _ => { };
@@ -71,7 +71,7 @@ namespace OpenRA.Mods.Common.Scripting
 		public ScriptTriggers(World world, Actor self)
 		{
 			this.world = world;
-			this.self = self;
+			Actor = self;
 		}
 
 		List<Triggerable> Triggerables(Trigger trigger)
@@ -81,7 +81,7 @@ namespace OpenRA.Mods.Common.Scripting
 
 		public void RegisterCallback(Trigger trigger, LuaFunction func, ScriptContext context)
 		{
-			Triggerables(trigger).Add(new Triggerable(func, context, self));
+			Triggerables(trigger).Add(new Triggerable(func, context, Actor));
 		}
 
 		public bool HasAnyCallbacksFor(Trigger trigger)
@@ -89,7 +89,7 @@ namespace OpenRA.Mods.Common.Scripting
 			return Triggerables(trigger).Count > 0;
 		}
 
-		void INotifyIdle.TickIdle(Actor self)
+		void INotifyIdle.TickIdle()
 		{
 			if (world.Disposing)
 				return;
@@ -108,7 +108,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyDamage.Damaged(Actor self, AttackInfo e)
+		void INotifyDamage.Damaged(AttackInfo e)
 		{
 			if (world.Disposing)
 				return;
@@ -129,7 +129,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyKilled.Killed(Actor self, AttackInfo e)
+		void INotifyKilled.Killed(AttackInfo e)
 		{
 			if (world.Disposing)
 				return;
@@ -150,10 +150,10 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 
 			// Run any internally bound callbacks
-			OnKilledInternal(self);
+			OnKilledInternal(Actor);
 		}
 
-		void INotifyProduction.UnitProduced(Actor self, Actor other, CPos exit)
+		void INotifyProduction.UnitProduced(Actor other, CPos exit)
 		{
 			if (world.Disposing)
 				return;
@@ -174,7 +174,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 
 			// Run any internally bound callbacks
-			OnProducedInternal(self, other);
+			OnProducedInternal(Actor, other);
 		}
 
 		void INotifyWinStateChanged.OnPlayerWon(Player player)
@@ -280,7 +280,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyCapture.OnCapture(Actor self, Actor captor, Player oldOwner, Player newOwner, BitSet<CaptureType> captureTypes)
+		void INotifyCapture.OnCapture(Actor captor, Player oldOwner, Player newOwner, BitSet<CaptureType> captureTypes)
 		{
 			if (world.Disposing)
 				return;
@@ -302,10 +302,10 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 
 			// Run any internally bound callbacks
-			OnCapturedInternal(self);
+			OnCapturedInternal(Actor);
 		}
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (world.Disposing)
 				return;
@@ -325,7 +325,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
 			if (world.Disposing)
 				return;
@@ -344,10 +344,10 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 
 			// Run any internally bound callbacks
-			OnAddedInternal(self);
+			OnAddedInternal(Actor);
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
 			if (world.Disposing)
 				return;
@@ -367,11 +367,11 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 
 			// Run any internally bound callbacks
-			OnRemovedInternal(self);
+			OnRemovedInternal(Actor);
 		}
 
-		void INotifySold.Selling(Actor self) { }
-		void INotifySold.Sold(Actor self)
+		void INotifySold.Selling() { }
+		void INotifySold.Sold()
 		{
 			if (world.Disposing)
 				return;
@@ -391,7 +391,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyOtherProduction.UnitProducedByOther(Actor self, Actor producee, Actor produced, string productionType, TypeDictionary init)
+		void INotifyOtherProduction.UnitProducedByOther(Actor producee, Actor produced, string productionType, TypeDictionary init)
 		{
 			if (world.Disposing)
 				return;
@@ -417,7 +417,7 @@ namespace OpenRA.Mods.Common.Scripting
 			OnOtherProducedInternal(producee, produced);
 		}
 
-		void INotifyDiscovered.OnDiscovered(Actor self, Player discoverer, bool playNotification)
+		void INotifyDiscovered.OnDiscovered(Player discoverer, bool playNotification)
 		{
 			if (world.Disposing)
 				return;
@@ -440,7 +440,7 @@ namespace OpenRA.Mods.Common.Scripting
 			{
 				try
 				{
-					using (var a = self.Owner.ToLuaValue(f.Context))
+					using (var a = Actor.Owner.ToLuaValue(f.Context))
 					using (var b = discoverer.ToLuaValue(f.Context))
 						f.Function.Call(a, b, f.Self).Dispose();
 				}
@@ -452,7 +452,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyPassengerEntered.OnPassengerEntered(Actor self, Actor passenger)
+		void INotifyPassengerEntered.OnPassengerEntered(Actor passenger)
 		{
 			if (world.Disposing)
 				return;
@@ -461,7 +461,7 @@ namespace OpenRA.Mods.Common.Scripting
 			{
 				try
 				{
-					using (var trans = self.ToLuaValue(f.Context))
+					using (var trans = Actor.ToLuaValue(f.Context))
 					using (var pass = passenger.ToLuaValue(f.Context))
 						f.Function.Call(trans, pass).Dispose();
 				}
@@ -473,7 +473,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyPassengerExited.OnPassengerExited(Actor self, Actor passenger)
+		void INotifyPassengerExited.OnPassengerExited(Actor passenger)
 		{
 			if (world.Disposing)
 				return;
@@ -482,7 +482,7 @@ namespace OpenRA.Mods.Common.Scripting
 			{
 				try
 				{
-					using (var trans = self.ToLuaValue(f.Context))
+					using (var trans = Actor.ToLuaValue(f.Context))
 					using (var pass = passenger.ToLuaValue(f.Context))
 						f.Function.Call(trans, pass).Dispose();
 				}
@@ -494,7 +494,7 @@ namespace OpenRA.Mods.Common.Scripting
 			}
 		}
 
-		void INotifyTimeLimit.NotifyTimerExpired(Actor self)
+		void INotifyTimeLimit.NotifyTimerExpired()
 		{
 			if (world.Disposing)
 				return;
@@ -530,7 +530,7 @@ namespace OpenRA.Mods.Common.Scripting
 				Clear(t);
 		}
 
-		void INotifyActorDisposing.Disposing(Actor self)
+		void INotifyActorDisposing.Disposing()
 		{
 			ClearAll();
 		}

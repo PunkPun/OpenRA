@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 
 		void INotifyTeslaCharging.Charging(Actor self, in Target target)
 		{
-			wsb.PlayCustomAnimation(self, info.ChargeSequence, () => wsb.CancelCustomAnimation(self));
+			wsb.PlayCustomAnimation(info.ChargeSequence, () => wsb.CancelCustomAnimation());
 		}
 	}
 }

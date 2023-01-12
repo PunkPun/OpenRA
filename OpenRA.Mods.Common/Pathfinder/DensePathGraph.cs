@@ -28,7 +28,6 @@ namespace OpenRA.Mods.Common.Pathfinder
 		protected readonly ICustomMovementLayer[] CustomMovementLayers;
 		readonly int customMovementLayersEnabledForLocomotor;
 		readonly Locomotor locomotor;
-		readonly Actor actor;
 		readonly World world;
 		readonly BlockedByActor check;
 		readonly Func<CPos, int> customCost;
@@ -37,14 +36,13 @@ namespace OpenRA.Mods.Common.Pathfinder
 		readonly bool inReverse;
 		readonly bool checkTerrainHeight;
 
-		protected DensePathGraph(Locomotor locomotor, Actor actor, World world, BlockedByActor check,
+		protected DensePathGraph(Locomotor locomotor, World world, BlockedByActor check,
 			Func<CPos, int> customCost, Actor ignoreActor, bool laneBias, bool inReverse)
 		{
 			CustomMovementLayers = world.GetCustomMovementLayers();
 			customMovementLayersEnabledForLocomotor = CustomMovementLayers.Count(cml => cml != null && cml.EnabledForLocomotor(locomotor.Info));
 			this.locomotor = locomotor;
 			this.world = world;
-			this.actor = actor;
 			this.check = check;
 			this.customCost = customCost;
 			this.ignoreActor = ignoreActor;
@@ -171,13 +169,13 @@ namespace OpenRA.Mods.Common.Pathfinder
 		bool CanEnterNode(CPos srcNode, CPos destNode)
 		{
 			return
-				locomotor.MovementCostToEnterCell(actor, srcNode, destNode, check, ignoreActor)
+				locomotor.MovementCostToEnterCell(srcNode, destNode, check, ignoreActor)
 				!= PathGraph.MovementCostForUnreachableCell;
 		}
 
 		int GetPathCostToNode(CPos srcNode, CPos destNode, CVec direction)
 		{
-			var movementCost = locomotor.MovementCostToEnterCell(actor, srcNode, destNode, check, ignoreActor);
+			var movementCost = locomotor.MovementCostToEnterCell(srcNode, destNode, check, ignoreActor);
 			if (movementCost != PathGraph.MovementCostForUnreachableCell)
 				return CalculateCellPathCost(destNode, direction, movementCost);
 

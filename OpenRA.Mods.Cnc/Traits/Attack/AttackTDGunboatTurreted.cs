@@ -21,17 +21,17 @@ namespace OpenRA.Mods.Cnc.Traits
 	[Desc("Actor has a visual turret used to attack.")]
 	public class AttackTDGunboatTurretedInfo : AttackTurretedInfo, Requires<TDGunboatInfo>
 	{
-		public override object Create(ActorInitializer init) { return new AttackTDGunboatTurreted(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new AttackTDGunboatTurreted(this, init.Self); }
 	}
 
 	public class AttackTDGunboatTurreted : AttackTurreted
 	{
-		public AttackTDGunboatTurreted(Actor self, AttackTDGunboatTurretedInfo info)
-			: base(self, info) { }
+		public AttackTDGunboatTurreted(AttackTDGunboatTurretedInfo info, Actor self)
+			: base(info, self) { }
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor)
+		public override Activity GetAttackActivity(AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor)
 		{
-			return new AttackTDGunboatTurretedActivity(self, newTarget, forceAttack, targetLineColor);
+			return new AttackTDGunboatTurretedActivity(Actor, newTarget, forceAttack, targetLineColor);
 		}
 
 		class AttackTDGunboatTurretedActivity : Activity
@@ -43,6 +43,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			bool hasTicked;
 
 			public AttackTDGunboatTurretedActivity(Actor self, in Target target, bool forceAttack, Color? targetLineColor = null)
+				: base(self)
 			{
 				attack = self.Trait<AttackTDGunboatTurreted>();
 				this.target = target;
@@ -50,9 +51,9 @@ namespace OpenRA.Mods.Cnc.Traits
 				this.targetLineColor = targetLineColor;
 			}
 
-			public override bool Tick(Actor self)
+			public override bool Tick()
 			{
-				if (IsCanceling || !target.IsValidFor(self))
+				if (IsCanceling || !target.IsValidFor(Actor))
 					return true;
 
 				if (attack.IsTraitDisabled)
@@ -73,7 +74,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				return false;
 			}
 
-			public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+			public override IEnumerable<TargetLineNode> TargetLineNodes()
 			{
 				if (targetLineColor != null)
 					yield return new TargetLineNode(target, targetLineColor.Value);

@@ -53,7 +53,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var buildingInfo = self.Info.TraitInfo<BuildingInfo>();
 
 			var offset = buildingInfo.CenterOffset(self.World).Y + 512;
-			renderSprites.Add(new AnimationWithOffset(door, null, () => IsTraitDisabled, offset));
+			renderSprites.Add(new AnimationWithOffset(Actor, door, null, () => IsTraitDisabled, offset));
 		}
 
 		void ITick.Tick(Actor self)

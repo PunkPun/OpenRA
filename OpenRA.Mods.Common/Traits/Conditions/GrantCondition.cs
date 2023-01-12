@@ -24,28 +24,28 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Is the condition irrevocable once it has been activated?")]
 		public readonly bool GrantPermanently = false;
 
-		public override object Create(ActorInitializer init) { return new GrantCondition(this); }
+		public override object Create(ActorInitializer init) { return new GrantCondition(init.Self, this); }
 	}
 
 	class GrantCondition : ConditionalTrait<GrantConditionInfo>
 	{
 		int conditionToken = Actor.InvalidConditionToken;
 
-		public GrantCondition(GrantConditionInfo info)
-			: base(info) { }
+		public GrantCondition(Actor self, GrantConditionInfo info)
+			: base(info, self) { }
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			if (conditionToken == Actor.InvalidConditionToken)
-				conditionToken = self.GrantCondition(Info.Condition);
+				conditionToken = Actor.GrantCondition(Info.Condition);
 		}
 
-		protected override void TraitDisabled(Actor self)
+		protected override void TraitDisabled()
 		{
 			if (Info.GrantPermanently || conditionToken == Actor.InvalidConditionToken)
 				return;
 
-			conditionToken = self.RevokeCondition(conditionToken);
+			conditionToken = Actor.RevokeCondition(conditionToken);
 		}
 	}
 }

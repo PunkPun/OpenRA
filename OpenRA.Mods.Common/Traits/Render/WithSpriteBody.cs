@@ -71,81 +71,81 @@ namespace OpenRA.Mods.Common.Traits.Render
 			: this(init, info, () => WAngle.Zero) { }
 
 		protected WithSpriteBody(ActorInitializer init, WithSpriteBodyInfo info, Func<WAngle> baseFacing)
-			: base(info)
+			: base(info, init.Self)
 		{
-			rs = init.Self.Trait<RenderSprites>();
+			rs = Actor.Trait<RenderSprites>();
 
 			Func<bool> paused = () => IsTraitPaused &&
-				DefaultAnimation.CurrentSequence.Name == NormalizeSequence(init.Self, Info.Sequence);
+				DefaultAnimation.CurrentSequence.Name == NormalizeSequence(Info.Sequence);
 
 			Func<WVec> subtractDAT = null;
 			if (info.ForceToGround)
-				subtractDAT = () => new WVec(0, 0, -init.Self.World.Map.DistanceAboveTerrain(init.Self.CenterPosition).Length);
+				subtractDAT = () => new WVec(0, 0, -Actor.World.Map.DistanceAboveTerrain(Actor.CenterPosition).Length);
 
-			DefaultAnimation = new Animation(init.World, rs.GetImage(init.Self), baseFacing, paused);
-			rs.Add(new AnimationWithOffset(DefaultAnimation, subtractDAT, () => IsTraitDisabled), info.Palette, info.IsPlayerPalette);
+			DefaultAnimation = new Animation(init.World, rs.GetImage(Actor), baseFacing, paused);
+			rs.Add(new AnimationWithOffset(Actor, DefaultAnimation, subtractDAT, () => IsTraitDisabled), info.Palette, info.IsPlayerPalette);
 
 			// Cache the bounds from the default sequence to avoid flickering when the animation changes
-			boundsAnimation = new Animation(init.World, rs.GetImage(init.Self), baseFacing, paused);
+			boundsAnimation = new Animation(init.World, rs.GetImage(Actor), baseFacing, paused);
 			boundsAnimation.PlayRepeating(info.Sequence);
 		}
 
-		public string NormalizeSequence(Actor self, string sequence)
+		public string NormalizeSequence(string sequence)
 		{
-			return RenderSprites.NormalizeSequence(DefaultAnimation, self.GetDamageState(), sequence);
+			return RenderSprites.NormalizeSequence(DefaultAnimation, Actor.GetDamageState(), sequence);
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			if (Info.StartSequence != null)
-				PlayCustomAnimation(self, Info.StartSequence,
-					() => DefaultAnimation.PlayRepeating(NormalizeSequence(self, Info.Sequence)));
+				PlayCustomAnimation(Info.StartSequence,
+					() => DefaultAnimation.PlayRepeating(NormalizeSequence(Info.Sequence)));
 			else
-				DefaultAnimation.PlayRepeating(NormalizeSequence(self, Info.Sequence));
+				DefaultAnimation.PlayRepeating(NormalizeSequence(Info.Sequence));
 		}
 
-		public virtual void PlayCustomAnimation(Actor self, string name, Action after = null)
+		public virtual void PlayCustomAnimation(string name, Action after = null)
 		{
-			DefaultAnimation.PlayThen(NormalizeSequence(self, name), () =>
+			DefaultAnimation.PlayThen(NormalizeSequence(name), () =>
 			{
-				CancelCustomAnimation(self);
+				CancelCustomAnimation();
 				after?.Invoke();
 			});
 		}
 
-		public virtual void PlayCustomAnimationRepeating(Actor self, string name)
+		public virtual void PlayCustomAnimationRepeating(string name)
 		{
-			DefaultAnimation.PlayRepeating(NormalizeSequence(self, name));
+			DefaultAnimation.PlayRepeating(NormalizeSequence(name));
 		}
 
-		public virtual void PlayCustomAnimationBackwards(Actor self, string name, Action after = null)
+		public virtual void PlayCustomAnimationBackwards(string name, Action after = null)
 		{
-			DefaultAnimation.PlayBackwardsThen(NormalizeSequence(self, name), () =>
+			DefaultAnimation.PlayBackwardsThen(NormalizeSequence(name), () =>
 			{
-				CancelCustomAnimation(self);
+				CancelCustomAnimation();
 				after?.Invoke();
 			});
 		}
 
-		public virtual void CancelCustomAnimation(Actor self)
+		public virtual void CancelCustomAnimation()
 		{
-			DefaultAnimation.PlayRepeating(NormalizeSequence(self, Info.Sequence));
+			DefaultAnimation.PlayRepeating(NormalizeSequence(Info.Sequence));
 		}
 
-		protected virtual void DamageStateChanged(Actor self)
+		protected virtual void DamageStateChanged()
 		{
 			if (DefaultAnimation.CurrentSequence != null)
-				DefaultAnimation.ReplaceAnim(NormalizeSequence(self, DefaultAnimation.CurrentSequence.Name));
+				DefaultAnimation.ReplaceAnim(NormalizeSequence(DefaultAnimation.CurrentSequence.Name));
 		}
 
-		void INotifyDamageStateChanged.DamageStateChanged(Actor self, AttackInfo e)
+		void INotifyDamageStateChanged.DamageStateChanged(AttackInfo e)
 		{
-			DamageStateChanged(self);
+			DamageStateChanged();
 		}
 
-		Rectangle IAutoMouseBounds.AutoMouseoverBounds(Actor self, WorldRenderer wr)
+		Rectangle IAutoMouseBounds.AutoMouseoverBounds(WorldRenderer wr)
 		{
-			return boundsAnimation.ScreenBounds(wr, self.CenterPosition, WVec.Zero);
+			return boundsAnimation.ScreenBounds(wr, Actor.CenterPosition, WVec.Zero);
 		}
 	}
 }

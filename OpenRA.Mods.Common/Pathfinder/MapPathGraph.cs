@@ -25,7 +25,7 @@ namespace OpenRA.Mods.Common.Pathfinder
 
 		public MapPathGraph(CellInfoLayerPool layerPool, Locomotor locomotor, Actor actor, World world, BlockedByActor check,
 			Func<CPos, int> customCost, Actor ignoreActor, bool laneBias, bool inReverse)
-			: base(locomotor, actor, world, check, customCost, ignoreActor, laneBias, inReverse)
+			: base(locomotor, world, check, customCost, ignoreActor, laneBias, inReverse)
 		{
 			// As we support a search over the whole map area,
 			// use the pool to grab the CellInfos we need to track the graph state.

@@ -27,6 +27,7 @@ namespace OpenRA.Mods.Common.Activities
 		Actor proc;
 
 		public DeliverResources(Actor self, Actor targetActor = null)
+			: base(self)
 		{
 			movement = self.Trait<IMove>();
 			harv = self.Trait<Harvester>();
@@ -34,57 +35,57 @@ namespace OpenRA.Mods.Common.Activities
 			notifyHarvesterActions = self.TraitsImplementing<INotifyHarvesterAction>().ToArray();
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			if (targetActor != null && targetActor.IsInWorld)
 				harv.LinkProc(targetActor);
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (harv.IsTraitDisabled)
-				Cancel(self, true);
+				Cancel(true);
 
 			if (IsCanceling)
 				return true;
 
 			// Find the nearest best refinery if not explicitly ordered to a specific refinery:
 			if (harv.LinkedProc == null || !harv.LinkedProc.IsInWorld)
-				harv.ChooseNewProc(self, null);
+				harv.ChooseNewProc(Actor, null);
 
 			// No refineries exist; check again after delay defined in Harvester.
 			if (harv.LinkedProc == null)
 			{
-				QueueChild(new Wait(harv.Info.SearchForDeliveryBuildingDelay));
+				QueueChild(new Wait(Actor, harv.Info.SearchForDeliveryBuildingDelay));
 				return false;
 			}
 
 			proc = harv.LinkedProc;
 			var iao = proc.Trait<IAcceptResources>();
 
-			if (self.Location != proc.Location + iao.DeliveryOffset)
+			if (Actor.Location != proc.Location + iao.DeliveryOffset)
 			{
 				foreach (var n in notifyHarvesterActions)
-					n.MovingToRefinery(self, proc);
+					n.MovingToRefinery(proc);
 
 				QueueChild(movement.MoveTo(proc.Location + iao.DeliveryOffset, 0));
 				return false;
 			}
 
-			QueueChild(new Wait(10));
-			iao.OnDock(self, this);
+			QueueChild(new Wait(Actor, 10));
+			iao.OnDock(Actor, this);
 			return true;
 		}
 
-		public override void Cancel(Actor self, bool keepQueue = false)
+		public override void Cancel(bool keepQueue = false)
 		{
 			foreach (var n in notifyHarvesterActions)
-				n.MovementCancelled(self);
+				n.MovementCancelled();
 
-			base.Cancel(self, keepQueue);
+			base.Cancel(keepQueue);
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (proc != null)
 				yield return new TargetLineNode(Target.FromActor(proc), harv.Info.DeliverLineColor);

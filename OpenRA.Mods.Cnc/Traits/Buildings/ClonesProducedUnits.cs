@@ -36,18 +36,18 @@ namespace OpenRA.Mods.Cnc.Traits
 		readonly Production[] productionTraits;
 
 		public ClonesProducedUnits(ActorInitializer init, ClonesProducedUnitsInfo info)
-			: base(info)
+			: base(info, init.Self)
 		{
 			productionTraits = init.Self.TraitsImplementing<Production>().ToArray();
 		}
 
-		public void UnitProducedByOther(Actor self, Actor producer, Actor produced, string productionType, TypeDictionary init)
+		public void UnitProducedByOther(Actor producer, Actor produced, string productionType, TypeDictionary init)
 		{
 			if (IsTraitDisabled)
 				return;
 
 			// No recursive cloning!
-			if (producer.Owner != self.Owner || producer.Info.HasTraitInfo<ClonesProducedUnitsInfo>())
+			if (producer.Owner != Actor.Owner || producer.Info.HasTraitInfo<ClonesProducedUnitsInfo>())
 				return;
 
 			var ci = produced.Info.TraitInfoOrDefault<CloneableInfo>();
@@ -64,11 +64,11 @@ namespace OpenRA.Mods.Cnc.Traits
 
 				var inits = new TypeDictionary
 				{
-					new OwnerInit(self.Owner),
+					new OwnerInit(Actor.Owner),
 					factionInit ?? new FactionInit(BuildableInfo.GetInitialFaction(produced.Info, p.Faction))
 				};
 
-				if (p.Produce(self, produced.Info, Info.ProductionType, inits, 0))
+				if (p.Produce(Actor, produced.Info, Info.ProductionType, inits, 0))
 					return;
 			}
 		}

@@ -25,6 +25,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly bool isIdleTurner;
 
 		public FlyIdle(Actor self, int ticks = -1, bool idleTurn = true)
+			: base(self)
 		{
 			aircraft = self.Trait<Aircraft>();
 			isIdleTurner = aircraft.Info.IdleSpeed > 0 || (!aircraft.Info.CanHover && aircraft.Info.IdleSpeed < 0);
@@ -35,7 +36,7 @@ namespace OpenRA.Mods.Common.Activities
 				tickIdles = self.TraitsImplementing<INotifyIdle>().ToArray();
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (remainingTicks == 0 || (NextActivity != null && remainingTicks < 0))
 				return true;
@@ -48,7 +49,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			if (tickIdles != null)
 				foreach (var tickIdle in tickIdles)
-					tickIdle.TickIdle(self);
+					tickIdle.TickIdle();
 
 			if (isIdleTurner)
 			{
@@ -57,7 +58,7 @@ namespace OpenRA.Mods.Common.Activities
 
 				// We can't possibly turn this fast
 				var desiredFacing = aircraft.Facing + new WAngle(256);
-				Fly.FlyTick(self, aircraft, desiredFacing, aircraft.Info.CruiseAltitude, move, idleTurn);
+				Fly.FlyTick(aircraft, desiredFacing, aircraft.Info.CruiseAltitude, move, idleTurn);
 			}
 
 			return false;

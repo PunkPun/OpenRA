@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		static string MakeKey(SupportPower sp)
 		{
-			return sp.Info.AllowMultiple ? sp.Info.OrderName + "_" + sp.Self.ActorID : sp.Info.OrderName;
+			return sp.Info.AllowMultiple ? sp.Info.OrderName + "_" + sp.Actor.ActorID : sp.Info.OrderName;
 		}
 
 		void ActorAdded(Actor a)
@@ -115,7 +115,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			return a.TraitsImplementing<SupportPower>()
 				.Select(t => Powers[MakeKey(t)])
-				.Where(p => p.Instances.Any(i => !i.IsTraitDisabled && i.Self == a));
+				.Where(p => p.Instances.Any(i => !i.IsTraitDisabled && i.Actor == a));
 		}
 
 		public void PrerequisitesAvailable(string key)
@@ -206,13 +206,13 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (!notifiedCharging)
 			{
-				power.Charging(power.Self, Key);
+				power.Charging(power.Actor, Key);
 				notifiedCharging = true;
 			}
 
 			if (RemainingTicks == 0 && !notifiedReady)
 			{
-				power.Charged(power.Self, Key);
+				power.Charged(power.Actor, Key);
 				notifiedReady = true;
 			}
 		}
@@ -228,12 +228,12 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			Game.Sound.PlayToPlayer(SoundType.UI, Manager.Self.Owner, Info.SelectTargetSound);
-			Game.Sound.PlayNotification(power.Self.World.Map.Rules, power.Self.Owner, "Speech",
-				Info.SelectTargetSpeechNotification, power.Self.Owner.Faction.InternalName);
+			Game.Sound.PlayNotification(power.Actor.World.Map.Rules, power.Actor.Owner, "Speech",
+				Info.SelectTargetSpeechNotification, power.Actor.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(Info.SelectTargetTextNotification, power.Self.Owner);
+			TextNotificationsManager.AddTransientLine(Info.SelectTargetTextNotification, power.Actor.Owner);
 
-			power.SelectTarget(power.Self, Key, Manager);
+			power.SelectTarget(power.Actor, Key, Manager);
 		}
 
 		public virtual void Activate(Order order)
@@ -244,17 +244,17 @@ namespace OpenRA.Mods.Common.Traits
 			var power = Instances.Where(i => !i.IsTraitPaused && !i.IsTraitDisabled)
 				.MinByOrDefault(a =>
 				{
-					if (a.Self.OccupiesSpace == null || order.Target.Type == TargetType.Invalid)
+					if (a.Actor.OccupiesSpace == null || order.Target.Type == TargetType.Invalid)
 						return 0;
 
-					return (a.Self.CenterPosition - order.Target.CenterPosition).HorizontalLengthSquared;
+					return (a.Actor.CenterPosition - order.Target.CenterPosition).HorizontalLengthSquared;
 				});
 
 			if (power == null)
 				return;
 
 			// Note: order.Subject is the *player* actor
-			power.Activate(power.Self, order, Manager);
+			power.Activate(power.Actor, order, Manager);
 			remainingSubTicks = TotalTicks * 100;
 			notifiedCharging = notifiedReady = false;
 

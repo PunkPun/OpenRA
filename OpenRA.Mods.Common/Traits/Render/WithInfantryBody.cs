@@ -88,28 +88,28 @@ namespace OpenRA.Mods.Common.Traits.Render
 		}
 
 		public WithInfantryBody(ActorInitializer init, WithInfantryBodyInfo info)
-			: base(info)
+			: base(info, init.Self)
 		{
 			var self = init.Self;
 			var rs = self.Trait<RenderSprites>();
 
 			DefaultAnimation = new Animation(init.World, rs.GetImage(self), RenderSprites.MakeFacingFunc(self));
-			rs.Add(new AnimationWithOffset(DefaultAnimation, null, () => IsTraitDisabled), info.Palette, info.IsPlayerPalette);
-			PlayStandAnimation(self);
+			rs.Add(new AnimationWithOffset(Actor, DefaultAnimation, null, () => IsTraitDisabled), info.Palette, info.IsPlayerPalette);
+			PlayStandAnimation();
 
 			move = init.Self.Trait<IMove>();
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			rsm = self.TraitOrDefault<IRenderInfantrySequenceModifier>();
+			rsm = Actor.TraitOrDefault<IRenderInfantrySequenceModifier>();
 			var info = GetDisplayInfo();
-			idleDelay = self.World.SharedRandom.Next(info.MinIdleDelay, info.MaxIdleDelay);
+			idleDelay = Actor.World.SharedRandom.Next(info.MinIdleDelay, info.MaxIdleDelay);
 
-			base.Created(self);
+			base.Created();
 		}
 
-		protected virtual string NormalizeInfantrySequence(Actor self, string baseSequence)
+		protected virtual string NormalizeInfantrySequence(string baseSequence)
 		{
 			var prefix = IsModifyingSequence ? rsm.SequencePrefix : "";
 
@@ -119,24 +119,24 @@ namespace OpenRA.Mods.Common.Traits.Render
 			return baseSequence;
 		}
 
-		protected virtual bool AllowIdleAnimation(Actor self)
+		protected virtual bool AllowIdleAnimation()
 		{
 			return GetDisplayInfo().IdleSequences.Length > 0 && !IsModifyingSequence;
 		}
 
-		public void PlayStandAnimation(Actor self)
+		public void PlayStandAnimation()
 		{
 			state = AnimationState.Waiting;
 
 			var sequence = DefaultAnimation.GetRandomExistingSequence(Info.StandSequences, Game.CosmeticRandom);
 			if (sequence != null)
 			{
-				var normalized = NormalizeInfantrySequence(self, sequence);
+				var normalized = NormalizeInfantrySequence(sequence);
 				DefaultAnimation.PlayRepeating(normalized);
 			}
 		}
 
-		protected virtual void Attacking(Actor self, Armament a, Barrel barrel)
+		protected virtual void Attacking(Armament a, Barrel barrel)
 		{
 			var info = GetDisplayInfo();
 			var sequence = info.DefaultAttackSequence;
@@ -152,28 +152,28 @@ namespace OpenRA.Mods.Common.Traits.Render
 							sequence = sequences[i];
 			}
 
-			if (!string.IsNullOrEmpty(sequence) && DefaultAnimation.HasSequence(NormalizeInfantrySequence(self, sequence)))
+			if (!string.IsNullOrEmpty(sequence) && DefaultAnimation.HasSequence(NormalizeInfantrySequence(sequence)))
 			{
 				state = AnimationState.Attacking;
-				DefaultAnimation.PlayThen(NormalizeInfantrySequence(self, sequence), () => PlayStandAnimation(self));
+				DefaultAnimation.PlayThen(NormalizeInfantrySequence(sequence), () => PlayStandAnimation());
 			}
 		}
 
-		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel)
+		void INotifyAttack.PreparingAttack(in Target target, Armament a, Barrel barrel)
 		{
 			// HACK: The FrameEndTask makes sure that this runs after Tick(), preventing that from
 			// overriding the animation when an infantry unit stops to attack
-			self.World.AddFrameEndTask(_ => Attacking(self, a, barrel));
+			Actor.World.AddFrameEndTask(_ => Attacking(a, barrel));
 		}
 
-		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel) { }
+		void INotifyAttack.Attacking(in Target target, Armament a, Barrel barrel) { }
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			Tick(self);
+			Tick();
 		}
 
-		protected virtual void Tick(Actor self)
+		protected virtual void Tick()
 		{
 			if (rsm != null)
 			{
@@ -186,31 +186,31 @@ namespace OpenRA.Mods.Common.Traits.Render
 			if ((state != AnimationState.Moving || dirty) && move.CurrentMovementTypes.HasMovementType(MovementType.Horizontal))
 			{
 				state = AnimationState.Moving;
-				DefaultAnimation.PlayRepeating(NormalizeInfantrySequence(self, GetDisplayInfo().MoveSequence));
+				DefaultAnimation.PlayRepeating(NormalizeInfantrySequence(GetDisplayInfo().MoveSequence));
 			}
 			else if (((state == AnimationState.Moving || dirty) && !move.CurrentMovementTypes.HasMovementType(MovementType.Horizontal))
-				|| ((state == AnimationState.Idle || state == AnimationState.IdleAnimating) && !self.IsIdle))
-				PlayStandAnimation(self);
+				|| ((state == AnimationState.Idle || state == AnimationState.IdleAnimating) && !Actor.IsIdle))
+				PlayStandAnimation();
 
 			dirty = false;
 		}
 
-		void INotifyIdle.TickIdle(Actor self)
+		void INotifyIdle.TickIdle()
 		{
-			if (!AllowIdleAnimation(self))
+			if (!AllowIdleAnimation())
 				return;
 
 			if (state == AnimationState.Waiting)
 			{
 				state = AnimationState.Idle;
 				var info = GetDisplayInfo();
-				idleSequence = info.IdleSequences.Random(self.World.SharedRandom);
-				idleDelay = self.World.SharedRandom.Next(info.MinIdleDelay, info.MaxIdleDelay);
+				idleSequence = info.IdleSequences.Random(Actor.World.SharedRandom);
+				idleDelay = Actor.World.SharedRandom.Next(info.MinIdleDelay, info.MaxIdleDelay);
 			}
 			else if (state == AnimationState.Idle && idleDelay > 0 && --idleDelay == 0)
 			{
 				state = AnimationState.IdleAnimating;
-				DefaultAnimation.PlayThen(idleSequence, () => PlayStandAnimation(self));
+				DefaultAnimation.PlayThen(idleSequence, () => PlayStandAnimation());
 			}
 		}
 

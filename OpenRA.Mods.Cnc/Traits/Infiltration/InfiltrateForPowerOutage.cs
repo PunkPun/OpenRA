@@ -37,40 +37,42 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Text notification the perpetrator will see after successful infiltration.")]
 		public readonly string InfiltrationTextNotification = null;
 
-		public override object Create(ActorInitializer init) { return new InfiltrateForPowerOutage(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new InfiltrateForPowerOutage(this, init.Self); }
 	}
 
 	class InfiltrateForPowerOutage : INotifyOwnerChanged, INotifyInfiltrated
 	{
 		readonly InfiltrateForPowerOutageInfo info;
+		readonly Actor actor;
 		PowerManager playerPower;
 
-		public InfiltrateForPowerOutage(Actor self, InfiltrateForPowerOutageInfo info)
+		public InfiltrateForPowerOutage(InfiltrateForPowerOutageInfo info, Actor self)
 		{
 			this.info = info;
+			actor = self;
 			playerPower = self.Owner.PlayerActor.Trait<PowerManager>();
 		}
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (!info.Types.Overlaps(types))
 				return;
 
 			if (info.InfiltratedNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", info.InfiltratedNotification, self.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, actor.Owner, "Speech", info.InfiltratedNotification, actor.Owner.Faction.InternalName);
 
 			if (info.InfiltrationNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, actor.Owner);
 			TextNotificationsManager.AddTransientLine(info.InfiltrationTextNotification, infiltrator.Owner);
 
 			playerPower.TriggerPowerOutage(info.Duration);
 		}
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
-			playerPower = self.Owner.PlayerActor.Trait<PowerManager>();
+			playerPower = actor.Owner.PlayerActor.Trait<PowerManager>();
 		}
 	}
 }

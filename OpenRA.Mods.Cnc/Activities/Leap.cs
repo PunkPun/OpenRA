@@ -36,7 +36,8 @@ namespace OpenRA.Mods.Cnc.Activities
 		int ticks = 0;
 		WPos targetPosition;
 
-		public Leap(in Target target, Mobile mobile, Mobile targetMobile, int speed, AttackLeap attack, EdibleByLeap edible)
+		public Leap(Actor self, in Target target, Mobile mobile, Mobile targetMobile, int speed, AttackLeap attack, EdibleByLeap edible)
+			: base(self)
 		{
 			this.mobile = mobile;
 			this.targetMobile = targetMobile;
@@ -46,19 +47,19 @@ namespace OpenRA.Mods.Cnc.Activities
 			this.speed = speed;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			destinationCell = target.Actor.Location;
 			if (targetMobile != null)
 				destinationSubCell = targetMobile.ToSubCell;
 
-			origin = self.CenterPosition;
-			destination = self.World.Map.CenterOfSubCell(destinationCell, destinationSubCell);
+			origin = Actor.CenterPosition;
+			destination = Actor.World.Map.CenterOfSubCell(destinationCell, destinationSubCell);
 			length = Math.Max((origin - destination).Length / speed, 1);
 
 			// First check if we are still allowed to leap
 			// We need an extra boolean as using Cancel() in OnFirstRun doesn't work
-			canceled = !edible.GetLeapAtBy(self) || target.Type != TargetType.Actor;
+			canceled = !edible.GetLeapAtBy(Actor) || target.Type != TargetType.Actor;
 
 			IsInterruptible = false;
 
@@ -66,10 +67,10 @@ namespace OpenRA.Mods.Cnc.Activities
 				return;
 
 			targetPosition = target.CenterPosition;
-			attack.GrantLeapCondition(self);
+			attack.GrantLeapCondition();
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Correct the visual position after we jumped
 			if (canceled || jumpComplete)
@@ -79,7 +80,7 @@ namespace OpenRA.Mods.Cnc.Activities
 				targetPosition = target.CenterPosition;
 
 			var position = length > 1 ? WPos.Lerp(origin, targetPosition, ticks, length - 1) : targetPosition;
-			mobile.SetCenterPosition(self, position);
+			mobile.SetCenterPosition(position);
 
 			// We are at the destination
 			if (++ticks >= length)
@@ -96,29 +97,29 @@ namespace OpenRA.Mods.Cnc.Activities
 				mobile.UpdateMovement();
 
 				// Revoke the condition before attacking, as it is usually used to pause the attack trait
-				attack.RevokeLeapCondition(self);
-				attack.DoAttack(self, target);
+				attack.RevokeLeapCondition();
+				attack.DoAttack(target);
 
 				jumpComplete = true;
-				QueueChild(mobile.LocalMove(self, position, self.World.Map.CenterOfSubCell(destinationCell, destinationSubCell)));
+				QueueChild(mobile.LocalMove(position, Actor.World.Map.CenterOfSubCell(destinationCell, destinationSubCell)));
 			}
 
 			return false;
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
-			attack.RevokeLeapCondition(self);
-			base.OnLastRun(self);
+			attack.RevokeLeapCondition();
+			base.OnLastRun();
 		}
 
-		protected override void OnActorDispose(Actor self)
+		protected override void OnActorDispose()
 		{
-			attack.RevokeLeapCondition(self);
-			base.OnActorDispose(self);
+			attack.RevokeLeapCondition();
+			base.OnActorDispose();
 		}
 
-		public override IEnumerable<Target> GetTargets(Actor self)
+		public override IEnumerable<Target> GetTargets()
 		{
 			yield return Target.FromPos(ticks < length / 2 ? origin : destination);
 		}

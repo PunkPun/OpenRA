@@ -15,11 +15,14 @@ namespace OpenRA.Mods.Common.Activities
 {
 	public class RemoveSelf : Activity
 	{
-		public override bool Tick(Actor self)
+		public RemoveSelf(Actor self)
+			: base(self) { }
+
+		public override bool Tick()
 		{
 			if (IsCanceling) return true;
-			self.Dispose();
-			Cancel(self);
+			Actor.Dispose();
+			Cancel();
 			return true;
 		}
 	}

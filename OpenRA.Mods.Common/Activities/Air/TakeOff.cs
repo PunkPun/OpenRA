@@ -19,11 +19,12 @@ namespace OpenRA.Mods.Common.Activities
 		readonly Aircraft aircraft;
 
 		public TakeOff(Actor self)
+			: base(self)
 		{
 			aircraft = self.Trait<Aircraft>();
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			if (aircraft.ForceLanding)
 				return;
@@ -34,36 +35,36 @@ namespace OpenRA.Mods.Common.Activities
 			// We are taking off, so remove influence in ground cells.
 			aircraft.RemoveInfluence();
 
-			if (self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition).Length > aircraft.Info.MinAirborneAltitude)
+			if (Actor.World.Map.DistanceAboveTerrain(aircraft.CenterPosition).Length > aircraft.Info.MinAirborneAltitude)
 				return;
 
 			if (aircraft.Info.TakeoffSounds.Length > 0)
-				Game.Sound.Play(SoundType.World, aircraft.Info.TakeoffSounds, self.World, aircraft.CenterPosition);
+				Game.Sound.Play(SoundType.World, aircraft.Info.TakeoffSounds, Actor.World, aircraft.CenterPosition);
 
-			foreach (var notify in self.TraitsImplementing<INotifyTakeOff>())
-				notify.TakeOff(self);
+			foreach (var notify in Actor.TraitsImplementing<INotifyTakeOff>())
+				notify.TakeOff();
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
 			{
-				Cancel(self);
+				Cancel();
 				return true;
 			}
 
-			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+			var dat = Actor.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
 			if (dat < aircraft.Info.CruiseAltitude)
 			{
 				// If we're a VTOL, rise before flying forward
 				if (aircraft.Info.VTOL)
 				{
-					Fly.VerticalTakeOffOrLandTick(self, aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
+					Fly.VerticalTakeOffOrLandTick(aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
 					return false;
 				}
 
-				Fly.FlyTick(self, aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
+				Fly.FlyTick(aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
 				return false;
 			}
 

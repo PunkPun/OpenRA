@@ -97,7 +97,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			// Unload here
-			if (cargo.Unload(self) != dropActor)
+			if (cargo.Unload() != dropActor)
 				throw new InvalidOperationException("Peeked cargo was not unloaded!");
 
 			self.World.AddFrameEndTask(w =>

@@ -22,6 +22,7 @@ namespace OpenRA.Mods.Common.Activities
 		int groundLevel;
 
 		public Parachute(Actor self)
+			: base(self)
 		{
 			pos = self.TraitOrDefault<IPositionable>();
 
@@ -29,31 +30,31 @@ namespace OpenRA.Mods.Common.Activities
 			IsInterruptible = false;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
-			groundLevel = self.World.Map.CenterOfCell(self.Location).Z;
-			foreach (var np in self.TraitsImplementing<INotifyParachute>())
-				np.OnParachute(self);
+			groundLevel = Actor.World.Map.CenterOfCell(Actor.Location).Z;
+			foreach (var np in Actor.TraitsImplementing<INotifyParachute>())
+				np.OnParachute();
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
-			var nextPosition = self.CenterPosition - fallVector;
+			var nextPosition = Actor.CenterPosition - fallVector;
 			if (nextPosition.Z < groundLevel)
 				return true;
 
-			pos.SetCenterPosition(self, nextPosition);
+			pos.SetCenterPosition(nextPosition);
 
 			return false;
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
-			var centerPosition = self.CenterPosition;
-			pos.SetPosition(self, centerPosition + new WVec(0, 0, groundLevel - centerPosition.Z));
+			var centerPosition = Actor.CenterPosition;
+			pos.SetPosition(centerPosition + new WVec(0, 0, groundLevel - centerPosition.Z));
 
-			foreach (var np in self.TraitsImplementing<INotifyParachute>())
-				np.OnLanded(self);
+			foreach (var np in Actor.TraitsImplementing<INotifyParachute>())
+				np.OnLanded();
 		}
 	}
 }

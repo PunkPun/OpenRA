@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		bool IOccupySpaceInfo.SharesCell => false;
 
 		// Used to determine if actor can spawn
-		public bool CanEnterCell(World world, Actor self, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
+		public bool CanEnterCell(World world, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
 			return world.Map.Contains(cell);
 		}
@@ -57,7 +57,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		INotifyCreated, INotifyAddedToWorld, INotifyRemovedFromWorld, IActorPreviewInitModifier
 	{
 		public readonly TDGunboatInfo Info;
-		readonly Actor self;
+		public readonly Actor Actor;
 		static readonly WAngle Left = new WAngle(256);
 		static readonly WAngle Right = new WAngle(768);
 
@@ -78,7 +78,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Sync]
 		public WPos CenterPosition { get; private set; }
 
-		public CPos TopLeft => self.World.Map.CellContaining(CenterPosition);
+		public CPos TopLeft => Actor.World.Map.CellContaining(CenterPosition);
 
 		// Isn't used anyway
 		public WAngle TurnSpeed => WAngle.Zero;
@@ -88,15 +88,15 @@ namespace OpenRA.Mods.Cnc.Traits
 		public TDGunboat(ActorInitializer init, TDGunboatInfo info)
 		{
 			Info = info;
-			self = init.Self;
+			Actor = init.Self;
 
 			var locationInit = init.GetOrDefault<LocationInit>();
 			if (locationInit != null)
-				SetPosition(self, locationInit.Value);
+				SetPosition(locationInit.Value);
 
 			var centerPositionInit = init.GetOrDefault<CenterPositionInit>();
 			if (centerPositionInit != null)
-				SetPosition(self, centerPositionInit.Value);
+				SetPosition(centerPositionInit.Value);
 
 			Facing = init.GetValue<FacingInit, WAngle>(Info.GetInitialFacing());
 
@@ -105,35 +105,35 @@ namespace OpenRA.Mods.Cnc.Traits
 				Facing = Facing.Angle > 511 ? Right : Left;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			speedModifiers = self.TraitsImplementing<ISpeedModifier>().ToArray().Select(sm => sm.GetSpeedModifier());
-			cachedLocation = self.Location;
-			notifyCenterPositionChanged = self.TraitsImplementing<INotifyCenterPositionChanged>().ToArray();
+			speedModifiers = Actor.TraitsImplementing<ISpeedModifier>().ToArray().Select(sm => sm.GetSpeedModifier());
+			cachedLocation = Actor.Location;
+			notifyCenterPositionChanged = Actor.TraitsImplementing<INotifyCenterPositionChanged>().ToArray();
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
-			self.World.AddToMaps(self, this);
+			Actor.World.AddToMaps(Actor, this);
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
-			self.World.RemoveFromMaps(self, this);
+			Actor.World.RemoveFromMaps(Actor, this);
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
-			if (cachedLocation != self.Location)
+			if (cachedLocation != Actor.Location)
 			{
 				// If the actor just left the map, switch facing
-				if (!self.World.Map.Contains(self.Location))
+				if (!Actor.World.Map.Contains(Actor.Location))
 					Turn();
 			}
 
-			cachedLocation = self.Location;
+			cachedLocation = Actor.Location;
 
-			SetCenterPosition(self, self.CenterPosition + MoveStep(Facing));
+			SetCenterPosition(Actor.CenterPosition + MoveStep(Facing));
 		}
 
 		void Turn()
@@ -141,7 +141,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			Facing = Facing == Left ? Right : Left;
 		}
 
-		int MovementSpeed => OpenRA.Mods.Common.Util.ApplyPercentageModifiers(Info.Speed, speedModifiers);
+		int MovementSpeed => Common.Util.ApplyPercentageModifiers(Info.Speed, speedModifiers);
 
 		public (CPos, SubCell)[] OccupiedCells() { return new[] { (TopLeft, SubCell.FullCell) }; }
 
@@ -156,7 +156,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			return speed * dir / 1024;
 		}
 
-		void IDeathActorInitModifier.ModifyDeathActorInit(Actor self, TypeDictionary init)
+		void IDeathActorInitModifier.ModifyDeathActorInit(TypeDictionary init)
 		{
 			init.Add(new FacingInit(Facing));
 		}
@@ -171,30 +171,30 @@ namespace OpenRA.Mods.Cnc.Traits
 			return SubCell.Invalid;
 		}
 
-		public void SetCenterPosition(Actor self, WPos pos) { SetPosition(self, pos); }
+		public void SetCenterPosition(WPos pos) { SetPosition(pos); }
 
-		public void SetPosition(Actor self, CPos cell, SubCell subCell = SubCell.Any)
+		public void SetPosition(CPos cell, SubCell subCell = SubCell.Any)
 		{
-			SetPosition(self, self.World.Map.CenterOfCell(cell));
+			SetPosition(Actor.World.Map.CenterOfCell(cell));
 		}
 
-		public void SetPosition(Actor self, WPos pos)
+		public void SetPosition(WPos pos)
 		{
-			if (self.IsInWorld)
-				self.World.ActorMap.RemoveInfluence(self, this);
+			if (Actor.IsInWorld)
+				Actor.World.ActorMap.RemoveInfluence(this);
 
 			CenterPosition = pos;
 
-			if (!self.IsInWorld)
+			if (!Actor.IsInWorld)
 				return;
 
-			self.World.UpdateMaps(self, this);
-			self.World.ActorMap.AddInfluence(self, this);
+			Actor.World.UpdateMaps(Actor, this);
+			Actor.World.ActorMap.AddInfluence(this);
 
 			// This can be called from the constructor before notifyCenterPositionChanged is assigned.
 			if (notifyCenterPositionChanged != null)
 				foreach (var n in notifyCenterPositionChanged)
-					n.CenterPositionChanged(self, 0, 0);
+					n.CenterPositionChanged(0, 0);
 		}
 
 		public Activity MoveTo(CPos cell, int nearEnough = 0, Actor ignoreActor = null,
@@ -203,15 +203,15 @@ namespace OpenRA.Mods.Cnc.Traits
 			WPos? initialTargetPosition = null, Color? targetLineColor = null) { return null; }
 		public Activity MoveWithinRange(in Target target, WDist minRange, WDist maxRange,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null) { return null; }
-		public Activity MoveFollow(Actor self, in Target target, WDist minRange, WDist maxRange,
+		public Activity MoveFollow(in Target target, WDist minRange, WDist maxRange,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null) { return null; }
-		public Activity ReturnToCell(Actor self) { return null; }
-		public Activity MoveToTarget(Actor self, in Target target,
+		public Activity ReturnToCell() { return null; }
+		public Activity MoveToTarget(in Target target,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null) { return null; }
-		public Activity MoveIntoTarget(Actor self, in Target target) { return null; }
-		public Activity LocalMove(Actor self, WPos fromPos, WPos toPos) { return null; }
+		public Activity MoveIntoTarget(in Target target) { return null; }
+		public Activity LocalMove(WPos fromPos, WPos toPos) { return null; }
 
-		public int EstimatedMoveDuration(Actor self, WPos fromPos, WPos toPos)
+		public int EstimatedMoveDuration(WPos fromPos, WPos toPos)
 		{
 			return (toPos - fromPos).Length / Info.Speed;
 		}
@@ -221,12 +221,12 @@ namespace OpenRA.Mods.Cnc.Traits
 		// Actors with TDGunboat always move
 		public MovementType CurrentMovementTypes { get => MovementType.Horizontal; set { } }
 
-		public bool CanEnterTargetNow(Actor self, in Target target)
+		public bool CanEnterTargetNow(in Target target)
 		{
 			return false;
 		}
 
-		void IActorPreviewInitModifier.ModifyActorPreviewInit(Actor self, TypeDictionary inits)
+		void IActorPreviewInitModifier.ModifyActorPreviewInit(TypeDictionary inits)
 		{
 			if (!inits.Contains<DynamicFacingInit>() && !inits.Contains<FacingInit>())
 				inits.Add(new DynamicFacingInit(() => Facing));

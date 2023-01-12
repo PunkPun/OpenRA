@@ -42,7 +42,7 @@ namespace OpenRA.Mods.Common.Scripting
 				throw new LuaException($"Unknown actor type '{actorType}'");
 
 			var bi = actorInfo.TraitInfo<BuildableInfo>();
-			Self.QueueActivity(new WaitFor(() =>
+			Self.QueueActivity(new WaitFor(Self, () =>
 			{
 				// Go through all available traits and see which one successfully produces
 				foreach (var p in productionTraits)

@@ -50,21 +50,22 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Whether to show the cash tick indicators rising from the actor.")]
 		public readonly bool ShowTicks = true;
 
-		public override object Create(ActorInitializer init) { return new InfiltrateForCash(this); }
+		public override object Create(ActorInitializer init) { return new InfiltrateForCash(this, init.Self); }
 	}
 
 	class InfiltrateForCash : INotifyInfiltrated
 	{
 		readonly InfiltrateForCashInfo info;
+		readonly Actor actor;
 
-		public InfiltrateForCash(InfiltrateForCashInfo info) { this.info = info; }
+		public InfiltrateForCash(InfiltrateForCashInfo info, Actor self) { this.info = info; actor = self; }
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (!info.Types.Overlaps(types))
 				return;
 
-			var targetResources = self.Owner.PlayerActor.Trait<PlayerResources>();
+			var targetResources = actor.Owner.PlayerActor.Trait<PlayerResources>();
 			var spyResources = infiltrator.Owner.PlayerActor.Trait<PlayerResources>();
 			var spyValue = infiltrator.Info.TraitInfoOrDefault<ValuedInfo>();
 
@@ -75,16 +76,16 @@ namespace OpenRA.Mods.Cnc.Traits
 			spyResources.GiveCash(toGive);
 
 			if (info.InfiltratedNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", info.InfiltratedNotification, self.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, actor.Owner, "Speech", info.InfiltratedNotification, actor.Owner.Faction.InternalName);
 
 			if (info.InfiltrationNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, actor.Owner);
 			TextNotificationsManager.AddTransientLine(info.InfiltrationTextNotification, infiltrator.Owner);
 
 			if (info.ShowTicks)
-				self.World.AddFrameEndTask(w => w.Add(new FloatingText(self.CenterPosition, infiltrator.Owner.Color, FloatingText.FormatCashTick(toGive), 30)));
+				actor.World.AddFrameEndTask(w => w.Add(new FloatingText(actor.CenterPosition, infiltrator.Owner.Color, FloatingText.FormatCashTick(toGive), 30)));
 		}
 	}
 }

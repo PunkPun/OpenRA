@@ -41,12 +41,12 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			return disguiseInfantryBody ?? Info;
 		}
 
-		protected override void Tick(Actor self)
+		protected override void Tick()
 		{
 			if (disguise.AsActor != disguiseActor || disguise.AsPlayer != disguisePlayer)
 			{
 				// Force actor back to the stand state to avoid mismatched sequences
-				PlayStandAnimation(self);
+				PlayStandAnimation();
 
 				disguiseActor = disguise.AsActor;
 				disguisePlayer = disguise.AsPlayer;
@@ -67,12 +67,12 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 
 				var sequence = DefaultAnimation.GetRandomExistingSequence(GetDisplayInfo().StandSequences, Game.CosmeticRandom);
 				if (sequence != null)
-					DefaultAnimation.ChangeImage(disguiseImage ?? rs.GetImage(self), sequence);
+					DefaultAnimation.ChangeImage(disguiseImage ?? rs.GetImage(Actor), sequence);
 
 				rs.UpdatePalette();
 			}
 
-			base.Tick(self);
+			base.Tick();
 		}
 	}
 }

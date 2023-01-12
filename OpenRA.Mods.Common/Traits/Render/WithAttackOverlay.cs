@@ -55,7 +55,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 			overlay = new Animation(init.World, renderSprites.GetImage(init.Self), RenderSprites.MakeFacingFunc(init.Self));
 
-			renderSprites.Add(new AnimationWithOffset(overlay, null, () => !attacking),
+			renderSprites.Add(new AnimationWithOffset(Actor, overlay, null, () => !attacking),
 				info.Palette, info.IsPlayerPalette);
 		}
 

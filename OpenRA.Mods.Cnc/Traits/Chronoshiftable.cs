@@ -48,7 +48,6 @@ namespace OpenRA.Mods.Cnc.Traits
 	public class Chronoshiftable : ConditionalTrait<ChronoshiftableInfo>, ITick, ISync, ISelectionBar,
 		IDeathActorInitModifier, ITransformActorInitModifier
 	{
-		readonly Actor self;
 		Actor chronosphere;
 		bool killCargo;
 		int duration;
@@ -62,10 +61,8 @@ namespace OpenRA.Mods.Cnc.Traits
 		public int ReturnTicks = 0;
 
 		public Chronoshiftable(ActorInitializer init, ChronoshiftableInfo info)
-			: base(info)
+			: base(info, init.Self)
 		{
-			self = init.Self;
-
 			var returnInit = init.GetOrDefault<ChronoshiftReturnInit>();
 			if (returnInit != null)
 			{
@@ -79,7 +76,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (IsTraitDisabled || !Info.ReturnToOrigin || ReturnTicks <= 0)
 				return;
@@ -96,29 +93,29 @@ namespace OpenRA.Mods.Cnc.Traits
 				// the actor. It is therefore safe to force-erase the Move activity to
 				// work around the cancellation bug.
 				// HACK: this is manipulating private internal actor state
-				if (self.CurrentActivity is Move)
-					typeof(Actor).GetProperty(nameof(Actor.CurrentActivity)).SetValue(self, null);
+				if (Actor.CurrentActivity is Move)
+					typeof(Actor).GetProperty(nameof(ConditionalTrait<ChronoshiftableInfo>.Actor.CurrentActivity)).SetValue(Actor, null);
 
 				// The actor is killed using Info.DamageTypes if the teleport fails
-				self.QueueActivity(false, new Teleport(chronosphere ?? self, Origin, null, true, killCargo, Info.ChronoshiftSound,
+				Actor.QueueActivity(false, new Teleport(Actor, chronosphere ?? Actor, Origin, null, true, killCargo, Info.ChronoshiftSound,
 					false, true, Info.DamageTypes));
 			}
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			iPositionable = self.TraitOrDefault<IPositionable>();
-			base.Created(self);
+			iPositionable = Actor.TraitOrDefault<IPositionable>();
+			base.Created();
 		}
 
 		// Can't be used in synced code, except with ignoreVis.
-		public virtual bool CanChronoshiftTo(Actor self, CPos targetLocation)
+		public virtual bool CanChronoshiftTo(CPos targetLocation)
 		{
 			// TODO: Allow enemy units to be chronoshifted into bad terrain to kill them
 			return !IsTraitDisabled && iPositionable != null && iPositionable.CanEnterCell(targetLocation);
 		}
 
-		public virtual bool Teleport(Actor self, CPos targetLocation, int duration, bool killCargo, Actor chronosphere)
+		public virtual bool Teleport(CPos targetLocation, int duration, bool killCargo, Actor chronosphere)
 		{
 			if (IsTraitDisabled)
 				return false;
@@ -126,11 +123,11 @@ namespace OpenRA.Mods.Cnc.Traits
 			// Some things appear chronoshiftable, but instead they just die.
 			if (Info.ExplodeInstead)
 			{
-				self.World.AddFrameEndTask(w =>
+				Actor.World.AddFrameEndTask(w =>
 				{
 					// Damage is inflicted by the chronosphere
-					if (!self.Disposed)
-						self.Kill(chronosphere, Info.DamageTypes);
+					if (!Actor.Disposed)
+						Actor.Kill(chronosphere, Info.DamageTypes);
 				});
 				return true;
 			}
@@ -140,7 +137,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			// an existing location then we shouldn't override it
 			if (ReturnTicks <= 0)
 			{
-				Origin = self.Location;
+				Origin = Actor.Location;
 				ReturnTicks = duration;
 			}
 
@@ -149,7 +146,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.killCargo = killCargo;
 
 			// Set up the teleport
-			self.QueueActivity(false, new Teleport(chronosphere, targetLocation, null, killCargo, true, Info.ChronoshiftSound));
+			Actor.QueueActivity(false, new Teleport(Actor, chronosphere, targetLocation, null, killCargo, true, Info.ChronoshiftSound));
 
 			return true;
 		}
@@ -161,7 +158,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				return 0f;
 
 			// Otherwise an empty bar is rendered all the time
-			if (ReturnTicks == 0 || !self.Owner.IsAlliedWith(self.World.RenderPlayer))
+			if (ReturnTicks == 0 || !Actor.Owner.IsAlliedWith(Actor.World.RenderPlayer))
 				return 0f;
 
 			return (float)ReturnTicks / duration;
@@ -178,8 +175,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			init.Add(new ChronoshiftReturnInit(ReturnTicks, duration, Origin, chronosphere));
 		}
 
-		void IDeathActorInitModifier.ModifyDeathActorInit(Actor self, TypeDictionary init) { ModifyActorInit(init); }
-		void ITransformActorInitModifier.ModifyTransformActorInit(Actor self, TypeDictionary init) { ModifyActorInit(init); }
+		void IDeathActorInitModifier.ModifyDeathActorInit(TypeDictionary init) { ModifyActorInit(init); }
+		void ITransformActorInitModifier.ModifyTransformActorInit(TypeDictionary init) { ModifyActorInit(init); }
 	}
 
 	public class ChronoshiftReturnInit : CompositeActorInit, ISingleInstanceInit

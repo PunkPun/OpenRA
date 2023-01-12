@@ -51,7 +51,7 @@ namespace OpenRA.Mods.D2k.Traits.Render
 			renderSprites = init.Self.Trait<RenderSprites>();
 
 			overlay = new Animation(init.World, renderSprites.GetImage(init.Self));
-			animation = new AnimationWithOffset(overlay, null, () => IsTraitDisabled);
+			animation = new AnimationWithOffset(Actor, overlay, null, () => IsTraitDisabled);
 		}
 
 		protected override void TraitEnabled(Actor self)

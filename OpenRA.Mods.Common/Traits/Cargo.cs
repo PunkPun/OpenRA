@@ -93,7 +93,7 @@ namespace OpenRA.Mods.Common.Traits
 		ITransformActorInitModifier
 	{
 		public readonly CargoInfo Info;
-		readonly Actor self;
+		public readonly Actor Actor;
 		readonly List<Actor> cargo = new List<Actor>();
 		readonly HashSet<Actor> reserves = new HashSet<Actor>();
 		readonly Dictionary<string, Stack<int>> passengerTokens = new Dictionary<string, Stack<int>>();
@@ -110,7 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly CachedTransform<CPos, IEnumerable<CPos>> currentAdjacentCells;
 
-		public IEnumerable<CPos> CurrentAdjacentCells => currentAdjacentCells.Update(self.Location);
+		public IEnumerable<CPos> CurrentAdjacentCells => currentAdjacentCells.Update(Actor.Location);
 
 		public IEnumerable<Actor> Passengers => cargo;
 		public int PassengerCount => cargo.Count;
@@ -120,13 +120,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Cargo(ActorInitializer init, CargoInfo info)
 		{
-			self = init.Self;
+			Actor = init.Self;
 			Info = info;
 			checkTerrainType = info.UnloadTerrainTypes.Count > 0;
 
 			currentAdjacentCells = new CachedTransform<CPos, IEnumerable<CPos>>(loc =>
 			{
-				return Util.AdjacentCells(self.World, Target.FromActor(self)).Where(c => loc != c);
+				return Util.AdjacentCells(Actor.World, Target.FromActor(Actor)).Where(c => loc != c);
 			});
 
 			var runtimeCargoInit = init.GetOrDefault<RuntimeCargoInit>(info);
@@ -140,8 +140,8 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				foreach (var u in cargoInit.Value)
 				{
-					var unit = self.World.CreateActor(false, u.ToLowerInvariant(),
-						new TypeDictionary { new OwnerInit(self.Owner) });
+					var unit = Actor.World.CreateActor(false, u.ToLowerInvariant(),
+						new TypeDictionary { new OwnerInit(Actor.Owner) });
 
 					cargo.Add(unit);
 				}
@@ -152,8 +152,8 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				foreach (var u in info.InitialUnits)
 				{
-					var unit = self.World.CreateActor(false, u.ToLowerInvariant(),
-						new TypeDictionary { new OwnerInit(self.Owner) });
+					var unit = Actor.World.CreateActor(false, u.ToLowerInvariant(),
+						new TypeDictionary { new OwnerInit(Actor.Owner) });
 
 					cargo.Add(unit);
 				}
@@ -161,35 +161,35 @@ namespace OpenRA.Mods.Common.Traits
 				totalWeight = cargo.Sum(c => GetWeight(c));
 			}
 
-			facing = Exts.Lazy(self.TraitOrDefault<IFacing>);
+			facing = Exts.Lazy(Actor.TraitOrDefault<IFacing>);
 		}
 
-		void INotifyCreated.Created(Actor self)
+		void INotifyCreated.Created()
 		{
-			aircraft = self.TraitOrDefault<Aircraft>();
+			aircraft = Actor.TraitOrDefault<Aircraft>();
 
 			if (cargo.Count > 0)
 			{
 				foreach (var c in cargo)
 					if (Info.PassengerConditions.TryGetValue(c.Info.Name, out var passengerCondition))
-						passengerTokens.GetOrAdd(c.Info.Name).Push(self.GrantCondition(passengerCondition));
+						passengerTokens.GetOrAdd(c.Info.Name).Push(Actor.GrantCondition(passengerCondition));
 
 				if (!string.IsNullOrEmpty(Info.LoadedCondition))
-					loadedTokens.Push(self.GrantCondition(Info.LoadedCondition));
+					loadedTokens.Push(Actor.GrantCondition(Info.LoadedCondition));
 			}
 
 			// Defer notifications until we are certain all traits on the transport are initialised
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				foreach (var c in cargo)
 				{
-					c.Trait<Passenger>().Transport = self;
+					c.Trait<Passenger>().Transport = Actor;
 
 					foreach (var nec in c.TraitsImplementing<INotifyEnteredCargo>())
-						nec.OnEnteredCargo(c, self);
+						nec.OnEnteredCargo(Actor);
 
-					foreach (var npe in self.TraitsImplementing<INotifyPassengerEntered>())
-						npe.OnPassengerEntered(self, c);
+					foreach (var npe in Actor.TraitsImplementing<INotifyPassengerEntered>())
+						npe.OnPassengerEntered(c);
 				}
 
 				initialised = true;
@@ -202,34 +202,34 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			get
 			{
-				yield return new DeployOrderTargeter("Unload", 10,
+				yield return new DeployOrderTargeter(Actor, "Unload", 10,
 					() => CanUnload() ? Info.UnloadCursor : Info.UnloadBlockedCursor);
 			}
 		}
 
-		public Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		public Order IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "Unload")
-				return new Order(order.OrderID, self, queued);
+				return new Order(order.OrderID, Actor, queued);
 
 			return null;
 		}
 
-		Order IIssueDeployOrder.IssueDeployOrder(Actor self, bool queued)
+		Order IIssueDeployOrder.IssueDeployOrder(bool queued)
 		{
-			return new Order("Unload", self, queued);
+			return new Order("Unload", Actor, queued);
 		}
 
-		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued) { return true; }
+		bool IIssueDeployOrder.CanIssueDeployOrder(bool queued) { return true; }
 
-		public void ResolveOrder(Actor self, Order order)
+		public void ResolveOrder(Order order)
 		{
 			if (order.OrderString == "Unload")
 			{
 				if (!order.Queued && !CanUnload())
 					return;
 
-				self.QueueActivity(order.Queued, new UnloadCargo(self, Info.LoadRange));
+				Actor.QueueActivity(order.Queued, new UnloadCargo(Actor, Info.LoadRange));
 			}
 		}
 
@@ -237,13 +237,13 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			if (checkTerrainType)
 			{
-				var terrainType = self.World.Map.GetTerrainInfo(self.Location).Type;
+				var terrainType = Actor.World.Map.GetTerrainInfo(Actor.Location).Type;
 
 				if (!Info.UnloadTerrainTypes.Contains(terrainType))
 					return false;
 			}
 
-			return !IsEmpty() && (aircraft == null || aircraft.CanLand(self.Location, blockedByMobile: false))
+			return !IsEmpty() && (aircraft == null || aircraft.CanLand(Actor.Location, blockedByMobile: false))
 				&& CurrentAdjacentCells != null && CurrentAdjacentCells.Any(c => Passengers.Any(p => !p.IsDead && p.Trait<IPositionable>().CanEnterCell(c, null, check)));
 		}
 
@@ -262,65 +262,65 @@ namespace OpenRA.Mods.Common.Traits
 				return false;
 
 			if (loadingToken == Actor.InvalidConditionToken)
-				loadingToken = self.GrantCondition(Info.LoadingCondition);
+				loadingToken = Actor.GrantCondition(Info.LoadingCondition);
 
 			reserves.Add(a);
 			reservedWeight += w;
-			LockForPickup(self);
+			LockForPickup();
 
 			return true;
 		}
 
 		internal void UnreserveSpace(Actor a)
 		{
-			if (!reserves.Contains(a) || self.IsDead)
+			if (!reserves.Contains(a) || Actor.IsDead)
 				return;
 
 			reservedWeight -= GetWeight(a);
 			reserves.Remove(a);
-			ReleaseLock(self);
+			ReleaseLock();
 
 			if (loadingToken != Actor.InvalidConditionToken)
-				loadingToken = self.RevokeCondition(loadingToken);
+				loadingToken = Actor.RevokeCondition(loadingToken);
 		}
 
 		// Prepare for transport pickup
-		void LockForPickup(Actor self)
+		void LockForPickup()
 		{
 			if (state == State.Locked)
 				return;
 
 			state = State.Locked;
 
-			self.CancelActivity();
+			Actor.CancelActivity();
 
-			var air = self.TraitOrDefault<Aircraft>();
+			var air = Actor.TraitOrDefault<Aircraft>();
 			if (air != null && !air.AtLandAltitude)
 			{
 				takeOffAfterLoad = true;
-				self.QueueActivity(new Land(self));
+				Actor.QueueActivity(new Land(Actor));
 			}
 
-			self.QueueActivity(new WaitFor(() => state != State.Locked, false));
+			Actor.QueueActivity(new WaitFor(Actor, () => state != State.Locked, false));
 		}
 
-		void ReleaseLock(Actor self)
+		void ReleaseLock()
 		{
 			if (reservedWeight != 0)
 				return;
 
 			state = State.Free;
 
-			self.QueueActivity(new Wait(Info.AfterLoadDelay, false));
+			Actor.QueueActivity(new Wait(Actor, Info.AfterLoadDelay, false));
 			if (takeOffAfterLoad)
-				self.QueueActivity(new TakeOff(self));
+				Actor.QueueActivity(new TakeOff(Actor));
 
 			takeOffAfterLoad = false;
 		}
 
-		public string VoicePhraseForOrder(Actor self, Order order)
+		public string VoicePhraseForOrder(Order order)
 		{
-			if (order.OrderString != "Unload" || IsEmpty() || !self.HasVoice(Info.UnloadVoice))
+			if (order.OrderString != "Unload" || IsEmpty() || !Actor.HasVoice(Info.UnloadVoice))
 				return null;
 
 			return Info.UnloadVoice;
@@ -331,7 +331,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Actor Peek() { return cargo.Last(); }
 
-		public Actor Unload(Actor self, Actor passenger = null)
+		public Actor Unload(Actor passenger = null)
 		{
 			passenger = passenger ?? cargo.Last();
 			if (!cargo.Remove(passenger))
@@ -341,20 +341,20 @@ namespace OpenRA.Mods.Common.Traits
 
 			SetPassengerFacing(passenger);
 
-			foreach (var npe in self.TraitsImplementing<INotifyPassengerExited>())
-				npe.OnPassengerExited(self, passenger);
+			foreach (var npe in Actor.TraitsImplementing<INotifyPassengerExited>())
+				npe.OnPassengerExited(passenger);
 
 			foreach (var nec in passenger.TraitsImplementing<INotifyExitedCargo>())
-				nec.OnExitedCargo(passenger, self);
+				nec.OnExitedCargo(Actor);
 
 			var p = passenger.Trait<Passenger>();
 			p.Transport = null;
 
 			if (passengerTokens.TryGetValue(passenger.Info.Name, out var passengerToken) && passengerToken.Count > 0)
-				self.RevokeCondition(passengerToken.Pop());
+				Actor.RevokeCondition(passengerToken.Pop());
 
 			if (loadedTokens.Count > 0)
-				self.RevokeCondition(loadedTokens.Pop());
+				Actor.RevokeCondition(loadedTokens.Pop());
 
 			return passenger;
 		}
@@ -369,7 +369,7 @@ namespace OpenRA.Mods.Common.Traits
 				passengerFacing.Facing = facing.Value.Facing + Info.PassengerFacing;
 		}
 
-		public void Load(Actor self, Actor a)
+		public void Load(Actor a)
 		{
 			cargo.Add(a);
 			var w = GetWeight(a);
@@ -378,48 +378,48 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				reservedWeight -= w;
 				reserves.Remove(a);
-				ReleaseLock(self);
+				ReleaseLock();
 
 				if (loadingToken != Actor.InvalidConditionToken)
-					loadingToken = self.RevokeCondition(loadingToken);
+					loadingToken = Actor.RevokeCondition(loadingToken);
 			}
 
 			// Don't initialise (effectively twice) if this runs before the FrameEndTask from Created
 			if (initialised)
 			{
-				a.Trait<Passenger>().Transport = self;
+				a.Trait<Passenger>().Transport = Actor;
 
 				foreach (var nec in a.TraitsImplementing<INotifyEnteredCargo>())
-					nec.OnEnteredCargo(a, self);
+					nec.OnEnteredCargo(Actor);
 
-				foreach (var npe in self.TraitsImplementing<INotifyPassengerEntered>())
-					npe.OnPassengerEntered(self, a);
+				foreach (var npe in Actor.TraitsImplementing<INotifyPassengerEntered>())
+					npe.OnPassengerEntered(a);
 			}
 
 			if (Info.PassengerConditions.TryGetValue(a.Info.Name, out var passengerCondition))
-				passengerTokens.GetOrAdd(a.Info.Name).Push(self.GrantCondition(passengerCondition));
+				passengerTokens.GetOrAdd(a.Info.Name).Push(Actor.GrantCondition(passengerCondition));
 
 			if (!string.IsNullOrEmpty(Info.LoadedCondition))
-				loadedTokens.Push(self.GrantCondition(Info.LoadedCondition));
+				loadedTokens.Push(Actor.GrantCondition(Info.LoadedCondition));
 		}
 
-		void INotifyKilled.Killed(Actor self, AttackInfo e)
+		void INotifyKilled.Killed(AttackInfo e)
 		{
 			if (Info.EjectOnDeath)
 				while (!IsEmpty() && CanUnload(BlockedByActor.All))
 				{
-					var passenger = Unload(self);
-					var cp = self.CenterPosition;
-					var inAir = self.World.Map.DistanceAboveTerrain(cp).Length != 0;
+					var passenger = Unload(Actor);
+					var cp = Actor.CenterPosition;
+					var inAir = Actor.World.Map.DistanceAboveTerrain(cp).Length != 0;
 					var positionable = passenger.Trait<IPositionable>();
-					positionable.SetPosition(passenger, self.Location);
+					positionable.SetPosition(Actor.Location);
 
-					if (!inAir && positionable.CanEnterCell(self.Location, self, BlockedByActor.None))
+					if (!inAir && positionable.CanEnterCell(Actor.Location, Actor, BlockedByActor.None))
 					{
-						self.World.AddFrameEndTask(w => w.Add(passenger));
+						Actor.World.AddFrameEndTask(w => w.Add(passenger));
 						var nbms = passenger.TraitsImplementing<INotifyBlockingMove>();
 						foreach (var nbm in nbms)
-							nbm.OnNotifyBlockingMove(passenger, passenger);
+							nbm.OnNotifyBlockingMove(passenger);
 					}
 					else
 						passenger.Kill(e.Attacker);
@@ -431,7 +431,7 @@ namespace OpenRA.Mods.Common.Traits
 			cargo.Clear();
 		}
 
-		void INotifyActorDisposing.Disposing(Actor self)
+		void INotifyActorDisposing.Disposing()
 		{
 			foreach (var c in cargo)
 				c.Dispose();
@@ -439,28 +439,28 @@ namespace OpenRA.Mods.Common.Traits
 			cargo.Clear();
 		}
 
-		void INotifySold.Selling(Actor self) { }
-		void INotifySold.Sold(Actor self)
+		void INotifySold.Selling() { }
+		void INotifySold.Sold()
 		{
 			if (!Info.EjectOnSell || cargo == null)
 				return;
 
 			while (!IsEmpty())
-				SpawnPassenger(Unload(self));
+				SpawnPassenger(Unload());
 		}
 
 		void SpawnPassenger(Actor passenger)
 		{
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				w.Add(passenger);
-				passenger.Trait<IPositionable>().SetPosition(passenger, self.Location);
+				passenger.Trait<IPositionable>().SetPosition(Actor.Location);
 
 				// TODO: this won't work well for >1 actor as they should move towards the next enterable (sub) cell instead
 			});
 		}
 
-		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
+		void INotifyOwnerChanged.OnOwnerChanged(Player oldOwner, Player newOwner)
 		{
 			if (cargo == null)
 				return;
@@ -469,7 +469,7 @@ namespace OpenRA.Mods.Common.Traits
 				p.ChangeOwner(newOwner);
 		}
 
-		void ITransformActorInitModifier.ModifyTransformActorInit(Actor self, TypeDictionary init)
+		void ITransformActorInitModifier.ModifyTransformActorInit(TypeDictionary init)
 		{
 			init.Add(new RuntimeCargoInit(Info, Passengers.ToArray()));
 		}

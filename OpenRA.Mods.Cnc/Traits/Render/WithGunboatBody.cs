@@ -65,20 +65,20 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 
 			wake = new Animation(init.World, name);
 			wake.PlayRepeating(info.WakeLeftSequence);
-			rs.Add(new AnimationWithOffset(wake, null, null, -87));
+			rs.Add(new AnimationWithOffset(Actor, wake, null, null, -87));
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
-			base.TraitEnabled(self);
+			base.TraitEnabled();
 			turret.QuantizedFacings = DefaultAnimation.CurrentSequence.Facings;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (facing.Facing.Angle <= 512)
 			{
-				var left = NormalizeSequence(self, info.LeftSequence);
+				var left = NormalizeSequence(info.LeftSequence);
 				if (DefaultAnimation.CurrentSequence.Name != left)
 					DefaultAnimation.ReplaceAnim(left);
 
@@ -87,7 +87,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 			}
 			else
 			{
-				var right = NormalizeSequence(self, info.RightSequence);
+				var right = NormalizeSequence(info.RightSequence);
 				if (DefaultAnimation.CurrentSequence.Name != right)
 					DefaultAnimation.ReplaceAnim(right);
 

@@ -51,13 +51,13 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Cursor to display when able to infiltrate the target actor.")]
 		public readonly string EnterCursor = "enter";
 
-		public override object Create(ActorInitializer init) { return new Infiltrates(this); }
+		public override object Create(ActorInitializer init) { return new Infiltrates(this, init.Self); }
 	}
 
 	public class Infiltrates : ConditionalTrait<InfiltratesInfo>, IIssueOrder, IResolveOrder, IOrderVoice
 	{
-		public Infiltrates(InfiltratesInfo info)
-			: base(info) { }
+		public Infiltrates(InfiltratesInfo info, Actor self)
+			: base(info, self) { }
 
 		public IEnumerable<IOrderTargeter> Orders
 		{
@@ -70,12 +70,12 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 		}
 
-		public Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		public Order IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID != "Infiltrate")
 				return null;
 
-			return new Order(order.OrderID, self, target, queued);
+			return new Order(order.OrderID, Actor, target, queued);
 		}
 
 		bool IsValidOrder(Order order)
@@ -93,37 +93,37 @@ namespace OpenRA.Mods.Cnc.Traits
 			return Info.Types.Overlaps(targetTypes);
 		}
 
-		public string VoicePhraseForOrder(Actor self, Order order)
+		public string VoicePhraseForOrder(Order order)
 		{
 			return order.OrderString == "Infiltrate" && IsValidOrder(order)
 				? Info.Voice : null;
 		}
 
-		public bool CanInfiltrateTarget(Actor self, in Target target)
+		public bool CanInfiltrateTarget(in Target target)
 		{
 			switch (target.Type)
 			{
 				case TargetType.Actor:
 					return Info.Types.Overlaps(target.Actor.GetEnabledTargetTypes()) &&
-						Info.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(target.Actor.Owner));
+						Info.ValidRelationships.HasRelationship(Actor.Owner.RelationshipWith(target.Actor.Owner));
 				case TargetType.FrozenActor:
 					return target.FrozenActor.IsValid && Info.Types.Overlaps(target.FrozenActor.TargetTypes) &&
-						Info.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(target.FrozenActor.Owner));
+						Info.ValidRelationships.HasRelationship(Actor.Owner.RelationshipWith(target.FrozenActor.Owner));
 				default:
 					return false;
 			}
 		}
 
-		public void ResolveOrder(Actor self, Order order)
+		public void ResolveOrder(Order order)
 		{
 			if (order.OrderString != "Infiltrate" || !IsValidOrder(order) || IsTraitDisabled)
 				return;
 
-			if (!CanInfiltrateTarget(self, order.Target))
+			if (!CanInfiltrateTarget(order.Target))
 				return;
 
-			self.QueueActivity(order.Queued, new Infiltrate(self, order.Target, this, Info.TargetLineColor));
-			self.ShowTargetLines();
+			Actor.QueueActivity(order.Queued, new Infiltrate(Actor, order.Target, this, Info.TargetLineColor));
+			Actor.ShowTargetLines();
 		}
 	}
 

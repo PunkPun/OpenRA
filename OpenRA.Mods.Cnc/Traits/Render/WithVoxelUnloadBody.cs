@@ -47,6 +47,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 
 	public class WithVoxelUnloadBody : IAutoMouseBounds
 	{
+		public readonly Actor Actor;
 		public bool Docked;
 
 		readonly ModelAnimation modelAnimation;
@@ -54,6 +55,7 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 
 		public WithVoxelUnloadBody(Actor self, WithVoxelUnloadBodyInfo info)
 		{
+			Actor = self;
 			var body = self.Trait<BodyOrientation>();
 			rv = self.Trait<RenderVoxels>();
 
@@ -72,9 +74,9 @@ namespace OpenRA.Mods.Cnc.Traits.Render
 				() => 0, info.ShowShadow));
 		}
 
-		Rectangle IAutoMouseBounds.AutoMouseoverBounds(Actor self, WorldRenderer wr)
+		Rectangle IAutoMouseBounds.AutoMouseoverBounds(WorldRenderer wr)
 		{
-			return modelAnimation.ScreenBounds(self.CenterPosition, wr, rv.Info.Scale);
+			return modelAnimation.ScreenBounds(Actor.CenterPosition, wr, rv.Info.Scale);
 		}
 	}
 }

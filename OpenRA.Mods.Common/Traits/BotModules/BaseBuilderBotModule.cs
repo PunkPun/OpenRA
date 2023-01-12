@@ -160,21 +160,21 @@ namespace OpenRA.Mods.Common.Traits
 		readonly List<BaseBuilderQueueManager> builders = new List<BaseBuilderQueueManager>();
 
 		public BaseBuilderBotModule(Actor self, BaseBuilderBotModuleInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			world = self.World;
 			player = self.Owner;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			playerPower = self.Owner.PlayerActor.TraitOrDefault<PowerManager>();
-			playerResources = self.Owner.PlayerActor.Trait<PlayerResources>();
-			resourceLayer = self.World.WorldActor.TraitOrDefault<IResourceLayer>();
-			positionsUpdatedModules = self.Owner.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
+			playerPower = Actor.Owner.PlayerActor.TraitOrDefault<PowerManager>();
+			playerResources = Actor.Owner.PlayerActor.Trait<PlayerResources>();
+			resourceLayer = Actor.World.WorldActor.TraitOrDefault<IResourceLayer>();
+			positionsUpdatedModules = Actor.Owner.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			foreach (var building in Info.BuildingQueues)
 				builders.Add(new BaseBuilderQueueManager(this, building, player, playerPower, playerResources, resourceLayer));
@@ -202,19 +202,19 @@ namespace OpenRA.Mods.Common.Traits
 				b.Tick(bot);
 		}
 
-		void IBotRespondToAttack.RespondToAttack(IBot bot, Actor self, AttackInfo e)
+		void IBotRespondToAttack.RespondToAttack(IBot bot, AttackInfo e)
 		{
 			if (e.Attacker == null || e.Attacker.Disposed)
 				return;
 
-			if (e.Attacker.Owner.RelationshipWith(self.Owner) != PlayerRelationship.Enemy)
+			if (e.Attacker.Owner.RelationshipWith(Actor.Owner) != PlayerRelationship.Enemy)
 				return;
 
 			if (!e.Attacker.Info.HasTraitInfo<ITargetableInfo>())
 				return;
 
 			// Protect buildings
-			if (self.Info.HasTraitInfo<BuildingInfo>())
+			if (Actor.Info.HasTraitInfo<BuildingInfo>())
 				foreach (var n in positionsUpdatedModules)
 					n.UpdatedDefenseCenter(e.Attacker.Location);
 		}
@@ -265,7 +265,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		int MinimumRefineryCount => AIUtils.CountBuildingByCommonName(Info.BarracksTypes, player) > 0 ? Info.InititalMinimumRefineryCount + Info.AdditionalMinimumRefineryCount : Info.InititalMinimumRefineryCount;
 
-		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData(Actor self)
+		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData()
 		{
 			if (IsTraitDisabled)
 				return null;
@@ -277,9 +277,9 @@ namespace OpenRA.Mods.Common.Traits
 			};
 		}
 
-		void IGameSaveTraitData.ResolveTraitData(Actor self, List<MiniYamlNode> data)
+		void IGameSaveTraitData.ResolveTraitData(List<MiniYamlNode> data)
 		{
-			if (self.World.IsReplay)
+			if (Actor.World.IsReplay)
 				return;
 
 			var initialBaseCenterNode = data.FirstOrDefault(n => n.Key == "InitialBaseCenter");

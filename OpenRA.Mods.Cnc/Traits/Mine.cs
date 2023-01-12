@@ -22,50 +22,52 @@ namespace OpenRA.Mods.Cnc.Traits
 		public readonly bool BlockFriendly = true;
 		public readonly BitSet<CrushClass> DetonateClasses = default;
 
-		public override object Create(ActorInitializer init) { return new Mine(this); }
+		public override object Create(ActorInitializer init) { return new Mine(this, init.Self); }
 	}
 
 	class Mine : ICrushable, INotifyCrushed
 	{
+		public readonly Actor Actor;
 		readonly MineInfo info;
 
-		public Mine(MineInfo info)
+		public Mine(MineInfo info, Actor self)
 		{
+			Actor = self;
 			this.info = info;
 		}
 
-		void INotifyCrushed.WarnCrush(Actor self, Actor crusher, BitSet<CrushClass> crushClasses) { }
+		void INotifyCrushed.WarnCrush(Actor crusher, BitSet<CrushClass> crushClasses) { }
 
-		void INotifyCrushed.OnCrush(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
+		void INotifyCrushed.OnCrush(Actor crusher, BitSet<CrushClass> crushClasses)
 		{
 			if (!info.CrushClasses.Overlaps(crushClasses))
 				return;
 
-			if (crusher.Info.HasTraitInfo<MineImmuneInfo>() || (self.Owner.RelationshipWith(crusher.Owner) == PlayerRelationship.Ally && info.AvoidFriendly))
+			if (crusher.Info.HasTraitInfo<MineImmuneInfo>() || (Actor.Owner.RelationshipWith(crusher.Owner) == PlayerRelationship.Ally && info.AvoidFriendly))
 				return;
 
 			var mobile = crusher.TraitOrDefault<Mobile>();
 			if (mobile != null && !info.DetonateClasses.Overlaps(mobile.Info.LocomotorInfo.Crushes))
 				return;
 
-			self.Kill(crusher, mobile != null ? mobile.Info.LocomotorInfo.CrushDamageTypes : default);
+			Actor.Kill(crusher, mobile != null ? mobile.Info.LocomotorInfo.CrushDamageTypes : default);
 		}
 
-		bool ICrushable.CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
+		bool ICrushable.CrushableBy(Actor crusher, BitSet<CrushClass> crushClasses)
 		{
-			if (info.BlockFriendly && !crusher.Info.HasTraitInfo<MineImmuneInfo>() && self.Owner.RelationshipWith(crusher.Owner) == PlayerRelationship.Ally)
+			if (info.BlockFriendly && !crusher.Info.HasTraitInfo<MineImmuneInfo>() && Actor.Owner.RelationshipWith(crusher.Owner) == PlayerRelationship.Ally)
 				return false;
 
 			return info.CrushClasses.Overlaps(crushClasses);
 		}
 
-		LongBitSet<PlayerBitMask> ICrushable.CrushableBy(Actor self, BitSet<CrushClass> crushClasses)
+		LongBitSet<PlayerBitMask> ICrushable.CrushableBy(BitSet<CrushClass> crushClasses)
 		{
 			if (!info.CrushClasses.Overlaps(crushClasses))
-				return self.World.NoPlayersMask;
+				return Actor.World.NoPlayersMask;
 
 			// Friendly units should move around!
-			return info.BlockFriendly ? self.World.AllPlayersMask.Except(self.Owner.AlliedPlayersMask) : self.World.AllPlayersMask;
+			return info.BlockFriendly ? Actor.World.AllPlayersMask.Except(Actor.Owner.AlliedPlayersMask) : Actor.World.AllPlayersMask;
 		}
 	}
 

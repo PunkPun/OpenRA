@@ -97,7 +97,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Activity GetTransformActivity()
 		{
-			return new Transform(Info.IntoActor)
+			return new Transform(Actor, Info.IntoActor)
 			{
 				Offset = Info.Offset,
 				Facing = Info.Facing,
@@ -113,7 +113,7 @@ namespace OpenRA.Mods.Common.Traits
 			get
 			{
 				if (!IsTraitDisabled)
-					yield return new DeployOrderTargeter("DeployTransform", 5,
+					yield return new DeployOrderTargeter(Actor, "DeployTransform", 5,
 						() => CanDeploy() ? Info.DeployCursor : Info.DeployBlockedCursor);
 			}
 		}

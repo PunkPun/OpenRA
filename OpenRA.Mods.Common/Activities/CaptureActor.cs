@@ -28,7 +28,7 @@ namespace OpenRA.Mods.Common.Activities
 			manager = self.Trait<CaptureManager>();
 		}
 
-		protected override void TickInner(Actor self, in Target target, bool targetIsDeadOrHiddenActor)
+		protected override void TickInner(in Target target, bool targetIsDeadOrHiddenActor)
 		{
 			if (target.Type == TargetType.Actor && enterActor != target.Actor)
 			{
@@ -37,11 +37,11 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			if (!targetIsDeadOrHiddenActor && target.Type != TargetType.FrozenActor &&
-				(enterCaptureManager == null || !enterCaptureManager.CanBeTargetedBy(enterActor, self, manager)))
-				Cancel(self, true);
+				(enterCaptureManager == null || !enterCaptureManager.CanBeTargetedBy(enterActor, Actor, manager)))
+				Cancel(true);
 		}
 
-		protected override bool TryStartEnter(Actor self, Actor targetActor)
+		protected override bool TryStartEnter(Actor targetActor)
 		{
 			if (enterActor != targetActor)
 			{
@@ -51,50 +51,50 @@ namespace OpenRA.Mods.Common.Activities
 
 			// Make sure we can still capture the target before entering
 			// (but not before, because this may stop the actor in the middle of nowhere)
-			if (enterCaptureManager == null || !enterCaptureManager.CanBeTargetedBy(enterActor, self, manager))
+			if (enterCaptureManager == null || !enterCaptureManager.CanBeTargetedBy(enterActor, Actor, manager))
 			{
-				Cancel(self, true);
+				Cancel(true);
 				return false;
 			}
 
 			// StartCapture returns false when a capture delay is enabled
 			// We wait until it returns true before allowing entering the target
-			if (!manager.StartCapture(self, enterActor, enterCaptureManager, out var captures))
+			if (!manager.StartCapture(Actor, enterActor, enterCaptureManager, out var captures))
 				return false;
 
 			if (!captures.Info.ConsumedByCapture)
 			{
 				// Immediately capture without entering or disposing the actor
-				DoCapture(self, captures);
-				Cancel(self, true);
+				DoCapture(captures);
+				Cancel(true);
 				return false;
 			}
 
 			return true;
 		}
 
-		protected override void OnEnterComplete(Actor self, Actor targetActor)
+		protected override void OnEnterComplete(Actor targetActor)
 		{
 			// Make sure the target hasn't changed while entering
 			// OnEnterComplete is only called if targetActor is alive
 			if (enterActor != targetActor)
 				return;
 
-			if (enterCaptureManager.BeingCaptured || !enterCaptureManager.CanBeTargetedBy(enterActor, self, manager))
+			if (enterCaptureManager.BeingCaptured || !enterCaptureManager.CanBeTargetedBy(enterActor, Actor, manager))
 				return;
 
 			// Prioritize capturing over sabotaging
-			var captures = manager.ValidCapturesWithLowestSabotageThreshold(self, enterActor, enterCaptureManager);
+			var captures = manager.ValidCapturesWithLowestSabotageThreshold(Actor, enterActor, enterCaptureManager);
 			if (captures == null)
 				return;
 
-			DoCapture(self, captures);
+			DoCapture(captures);
 		}
 
-		void DoCapture(Actor self, Captures captures)
+		void DoCapture(Captures captures)
 		{
 			var oldOwner = enterActor.Owner;
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				// The target died or was already captured during this tick
 				if (enterActor.IsDead || oldOwner != enterActor.Owner)
@@ -109,50 +109,50 @@ namespace OpenRA.Mods.Common.Activities
 					if (100 * (long)health.HP > captures.Info.SabotageThreshold * (long)health.MaxHP)
 					{
 						var damage = (int)((long)health.MaxHP * captures.Info.SabotageHPRemoval / 100);
-						enterActor.InflictDamage(self, new Damage(damage, captures.Info.SabotageDamageTypes));
+						enterActor.InflictDamage(Actor, new Damage(damage, captures.Info.SabotageDamageTypes));
 
 						if (captures.Info.ConsumedByCapture)
-							self.Dispose();
+							Actor.Dispose();
 
 						return;
 					}
 				}
 
 				// Do the capture
-				enterActor.ChangeOwnerSync(self.Owner);
+				enterActor.ChangeOwnerSync(Actor.Owner);
 
 				foreach (var t in enterActor.TraitsImplementing<INotifyCapture>())
-					t.OnCapture(enterActor, self, oldOwner, self.Owner, captures.Info.CaptureTypes);
+					t.OnCapture(Actor, oldOwner, Actor.Owner, captures.Info.CaptureTypes);
 
-				if (self.Owner.RelationshipWith(oldOwner).HasRelationship(captures.Info.PlayerExperienceRelationships))
-					self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(captures.Info.PlayerExperience);
+				if (Actor.Owner.RelationshipWith(oldOwner).HasRelationship(captures.Info.PlayerExperienceRelationships))
+					Actor.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(captures.Info.PlayerExperience);
 
 				if (captures.Info.ConsumedByCapture)
-					self.Dispose();
+					Actor.Dispose();
 			});
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
-			CancelCapture(self);
-			base.OnLastRun(self);
+			CancelCapture();
+			base.OnLastRun();
 		}
 
-		protected override void OnActorDispose(Actor self)
+		protected override void OnActorDispose()
 		{
-			CancelCapture(self);
-			base.OnActorDispose(self);
+			CancelCapture();
+			base.OnActorDispose();
 		}
 
-		public override void Cancel(Actor self, bool keepQueue = false)
+		public override void Cancel(bool keepQueue = false)
 		{
-			CancelCapture(self);
-			base.Cancel(self, keepQueue);
+			CancelCapture();
+			base.Cancel(keepQueue);
 		}
 
-		void CancelCapture(Actor self)
+		void CancelCapture()
 		{
-			manager.CancelCapture(self, enterActor, enterCaptureManager);
+			manager.CancelCapture(Actor, enterActor, enterCaptureManager);
 		}
 	}
 }

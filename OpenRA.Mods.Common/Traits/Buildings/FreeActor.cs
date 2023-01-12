@@ -61,25 +61,25 @@ namespace OpenRA.Mods.Common.Traits
 		protected bool allowSpawn;
 
 		public FreeActor(ActorInitializer init, FreeActorInfo info)
-			: base(info)
+			: base(info, init.Self)
 		{
 			allowSpawn = init.GetValue<FreeActorInit, bool>(info, true);
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			if (!allowSpawn)
 				return;
 
 			allowSpawn = Info.AllowRespawn;
 
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				w.CreateActor(Info.Actor, new TypeDictionary
 				{
-					new ParentActorInit(self),
-					new LocationInit(self.Location + Info.SpawnOffset),
-					new OwnerInit(self.Owner),
+					new ParentActorInit(Actor),
+					new LocationInit(Actor.Location + Info.SpawnOffset),
+					new OwnerInit(Actor.Owner),
 					new FacingInit(Info.Facing),
 				});
 			});

@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Common.Traits
 	class GroundLevelBridge : IBridgeSegment, INotifyAddedToWorld, INotifyRemovedFromWorld
 	{
 		public readonly GroundLevelBridgeInfo Info;
-		readonly Actor self;
+		public readonly Actor Actor;
 		readonly BridgeLayer bridgeLayer;
 		readonly IEnumerable<CPos> cells;
 		readonly IHealth health;
@@ -58,7 +58,7 @@ namespace OpenRA.Mods.Common.Traits
 		public GroundLevelBridge(Actor self, GroundLevelBridgeInfo info)
 		{
 			Info = info;
-			this.self = self;
+			Actor = self;
 			health = self.Trait<IHealth>();
 
 			bridgeLayer = self.World.WorldActor.Trait<BridgeLayer>();
@@ -72,21 +72,21 @@ namespace OpenRA.Mods.Common.Traits
 				self.World.Map.CustomTerrain[cell] = terrainIndex;
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
-			bridgeLayer.Add(self);
+			bridgeLayer.Add(Actor);
 
-			var terrainIndex = self.World.Map.Rules.TerrainInfo.GetTerrainIndex(Info.TerrainType);
-			UpdateTerrain(self, terrainIndex);
-			KillInvalidActorsInFootprint(self);
+			var terrainIndex = Actor.World.Map.Rules.TerrainInfo.GetTerrainIndex(Info.TerrainType);
+			UpdateTerrain(Actor, terrainIndex);
+			KillInvalidActorsInFootprint(Actor);
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
-			bridgeLayer.Remove(self);
+			bridgeLayer.Remove(Actor);
 
-			UpdateTerrain(self, byte.MaxValue);
-			KillInvalidActorsInFootprint(self);
+			UpdateTerrain(Actor, byte.MaxValue);
+			KillInvalidActorsInFootprint(Actor);
 		}
 
 		void KillInvalidActorsInFootprint(Actor self)
@@ -99,27 +99,27 @@ namespace OpenRA.Mods.Common.Traits
 
 		void IBridgeSegment.Repair(Actor repairer)
 		{
-			health.InflictDamage(self, repairer, new Damage(-health.MaxHP), true);
+			health.InflictDamage(repairer, new Damage(-health.MaxHP), true);
 		}
 
 		void IBridgeSegment.Demolish(Actor saboteur, BitSet<DamageType> damageTypes)
 		{
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
-				if (self.IsDead)
+				if (Actor.IsDead)
 					return;
 
 				// Use .FromPos since this actor is dead. Cannot use Target.FromActor
-				Info.DemolishWeaponInfo.Impact(Target.FromPos(self.CenterPosition), saboteur);
+				Info.DemolishWeaponInfo.Impact(Target.FromPos(Actor.CenterPosition), saboteur);
 
-				self.Kill(saboteur, damageTypes);
+				Actor.Kill(saboteur, damageTypes);
 			});
 		}
 
 		string IBridgeSegment.Type => Info.Type;
-		DamageState IBridgeSegment.DamageState => self.GetDamageState();
-		bool IBridgeSegment.Valid => self.IsInWorld;
+		DamageState IBridgeSegment.DamageState => Actor.GetDamageState();
+		bool IBridgeSegment.Valid => Actor.IsInWorld;
 		CVec[] IBridgeSegment.NeighbourOffsets => Info.NeighbourOffsets;
-		CPos IBridgeSegment.Location => self.Location;
+		CPos IBridgeSegment.Location => Actor.Location;
 	}
 }

@@ -221,7 +221,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (camera == null)
 				return;
 
-			camera.QueueActivity(new Wait(info.CameraRemoveDelay));
+			camera.QueueActivity(new Wait(Actor, info.CameraRemoveDelay));
 			camera.QueueActivity(new RemoveSelf());
 		}
 
@@ -230,7 +230,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (beacon == null)
 				return;
 
-			Self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
 				w.Remove(beacon);
 			});

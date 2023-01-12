@@ -24,6 +24,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly bool showTicks;
 
 		public Sell(Actor self, bool showTicks)
+			: base(self)
 		{
 			this.showTicks = showTicks;
 			health = self.TraitOrDefault<IHealth>();
@@ -32,9 +33,9 @@ namespace OpenRA.Mods.Common.Activities
 			IsInterruptible = false;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
-			var sellValue = self.GetSellValue();
+			var sellValue = Actor.GetSellValue();
 
 			// Cast to long to avoid overflow when multiplying by the health
 			var hp = health != null ? (long)health.HP : 1L;
@@ -42,16 +43,16 @@ namespace OpenRA.Mods.Common.Activities
 			var refund = (int)((sellValue * sellableInfo.RefundPercent * hp) / (100 * maxHP));
 			refund = playerResources.ChangeCash(refund);
 
-			foreach (var ns in self.TraitsImplementing<INotifySold>())
-				ns.Sold(self);
+			foreach (var ns in Actor.TraitsImplementing<INotifySold>())
+				ns.Sold();
 
-			if (showTicks && refund > 0 && self.Owner.IsAlliedWith(self.World.RenderPlayer))
-				self.World.AddFrameEndTask(w => w.Add(new FloatingText(self.CenterPosition, self.Owner.Color, FloatingText.FormatCashTick(refund), 30)));
+			if (showTicks && refund > 0 && Actor.Owner.IsAlliedWith(Actor.World.RenderPlayer))
+				Actor.World.AddFrameEndTask(w => w.Add(new FloatingText(Actor.CenterPosition, Actor.Owner.Color, FloatingText.FormatCashTick(refund), 30)));
 
-			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", sellableInfo.Notification, self.Owner.Faction.InternalName);
-			TextNotificationsManager.AddTransientLine(sellableInfo.TextNotification, self.Owner);
+			Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech", sellableInfo.Notification, Actor.Owner.Faction.InternalName);
+			TextNotificationsManager.AddTransientLine(sellableInfo.TextNotification, Actor.Owner);
 
-			self.Dispose();
+			Actor.Dispose();
 			return false;
 		}
 	}

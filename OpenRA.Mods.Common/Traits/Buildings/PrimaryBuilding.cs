@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Cursor to display when setting the primary building.")]
 		public readonly string Cursor = "deploy";
 
-		public override object Create(ActorInitializer init) { return new PrimaryBuilding(this); }
+		public override object Create(ActorInitializer init) { return new PrimaryBuilding(init.Self, this); }
 	}
 
 	public class PrimaryBuilding : ConditionalTrait<PrimaryBuildingInfo>, IIssueOrder, IResolveOrder
@@ -59,8 +59,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		public bool IsPrimary { get; private set; }
 
-		public PrimaryBuilding(PrimaryBuildingInfo info)
-			: base(info) { }
+		public PrimaryBuilding(Actor self, PrimaryBuildingInfo info)
+			: base(info, self) { }
 
 		IEnumerable<IOrderTargeter> IIssueOrder.Orders
 		{
@@ -69,28 +69,28 @@ namespace OpenRA.Mods.Common.Traits
 				if (IsTraitDisabled)
 					yield break;
 
-				yield return new DeployOrderTargeter(OrderID, 1, () => Info.Cursor);
+				yield return new DeployOrderTargeter(Actor, OrderID, 1, () => Info.Cursor);
 			}
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		Order IIssueOrder.IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == OrderID)
-				return new Order(order.OrderID, self, false);
+				return new Order(order.OrderID, Actor, false);
 
 			return null;
 		}
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (order.OrderString == OrderID)
-				SetPrimaryProducer(self, !IsPrimary);
+				SetPrimaryProducer(!IsPrimary);
 
 			if (RallyPoint.IsForceSet(order) && !IsPrimary)
-				SetPrimaryProducer(self, true);
+				SetPrimaryProducer(true);
 		}
 
-		public void SetPrimaryProducer(Actor self, bool isPrimary)
+		public void SetPrimaryProducer(bool isPrimary)
 		{
 			IsPrimary = isPrimary;
 
@@ -98,36 +98,36 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				// Cancel existing primaries
 				// TODO: THIS IS SHIT
-				var queues = Info.ProductionQueues.Length == 0 ? self.TraitsImplementing<Production>()
+				var queues = Info.ProductionQueues.Length == 0 ? Actor.TraitsImplementing<Production>()
 					.Where(t => !t.IsTraitDisabled).SelectMany(pi => pi.Info.Produces) : Info.ProductionQueues;
 				foreach (var q in queues)
 				{
-					foreach (var b in self.World
+					foreach (var b in Actor.World
 							.ActorsWithTrait<PrimaryBuilding>()
 							.Where(a =>
-								a.Actor != self &&
-								a.Actor.Owner == self.Owner &&
+								a.Actor != Actor &&
+								a.Actor.Owner == Actor.Owner &&
 								a.Trait.IsPrimary &&
 								a.Actor.TraitsImplementing<Production>().Where(p => !p.IsTraitDisabled).Any(pi => pi.Info.Produces.Contains(q))))
-						b.Trait.SetPrimaryProducer(b.Actor, false);
+						b.Trait.SetPrimaryProducer(false);
 				}
 
 				if (primaryToken == Actor.InvalidConditionToken)
-					primaryToken = self.GrantCondition(Info.PrimaryCondition);
+					primaryToken = Actor.GrantCondition(Info.PrimaryCondition);
 
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", Info.SelectionNotification, self.Owner.Faction.InternalName);
-				TextNotificationsManager.AddTransientLine(Info.SelectionTextNotification, self.Owner);
+				Game.Sound.PlayNotification(Actor.World.Map.Rules, Actor.Owner, "Speech", Info.SelectionNotification, Actor.Owner.Faction.InternalName);
+				TextNotificationsManager.AddTransientLine(Info.SelectionTextNotification, Actor.Owner);
 			}
 			else if (primaryToken != Actor.InvalidConditionToken)
-				primaryToken = self.RevokeCondition(primaryToken);
+				primaryToken = Actor.RevokeCondition(primaryToken);
 		}
 
-		protected override void TraitEnabled(Actor self) { }
+		protected override void TraitEnabled() { }
 
-		protected override void TraitDisabled(Actor self)
+		protected override void TraitDisabled()
 		{
 			if (IsPrimary)
-				SetPrimaryProducer(self, !IsPrimary);
+				SetPrimaryProducer(!IsPrimary);
 		}
 	}
 }

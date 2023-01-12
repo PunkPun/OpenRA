@@ -27,22 +27,22 @@ namespace OpenRA.Mods.Common.Activities
 			wda = self.Info.TraitInfoOrDefault<WithDockingAnimationInfo>();
 		}
 
-		public override void OnStateDock(Actor self)
+		public override void OnStateDock()
 		{
-			foreach (var trait in self.TraitsImplementing<INotifyHarvesterAction>())
+			foreach (var trait in Actor.TraitsImplementing<INotifyHarvesterAction>())
 				trait.Docked();
 
 			foreach (var nd in Refinery.TraitsImplementing<INotifyDocking>())
-				nd.Docked(Refinery, self);
+				nd.Docked(Actor);
 
 			if (wda != null)
-				wsb.PlayCustomAnimation(self, wda.DockSequence, () => wsb.PlayCustomAnimationRepeating(self, wda.DockLoopSequence));
+				wsb.PlayCustomAnimation(wda.DockSequence, () => wsb.PlayCustomAnimationRepeating(wda.DockLoopSequence));
 
 			dockAnimPlayed = true;
 			dockingState = DockingState.Loop;
 		}
 
-		public override void OnStateUndock(Actor self)
+		public override void OnStateUndock()
 		{
 			// If dock animation hasn't played, we didn't actually dock and have to skip the undock anim and notification
 			if (!dockAnimPlayed)
@@ -54,20 +54,20 @@ namespace OpenRA.Mods.Common.Activities
 			dockingState = DockingState.Wait;
 
 			if (wda == null)
-				NotifyUndock(self);
+				NotifyUndock();
 			else
-				wsb.PlayCustomAnimationBackwards(self, wda.DockSequence, () => NotifyUndock(self));
+				wsb.PlayCustomAnimationBackwards(wda.DockSequence, () => NotifyUndock());
 		}
 
-		void NotifyUndock(Actor self)
+		void NotifyUndock()
 		{
 			dockingState = DockingState.Complete;
-			foreach (var trait in self.TraitsImplementing<INotifyHarvesterAction>())
+			foreach (var trait in Actor.TraitsImplementing<INotifyHarvesterAction>())
 				trait.Undocked();
 
 			if (Refinery.IsInWorld && !Refinery.IsDead)
 				foreach (var nd in Refinery.TraitsImplementing<INotifyDocking>())
-					nd.Undocked(Refinery, self);
+					nd.Undocked(Actor);
 		}
 	}
 }

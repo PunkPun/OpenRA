@@ -39,6 +39,7 @@ namespace OpenRA.Mods.Cnc.Activities
 		Player lastVisibleOwner;
 
 		public LeapAttack(Actor self, in Target target, bool allowMovement, bool forceAttack, AttackLeap attack, AttackLeapInfo info, Color? targetLineColor = null)
+			: base(self)
 		{
 			this.target = target;
 			this.targetLineColor = targetLineColor;
@@ -70,17 +71,17 @@ namespace OpenRA.Mods.Cnc.Activities
 			}
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			attack.IsAiming = true;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling)
 				return true;
 
-			target = target.Recalculate(self.Owner, out var targetIsHiddenActor);
+			target = target.Recalculate(Actor.Owner, out var targetIsHiddenActor);
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 			{
 				lastVisibleTarget = Target.FromTargetPositions(target);
@@ -90,13 +91,13 @@ namespace OpenRA.Mods.Cnc.Activities
 				lastVisibleTargetTypes = target.Actor.GetEnabledTargetTypes();
 			}
 
-			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(self);
+			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(Actor);
 
 			// Target is hidden or dead, and we don't have a fallback position to move towards
-			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self))
+			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(Actor))
 				return true;
 
-			var pos = self.CenterPosition;
+			var pos = Actor.CenterPosition;
 			var checkTarget = useLastVisibleTarget ? lastVisibleTarget : target;
 
 			if (!checkTarget.IsInRange(pos, lastVisibleMaxRange) || checkTarget.IsInRange(pos, lastVisibleMinRange))
@@ -113,11 +114,11 @@ namespace OpenRA.Mods.Cnc.Activities
 				return true;
 
 			// Target is not valid
-			if (!target.IsValidFor(self) || !attack.HasAnyValidWeapons(target))
+			if (!target.IsValidFor(Actor) || !attack.HasAnyValidWeapons(target))
 				return true;
 
 			var edible = target.Actor.TraitOrDefault<EdibleByLeap>();
-			if (edible == null || !edible.CanLeap(self))
+			if (edible == null || !edible.CanLeap(Actor))
 				return true;
 
 			// Can't leap yet
@@ -129,38 +130,38 @@ namespace OpenRA.Mods.Cnc.Activities
 			var targetMobile = target.Actor.TraitOrDefault<Mobile>();
 			var targetSubcell = targetMobile != null ? targetMobile.ToSubCell : SubCell.Any;
 
-			var destination = self.World.Map.CenterOfSubCell(target.Actor.Location, targetSubcell);
-			var origin = self.World.Map.CenterOfSubCell(self.Location, mobile.FromSubCell);
+			var destination = Actor.World.Map.CenterOfSubCell(target.Actor.Location, targetSubcell);
+			var origin = Actor.World.Map.CenterOfSubCell(Actor.Location, mobile.FromSubCell);
 			var desiredFacing = (destination - origin).Yaw;
 			if (mobile.Facing != desiredFacing)
 			{
-				QueueChild(new Turn(self, desiredFacing));
+				QueueChild(new Turn(Actor, desiredFacing));
 				return false;
 			}
 
-			QueueChild(new Leap(target, mobile, targetMobile, info.Speed.Length, attack, edible));
+			QueueChild(new Leap(Actor, target, mobile, targetMobile, info.Speed.Length, attack, edible));
 
 			// Re-queue the child activities to kill the target if it didn't die in one go
 			return false;
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
 			attack.IsAiming = false;
 		}
 
-		void IActivityNotifyStanceChanged.StanceChanged(Actor self, AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
+		void IActivityNotifyStanceChanged.StanceChanged(AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
 		{
 			// Cancel non-forced targets when switching to a more restrictive stance if they are no longer valid for auto-targeting
 			if (newStance > oldStance || forceAttack)
 				return;
 
 			// If lastVisibleTarget is invalid we could never view the target in the first place, so we just drop it here too
-			if (!lastVisibleTarget.IsValidFor(self) || !autoTarget.HasValidTargetPriority(self, lastVisibleOwner, lastVisibleTargetTypes))
+			if (!lastVisibleTarget.IsValidFor(Actor) || !autoTarget.HasValidTargetPriority(lastVisibleOwner, lastVisibleTargetTypes))
 				target = Target.Invalid;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 				yield return new TargetLineNode(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value);

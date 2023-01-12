@@ -267,11 +267,11 @@ namespace OpenRA.Mods.Common.Traits
 		INotifyAddedToWorld, INotifyRemovedFromWorld
 	{
 		public readonly BuildingInfo Info;
+		public readonly Actor Actor;
 
 		[Sync]
 		readonly CPos topLeft;
 
-		readonly Actor self;
 		readonly BuildingInfluence influence;
 
 		readonly (CPos, SubCell)[] occupiedCells;
@@ -283,10 +283,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Building(ActorInitializer init, BuildingInfo info)
 		{
-			self = init.Self;
+			Actor = init.Self;
 			topLeft = init.GetValue<LocationInit, CPos>();
 			Info = info;
-			influence = self.World.WorldActor.Trait<BuildingInfluence>();
+			influence = Actor.World.WorldActor.Trait<BuildingInfluence>();
 
 			occupiedCells = Info.OccupiedTiles(TopLeft)
 				.Select(c => (c, SubCell.FullCell)).ToArray();
@@ -305,52 +305,52 @@ namespace OpenRA.Mods.Common.Traits
 
 		(CPos, SubCell)[] ITargetableCells.TargetableCells() { return targetableCells; }
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
-			AddedToWorld(self);
+			AddedToWorld();
 		}
 
-		protected virtual void AddedToWorld(Actor self)
+		protected virtual void AddedToWorld()
 		{
 			if (Info.RemoveSmudgesOnBuild)
 				RemoveSmudges();
 
-			self.World.AddToMaps(self, this);
-			influence.AddInfluence(self, Info.Tiles(self.Location));
+			Actor.World.AddToMaps(Actor, this);
+			influence.AddInfluence(Actor, Info.Tiles(Actor.Location));
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
-			self.World.RemoveFromMaps(self, this);
-			influence.RemoveInfluence(self, Info.Tiles(self.Location));
+			Actor.World.RemoveFromMaps(Actor, this);
+			influence.RemoveInfluence(Actor, Info.Tiles(Actor.Location));
 		}
 
-		void INotifySold.Selling(Actor self)
+		void INotifySold.Selling()
 		{
 			if (Info.RemoveSmudgesOnSell)
 				RemoveSmudges();
 		}
 
-		void INotifySold.Sold(Actor self) { }
+		void INotifySold.Sold() { }
 
-		void INotifyTransform.BeforeTransform(Actor self)
+		void INotifyTransform.BeforeTransform()
 		{
 			if (Info.RemoveSmudgesOnTransform)
 				RemoveSmudges();
 
 			foreach (var s in Info.UndeploySounds)
-				Game.Sound.PlayToPlayer(SoundType.World, self.Owner, s, self.CenterPosition);
+				Game.Sound.PlayToPlayer(SoundType.World, Actor.Owner, s, Actor.CenterPosition);
 		}
 
-		void INotifyTransform.OnTransform(Actor self) { }
-		void INotifyTransform.AfterTransform(Actor self) { }
+		void INotifyTransform.OnTransform() { }
+		void INotifyTransform.AfterTransform(Actor toActor) { }
 
 		public void RemoveSmudges()
 		{
-			var smudgeLayers = self.World.WorldActor.TraitsImplementing<SmudgeLayer>();
+			var smudgeLayers = Actor.World.WorldActor.TraitsImplementing<SmudgeLayer>();
 
 			foreach (var smudgeLayer in smudgeLayers)
-				foreach (var footprintTile in Info.Tiles(self.Location))
+				foreach (var footprintTile in Info.Tiles(Actor.Location))
 					smudgeLayer.RemoveSmudge(footprintTile);
 		}
 	}

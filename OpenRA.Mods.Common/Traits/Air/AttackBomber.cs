@@ -40,31 +40,31 @@ namespace OpenRA.Mods.Common.Traits
 		public event Action<Actor> OnExitedAttackRange = self => { };
 
 		public AttackBomber(Actor self, AttackBomberInfo info)
-			: base(self, info)
+			: base(info, self)
 		{
 			this.info = info;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			var wasInAttackRange = inAttackRange;
 			inAttackRange = false;
 
-			if (self.IsInWorld)
+			if (Actor.IsInWorld)
 			{
-				var dat = self.World.Map.DistanceAboveTerrain(target.CenterPosition);
+				var dat = Actor.World.Map.DistanceAboveTerrain(target.CenterPosition);
 				target = Target.FromPos(target.CenterPosition - new WVec(WDist.Zero, WDist.Zero, dat));
 
 				var wasFacingTarget = facingTarget;
-				facingTarget = TargetInFiringArc(self, target, info.FacingTolerance);
+				facingTarget = TargetInFiringArc(target, info.FacingTolerance);
 
 				foreach (var a in Armaments)
 				{
-					if (!target.IsInRange(self.CenterPosition, a.MaxRange()))
+					if (!target.IsInRange(Actor.CenterPosition, a.MaxRange()))
 						continue;
 
 					inAttackRange = true;
-					a.CheckFire(self, facing, target);
+					a.CheckFire(facing, target);
 				}
 
 				// Actors without armaments may want to trigger an action when it passes the target
@@ -73,20 +73,20 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			if (inAttackRange && !wasInAttackRange)
-				OnEnteredAttackRange(self);
+				OnEnteredAttackRange(Actor);
 
 			if (!inAttackRange && wasInAttackRange)
-				OnExitedAttackRange(self);
+				OnExitedAttackRange(Actor);
 		}
 
 		public void SetTarget(WPos pos) { target = Target.FromPos(pos); }
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
-			OnRemovedFromWorld(self);
+			OnRemovedFromWorld(Actor);
 		}
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor)
+		public override Activity GetAttackActivity(AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor)
 		{
 			throw new NotImplementedException("AttackBomber requires a scripted target");
 		}

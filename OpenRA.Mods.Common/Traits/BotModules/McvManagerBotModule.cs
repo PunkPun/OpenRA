@@ -69,19 +69,19 @@ namespace OpenRA.Mods.Common.Traits
 		bool firstTick = true;
 
 		public McvManagerBotModule(Actor self, McvManagerBotModuleInfo info)
-			: base(info)
+			: base(info, self)
 		{
 			world = self.World;
 			player = self.Owner;
 		}
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			notifyPositionsUpdated = self.Owner.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
-			requestUnitProduction = self.Owner.PlayerActor.TraitsImplementing<IBotRequestUnitProduction>().ToArray();
+			notifyPositionsUpdated = Actor.Owner.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
+			requestUnitProduction = Actor.Owner.PlayerActor.TraitsImplementing<IBotRequestUnitProduction>().ToArray();
 		}
 
-		protected override void TraitEnabled(Actor self)
+		protected override void TraitEnabled()
 		{
 			// Avoid all AIs reevaluating assignments on the same tick, randomize their initial evaluation delay.
 			scanInterval = world.LocalRandom.Next(Info.ScanForNewMcvInterval, Info.ScanForNewMcvInterval * 2);
@@ -201,7 +201,7 @@ namespace OpenRA.Mods.Common.Traits
 				distanceToBaseIsImportant ? Info.MaxBaseRadius : world.Map.Grid.MaximumTileSearchRange);
 		}
 
-		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData(Actor self)
+		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData()
 		{
 			if (IsTraitDisabled)
 				return null;
@@ -212,9 +212,9 @@ namespace OpenRA.Mods.Common.Traits
 			};
 		}
 
-		void IGameSaveTraitData.ResolveTraitData(Actor self, List<MiniYamlNode> data)
+		void IGameSaveTraitData.ResolveTraitData(List<MiniYamlNode> data)
 		{
-			if (self.World.IsReplay)
+			if (Actor.World.IsReplay)
 				return;
 
 			var initialBaseCenterNode = data.FirstOrDefault(n => n.Key == "InitialBaseCenter");

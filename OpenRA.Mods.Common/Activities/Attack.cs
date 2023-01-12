@@ -46,6 +46,7 @@ namespace OpenRA.Mods.Common.Activities
 		AttackStatus attackStatus = AttackStatus.UnableToAttack;
 
 		public Attack(Actor self, in Target target, bool allowMovement, bool forceAttack, Color? targetLineColor = null)
+			: base(self)
 		{
 			this.target = target;
 			this.targetLineColor = targetLineColor;
@@ -82,23 +83,23 @@ namespace OpenRA.Mods.Common.Activities
 			}
 		}
 
-		protected virtual Target RecalculateTarget(Actor self, out bool targetIsHiddenActor)
+		protected virtual Target RecalculateTarget(out bool targetIsHiddenActor)
 		{
-			return target.Recalculate(self.Owner, out targetIsHiddenActor);
+			return target.Recalculate(Actor.Owner, out targetIsHiddenActor);
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			if (IsCanceling)
 				return true;
 
 			if (!attackTraits.Any())
 			{
-				Cancel(self);
+				Cancel();
 				return false;
 			}
 
-			target = RecalculateTarget(self, out var targetIsHiddenActor);
+			target = RecalculateTarget(out var targetIsHiddenActor);
 
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 			{
@@ -109,7 +110,7 @@ namespace OpenRA.Mods.Common.Activities
 				lastVisibleTargetTypes = target.Actor.GetEnabledTargetTypes();
 			}
 
-			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(self);
+			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(Actor);
 
 			// If we are ticking again after previously sequencing a MoveWithRange then that move must have completed
 			// Either we are in range and can see the target, or we've lost track of it and should give up
@@ -117,11 +118,11 @@ namespace OpenRA.Mods.Common.Activities
 				return true;
 
 			// Target is hidden or dead, and we don't have a fallback position to move towards
-			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self))
+			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(Actor))
 				return true;
 
 			wasMovingWithinRange = false;
-			var pos = self.CenterPosition;
+			var pos = Actor.CenterPosition;
 			var checkTarget = useLastVisibleTarget ? lastVisibleTarget : target;
 
 			// We don't know where the target actually is, so move to where we last saw it
@@ -141,7 +142,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			foreach (var attack in attackTraits)
 			{
-				var status = TickAttack(self, attack);
+				var status = TickAttack(attack);
 				attack.IsAiming = status == AttackStatus.Attacking || status == AttackStatus.NeedsToTurn;
 			}
 
@@ -154,15 +155,15 @@ namespace OpenRA.Mods.Common.Activities
 			return true;
 		}
 
-		protected override void OnLastRun(Actor self)
+		protected override void OnLastRun()
 		{
 			foreach (var attack in attackTraits)
 				attack.IsAiming = false;
 		}
 
-		protected virtual AttackStatus TickAttack(Actor self, AttackFrontal attack)
+		protected virtual AttackStatus TickAttack(AttackFrontal attack)
 		{
-			if (!target.IsValidFor(self))
+			if (!target.IsValidFor(Actor))
 				return AttackStatus.UnableToAttack;
 
 			if (attack.Info.AttackRequiresEnteringCell && !positionable.CanEnterCell(target.Actor.Location, null, BlockedByActor.None))
@@ -195,10 +196,10 @@ namespace OpenRA.Mods.Common.Activities
 			minRange = armaments.Max(a => a.Weapon.MinRange);
 			maxRange = armaments.Min(a => a.MaxRange());
 
-			var pos = self.CenterPosition;
+			var pos = Actor.CenterPosition;
 			if (!target.IsInRange(pos, maxRange)
 				|| (minRange.Length != 0 && target.IsInRange(pos, minRange))
-				|| (move is Mobile mobile && !mobile.CanInteractWithGroundLayer(self)))
+				|| (move is Mobile mobile && !mobile.CanInteractWithGroundLayer()))
 			{
 				// Try to move within range, drop the target otherwise
 				if (move == null)
@@ -210,7 +211,7 @@ namespace OpenRA.Mods.Common.Activities
 				return AttackStatus.NeedsToMove;
 			}
 
-			if (!attack.TargetInFiringArc(self, target, attack.Info.FacingTolerance))
+			if (!attack.TargetInFiringArc(target, attack.Info.FacingTolerance))
 			{
 				var desiredFacing = (attack.GetTargetPosition(pos, target) - pos).Yaw;
 
@@ -218,7 +219,7 @@ namespace OpenRA.Mods.Common.Activities
 				facing.Facing = Util.TickFacing(facing.Facing, desiredFacing, facing.TurnSpeed);
 
 				// Check again if we turned enough and directly continue attacking if we did
-				if (!attack.TargetInFiringArc(self, target, attack.Info.FacingTolerance))
+				if (!attack.TargetInFiringArc(target, attack.Info.FacingTolerance))
 				{
 					attackStatus |= AttackStatus.NeedsToTurn;
 					return AttackStatus.NeedsToTurn;
@@ -226,30 +227,30 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			attackStatus |= AttackStatus.Attacking;
-			DoAttack(self, attack, armaments);
+			DoAttack(attack, armaments);
 
 			return AttackStatus.Attacking;
 		}
 
-		protected virtual void DoAttack(Actor self, AttackFrontal attack, IEnumerable<Armament> armaments)
+		protected virtual void DoAttack(AttackFrontal attack, IEnumerable<Armament> armaments)
 		{
 			if (!attack.IsTraitPaused)
 				foreach (var a in armaments)
-					a.CheckFire(self, facing, target);
+					a.CheckFire(facing, target);
 		}
 
-		void IActivityNotifyStanceChanged.StanceChanged(Actor self, AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
+		void IActivityNotifyStanceChanged.StanceChanged(AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)
 		{
 			// Cancel non-forced targets when switching to a more restrictive stance if they are no longer valid for auto-targeting
 			if (newStance > oldStance || forceAttack)
 				return;
 
 			// If lastVisibleTarget is invalid we could never view the target in the first place, so we just drop it here too
-			if (!lastVisibleTarget.IsValidFor(self) || !autoTarget.HasValidTargetPriority(self, lastVisibleOwner, lastVisibleTargetTypes))
+			if (!lastVisibleTarget.IsValidFor(Actor) || !autoTarget.HasValidTargetPriority(lastVisibleOwner, lastVisibleTargetTypes))
 				target = Target.Invalid;
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (targetLineColor != null)
 				yield return new TargetLineNode(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value);

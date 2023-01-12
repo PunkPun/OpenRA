@@ -36,37 +36,39 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Text notification the perpetrator will see after successful infiltration.")]
 		public readonly string InfiltrationTextNotification = null;
 
-		public override object Create(ActorInitializer init) { return new InfiltrateForExploration(this); }
+		public override object Create(ActorInitializer init) { return new InfiltrateForExploration(this, init.Self); }
 	}
 
 	class InfiltrateForExploration : INotifyInfiltrated
 	{
 		readonly InfiltrateForExplorationInfo info;
+		readonly Actor actor;
 
-		public InfiltrateForExploration(InfiltrateForExplorationInfo info)
+		public InfiltrateForExploration(InfiltrateForExplorationInfo info, Actor self)
 		{
 			this.info = info;
+			actor = self;
 		}
 
-		void INotifyInfiltrated.Infiltrated(Actor self, Actor infiltrator, BitSet<TargetableType> types)
+		void INotifyInfiltrated.Infiltrated(Actor infiltrator, BitSet<TargetableType> types)
 		{
 			if (!info.Types.Overlaps(types))
 				return;
 
 			if (info.InfiltratedNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", info.InfiltratedNotification, self.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, actor.Owner, "Speech", info.InfiltratedNotification, actor.Owner.Faction.InternalName);
 
 			if (info.InfiltrationNotification != null)
-				Game.Sound.PlayNotification(self.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
+				Game.Sound.PlayNotification(actor.World.Map.Rules, infiltrator.Owner, "Speech", info.InfiltrationNotification, infiltrator.Owner.Faction.InternalName);
 
-			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, self.Owner);
+			TextNotificationsManager.AddTransientLine(info.InfiltratedTextNotification, actor.Owner);
 			TextNotificationsManager.AddTransientLine(info.InfiltrationTextNotification, infiltrator.Owner);
 
-			infiltrator.Owner.Shroud.Explore(self.Owner.Shroud);
-			var preventReset = self.Owner.PlayerActor.TraitsImplementing<IPreventsShroudReset>()
-				.Any(p => p.PreventShroudReset(self));
+			infiltrator.Owner.Shroud.Explore(actor.Owner.Shroud);
+			var preventReset = actor.Owner.PlayerActor.TraitsImplementing<IPreventsShroudReset>()
+				.Any(p => p.PreventShroudReset());
 			if (!preventReset)
-				self.Owner.Shroud.ResetExploration();
+				actor.Owner.Shroud.ResetExploration();
 		}
 	}
 }

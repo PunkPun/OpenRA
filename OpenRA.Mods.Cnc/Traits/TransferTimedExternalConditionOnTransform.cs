@@ -38,8 +38,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.info = info;
 		}
 
-		void INotifyTransform.BeforeTransform(Actor self) { }
-		void INotifyTransform.OnTransform(Actor self) { }
+		void INotifyTransform.BeforeTransform() { }
+		void INotifyTransform.OnTransform() { }
 
 		void INotifyTransform.AfterTransform(Actor toActor)
 		{

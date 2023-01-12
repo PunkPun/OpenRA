@@ -52,7 +52,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 				((10 * a.CurrentSequence.Length - 1) * playerResources.Resources) / (10 * playerResources.ResourceCapacity) :
 				0);
 
-			anim = new AnimationWithOffset(a, null, () => IsTraitDisabled, 1024);
+			anim = new AnimationWithOffset(Actor, a, null, () => IsTraitDisabled, 1024);
 			rs.Add(anim, info.Palette, info.IsPlayerPalette);
 		}
 

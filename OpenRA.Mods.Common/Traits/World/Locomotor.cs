@@ -128,6 +128,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class Locomotor : IWorldLoaded
 	{
+		public readonly Actor Actor;
 		readonly struct CellCache
 		{
 			public readonly LongBitSet<PlayerBitMask> Immovable;
@@ -163,6 +164,7 @@ namespace OpenRA.Mods.Common.Traits
 		public Locomotor(Actor self, LocomotorInfo info)
 		{
 			Info = info;
+			Actor = self;
 			sharesCell = info.SharesCell;
 			world = self.World;
 
@@ -204,50 +206,57 @@ namespace OpenRA.Mods.Common.Traits
 			return terrainInfos[index].Speed;
 		}
 
-		public short MovementCostToEnterCell(Actor actor, CPos destNode, BlockedByActor check, Actor ignoreActor, SubCell subCell = SubCell.FullCell)
+		public short MovementCostToEnterCell(CPos destNode, BlockedByActor check, Actor ignoreActor, SubCell subCell = SubCell.FullCell)
 		{
 			var cellCost = MovementCostForCell(destNode);
 
 			if (cellCost == PathGraph.MovementCostForUnreachableCell ||
-				!CanMoveFreelyInto(actor, destNode, subCell, check, ignoreActor))
+				!CanMoveFreelyInto(destNode, subCell, check, ignoreActor))
 				return PathGraph.MovementCostForUnreachableCell;
 
 			return cellCost;
 		}
 
-		public short MovementCostToEnterCell(Actor actor, CPos srcNode, CPos destNode, BlockedByActor check, Actor ignoreActor)
+		public short MovementCostToEnterCell(CPos srcNode, CPos destNode, BlockedByActor check, Actor ignoreActor)
 		{
 			var cellCost = MovementCostForCell(destNode, srcNode);
 
 			if (cellCost == PathGraph.MovementCostForUnreachableCell ||
-				!CanMoveFreelyInto(actor, destNode, SubCell.FullCell, check, ignoreActor))
+				!CanMoveFreelyInto(destNode, SubCell.FullCell, check, ignoreActor))
 				return PathGraph.MovementCostForUnreachableCell;
 
 			return cellCost;
 		}
 
-		// Determines whether the actor is blocked by other Actors
-		bool CanMoveFreelyInto(Actor actor, CPos cell, SubCell subCell, BlockedByActor check, Actor ignoreActor)
+		// We're just checking what would happen theoretically.
+		bool CanMoveFreelyInto(CPos cell, BlockedByActor check, out CellCache? cellCache)
 		{
+			cellCache = null;
+
 			// If the check allows: We are not blocked by other actors.
 			if (check == BlockedByActor.None)
 				return true;
 
-			var cellCache = GetCache(cell);
-			var cellFlag = cellCache.CellFlag;
+			cellCache = GetCache(cell);
 
 			// No actor in the cell or free SubCell.
-			if (cellFlag == CellFlag.HasFreeSpace)
+			if (cellCache.Value.CellFlag == CellFlag.HasFreeSpace)
 				return true;
 
-			// If actor is null we're just checking what would happen theoretically.
-			// In such a scenario - we'll just assume any other actor in the cell will block us by default.
-			// If we have a real actor, we can then perform the extra checks that allow us to avoid being blocked.
-			if (actor == null)
-				return false;
+			return false;
+		}
+
+		// Determines whether the actor is blocked by other Actors
+		bool CanMoveFreelyInto(CPos cell, SubCell subCell, BlockedByActor check, Actor ignoreActor)
+		{
+			if (CanMoveFreelyInto(cell, check, out var cCache))
+				return true;
+
+			var cellCache = cCache.Value;
+			var cellFlag = cellCache.CellFlag;
 
 			// All actors that may be in the cell can be crushed.
-			if (cellCache.Crushable.Overlaps(actor.Owner.PlayerMask))
+			if (cellCache.Crushable.Overlaps(Actor.Owner.PlayerMask))
 				return true;
 
 			// If the check allows: We are not blocked by moving units.
@@ -255,7 +264,7 @@ namespace OpenRA.Mods.Common.Traits
 				return true;
 
 			// If the check allows: We are not blocked by units that we can force to move out of the way.
-			if (check <= BlockedByActor.Immovable && !cellCache.Immovable.Overlaps(actor.Owner.PlayerMask))
+			if (check <= BlockedByActor.Immovable && !cellCache.Immovable.Overlaps(Actor.Owner.PlayerMask))
 				return true;
 
 			// Cache doesn't account for ignored actors, subcells, temporary blockers or transit only actors.
@@ -282,7 +291,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			var otherActors = subCell == SubCell.FullCell ? world.ActorMap.GetActorsAt(cell) : world.ActorMap.GetActorsAt(cell, subCell);
 			foreach (var otherActor in otherActors)
-				if (IsBlockedBy(actor, otherActor, ignoreActor, cell, check, cellFlag))
+				if (IsBlockedBy(otherActor, ignoreActor, cell, check, cellFlag))
 					return false;
 
 			return true;
@@ -296,14 +305,14 @@ namespace OpenRA.Mods.Common.Traits
 			return !GetCache(cell).CellFlag.HasCellFlag(CellFlag.HasTransitOnlyActor);
 		}
 
-		public SubCell GetAvailableSubCell(Actor self, CPos cell, BlockedByActor check, SubCell preferredSubCell = SubCell.Any, Actor ignoreActor = null)
+		public SubCell GetAvailableSubCell(CPos cell, BlockedByActor check, SubCell preferredSubCell = SubCell.Any, Actor ignoreActor = null)
 		{
 			if (MovementCostForCell(cell) == PathGraph.MovementCostForUnreachableCell)
 				return SubCell.Invalid;
 
 			if (check > BlockedByActor.None)
 			{
-				Func<Actor, bool> checkTransient = otherActor => IsBlockedBy(self, otherActor, ignoreActor, cell, check, GetCache(cell).CellFlag);
+				Func<Actor, bool> checkTransient = otherActor => IsBlockedBy(otherActor, ignoreActor, cell, check, GetCache(cell).CellFlag);
 
 				if (!sharesCell)
 					return world.ActorMap.AnyActorsAt(cell, SubCell.FullCell, checkTransient) ? SubCell.Invalid : SubCell.FullCell;
@@ -320,14 +329,14 @@ namespace OpenRA.Mods.Common.Traits
 		/// <remarks>This logic is replicated in <see cref="HierarchicalPathFinder.ActorIsBlocking"/> and
 		/// <see cref="HierarchicalPathFinder.ActorCellIsBlocking"/>. If this method is updated please update those as
 		/// well.</remarks>
-		bool IsBlockedBy(Actor actor, Actor otherActor, Actor ignoreActor, CPos cell, BlockedByActor check, CellFlag cellFlag)
+		bool IsBlockedBy(Actor otherActor, Actor ignoreActor, CPos cell, BlockedByActor check, CellFlag cellFlag)
 		{
 			if (otherActor == ignoreActor)
 				return false;
 
 			// If the check allows: We are not blocked by units that we can force to move out of the way.
 			if (check <= BlockedByActor.Immovable && cellFlag.HasCellFlag(CellFlag.HasMovableActor) &&
-				actor.Owner.RelationshipWith(otherActor.Owner) == PlayerRelationship.Ally)
+				Actor.Owner.RelationshipWith(otherActor.Owner) == PlayerRelationship.Ally)
 			{
 				if (otherActor.OccupiesSpace is Mobile mobile && !mobile.IsTraitDisabled && !mobile.IsTraitPaused && !mobile.IsImmovable)
 					return false;
@@ -342,7 +351,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				// If there is a temporary blocker in our path, but we can remove it, we are not blocked.
 				var temporaryBlocker = otherActor.TraitOrDefault<ITemporaryBlocker>();
-				if (temporaryBlocker != null && temporaryBlocker.CanRemoveBlockage(otherActor, actor))
+				if (temporaryBlocker != null && temporaryBlocker.CanRemoveBlockage(otherActor))
 					return false;
 			}
 
@@ -361,7 +370,7 @@ namespace OpenRA.Mods.Common.Traits
 			// PERF: Avoid LINQ.
 			var crushables = otherActor.TraitsImplementing<ICrushable>();
 			foreach (var crushable in crushables)
-				if (crushable.CrushableBy(otherActor, actor, Info.Crushes))
+				if (crushable.CrushableBy(otherActor, Info.Crushes))
 					return false;
 
 			return true;
@@ -495,7 +504,7 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						cellFlag |= CellFlag.HasCrushableActor;
 						foreach (var crushable in crushables)
-							actorCrushablePlayers = actorCrushablePlayers.Union(crushable.CrushableBy(actor, Info.Crushes));
+							actorCrushablePlayers = actorCrushablePlayers.Union(crushable.CrushableBy(Info.Crushes));
 					}
 
 					if (isMoving)

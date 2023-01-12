@@ -59,9 +59,9 @@ namespace OpenRA.Mods.Common.Scripting
 				throw new LuaException($"Invalid ammopool name {poolName} queried on actor {self}.");
 
 			if (amount > 0)
-				pool.GiveAmmo(self, amount);
+				pool.GiveAmmo(amount);
 			else
-				pool.TakeAmmo(self, -amount);
+				pool.TakeAmmo(-amount);
 		}
 	}
 }

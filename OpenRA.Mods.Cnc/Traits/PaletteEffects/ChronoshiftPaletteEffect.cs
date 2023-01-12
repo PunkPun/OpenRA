@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			remainingFrames = info.ChronoEffectLength;
 		}
 
-		void ITick.Tick(Actor self)
+		void ITick.Tick()
 		{
 			if (remainingFrames > 0)
 				remainingFrames--;

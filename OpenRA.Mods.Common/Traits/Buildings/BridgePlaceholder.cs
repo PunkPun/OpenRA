@@ -34,24 +34,24 @@ namespace OpenRA.Mods.Common.Traits
 	class BridgePlaceholder : IBridgeSegment, INotifyAddedToWorld, INotifyRemovedFromWorld
 	{
 		public readonly BridgePlaceholderInfo Info;
-		readonly Actor self;
+		public readonly Actor Actor;
 		readonly BridgeLayer bridgeLayer;
 
 		public BridgePlaceholder(Actor self, BridgePlaceholderInfo info)
 		{
 			Info = info;
-			this.self = self;
+			Actor = self;
 			bridgeLayer = self.World.WorldActor.Trait<BridgeLayer>();
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyAddedToWorld.AddedToWorld()
 		{
-			bridgeLayer.Add(self);
+			bridgeLayer.Add(Actor);
 		}
 
-		void INotifyRemovedFromWorld.RemovedFromWorld(Actor self)
+		void INotifyRemovedFromWorld.RemovedFromWorld()
 		{
-			bridgeLayer.Remove(self);
+			bridgeLayer.Remove(Actor);
 		}
 
 		void IBridgeSegment.Repair(Actor repairer)
@@ -59,14 +59,14 @@ namespace OpenRA.Mods.Common.Traits
 			if (Info.ReplaceWithActor == null)
 				return;
 
-			self.World.AddFrameEndTask(w =>
+			Actor.World.AddFrameEndTask(w =>
 			{
-				self.Dispose();
+				Actor.Dispose();
 
 				w.CreateActor(Info.ReplaceWithActor, new TypeDictionary
 				{
-					new LocationInit(self.Location),
-					new OwnerInit(self.Owner),
+					new LocationInit(Actor.Location),
+					new OwnerInit(Actor.Owner),
 				});
 			});
 		}
@@ -78,8 +78,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		string IBridgeSegment.Type => Info.Type;
 		DamageState IBridgeSegment.DamageState => Info.DamageState;
-		bool IBridgeSegment.Valid => self.IsInWorld;
+		bool IBridgeSegment.Valid => Actor.IsInWorld;
 		CVec[] IBridgeSegment.NeighbourOffsets => Info.NeighbourOffsets;
-		CPos IBridgeSegment.Location => self.Location;
+		CPos IBridgeSegment.Location => Actor.Location;
 	}
 }

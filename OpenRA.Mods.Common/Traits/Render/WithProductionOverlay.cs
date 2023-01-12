@@ -65,7 +65,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			overlay = new Animation(self.World, rs.GetImage(self), () => IsTraitPaused);
 			overlay.PlayRepeating(info.Sequence);
 
-			var anim = new AnimationWithOffset(overlay,
+			var anim = new AnimationWithOffset(Actor, overlay,
 				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation))),
 				() => !IsProducing || IsTraitDisabled);
 

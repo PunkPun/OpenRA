@@ -132,28 +132,28 @@ namespace OpenRA.Mods.Common.Scripting
 		[Desc("Instantly moves the actor to the specified cell.")]
 		public void Teleport(CPos cell)
 		{
-			Self.QueueActivity(new SimpleTeleport(cell));
+			Self.QueueActivity(new SimpleTeleport(Self, cell));
 		}
 
 		[ScriptActorPropertyActivity]
 		[Desc("Run an arbitrary Lua function.")]
 		public void CallFunc(LuaFunction func)
 		{
-			Self.QueueActivity(new CallLuaFunc(func, Context));
+			Self.QueueActivity(new CallLuaFunc(Self, func, Context));
 		}
 
 		[ScriptActorPropertyActivity]
 		[Desc("Wait for a specified number of game ticks (25 ticks = 1 second).")]
 		public void Wait(int ticks)
 		{
-			Self.QueueActivity(new Wait(ticks));
+			Self.QueueActivity(new Wait(Self, ticks));
 		}
 
 		[ScriptActorPropertyActivity]
 		[Desc("Remove the actor from the game, without triggering any death notification.")]
 		public void Destroy()
 		{
-			Self.QueueActivity(new RemoveSelf());
+			Self.QueueActivity(new RemoveSelf(Self));
 		}
 
 		[Desc("Attempt to cancel any active activities.")]
@@ -176,7 +176,7 @@ namespace OpenRA.Mods.Common.Scripting
 					throw new LuaException($"Unknown stance type '{value}'");
 
 				autotarget.PredictedStance = stance;
-				autotarget.SetStance(Self, stance);
+				autotarget.SetStance(stance);
 			}
 		}
 

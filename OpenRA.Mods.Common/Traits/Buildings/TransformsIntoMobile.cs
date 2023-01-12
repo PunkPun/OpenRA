@@ -67,22 +67,18 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class TransformsIntoMobile : ConditionalTrait<TransformsIntoMobileInfo>, IIssueOrder, IResolveOrder, IOrderVoice
 	{
-		readonly Actor self;
 		Transforms[] transforms;
 		Locomotor locomotor;
 
 		public TransformsIntoMobile(ActorInitializer init, TransformsIntoMobileInfo info)
-			: base(info)
-		{
-			self = init.Self;
-		}
+			: base(info, init.Self) { }
 
-		protected override void Created(Actor self)
+		protected override void Created()
 		{
-			transforms = self.TraitsImplementing<Transforms>().ToArray();
-			locomotor = self.World.WorldActor.TraitsImplementing<Locomotor>()
+			transforms = Actor.TraitsImplementing<Transforms>().ToArray();
+			locomotor = Actor.World.WorldActor.TraitsImplementing<Locomotor>()
 				.Single(l => l.Info.Name == Info.Locomotor);
-			base.Created(self);
+			base.Created();
 		}
 
 		IEnumerable<IOrderTargeter> IIssueOrder.Orders
@@ -90,31 +86,31 @@ namespace OpenRA.Mods.Common.Traits
 			get
 			{
 				if (!IsTraitDisabled)
-					yield return new MoveOrderTargeter(self, this);
+					yield return new MoveOrderTargeter(Actor, this);
 			}
 		}
 
 		// Note: Returns a valid order even if the unit can't move to the target
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
+		Order IIssueOrder.IssueOrder(IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order is MoveOrderTargeter)
-				return new Order("Move", self, target, queued);
+				return new Order("Move", Actor, target, queued);
 
 			return null;
 		}
 
-		void IResolveOrder.ResolveOrder(Actor self, Order order)
+		void IResolveOrder.ResolveOrder(Order order)
 		{
 			if (IsTraitDisabled)
 				return;
 
 			if (order.OrderString == "Move")
 			{
-				var cell = self.World.Map.Clamp(this.self.World.Map.CellContaining(order.Target.CenterPosition));
-				if (!Info.LocomotorInfo.MoveIntoShroud && !self.Owner.Shroud.IsExplored(cell))
+				var cell = Actor.World.Map.Clamp(Actor.World.Map.CellContaining(order.Target.CenterPosition));
+				if (!Info.LocomotorInfo.MoveIntoShroud && !Actor.Owner.Shroud.IsExplored(cell))
 					return;
 
-				var currentTransform = self.CurrentActivity as Transform;
+				var currentTransform = Actor.CurrentActivity as Transform;
 				var transform = transforms.FirstOrDefault(t => !t.IsTraitDisabled && !t.IsTraitPaused);
 				if (transform == null && currentTransform == null)
 					return;
@@ -122,28 +118,28 @@ namespace OpenRA.Mods.Common.Traits
 				// Manually manage the inner activity queue
 				var activity = currentTransform ?? transform.GetTransformActivity();
 				if (!order.Queued)
-					activity.NextActivity?.Cancel(self);
+					activity.NextActivity?.Cancel();
 
-				activity.Queue(new IssueOrderAfterTransform("Move", order.Target, Info.TargetLineColor));
+				activity.Queue(new IssueOrderAfterTransform(Actor, "Move", order.Target, Info.TargetLineColor));
 
 				if (currentTransform == null)
-					self.QueueActivity(order.Queued, activity);
+					Actor.QueueActivity(order.Queued, activity);
 
-				self.ShowTargetLines();
+				Actor.ShowTargetLines();
 			}
 			else if (order.OrderString == "Stop")
 			{
 				// We don't want Stop orders from traits other than Mobile or Aircraft to cancel Resupply activity.
 				// Resupply is always either the main activity or a child of ReturnToBase.
 				// TODO: This should generally only cancel activities queued by this trait.
-				if (self.CurrentActivity == null || self.CurrentActivity is Resupply || self.CurrentActivity is ReturnToBase)
+				if (Actor.CurrentActivity == null || Actor.CurrentActivity is Resupply || Actor.CurrentActivity is ReturnToBase)
 					return;
 
-				self.CancelActivity();
+				Actor.CancelActivity();
 			}
 		}
 
-		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
+		string IOrderVoice.VoicePhraseForOrder(Order order)
 		{
 			if (IsTraitDisabled)
 				return null;
@@ -153,8 +149,8 @@ namespace OpenRA.Mods.Common.Traits
 				case "Move":
 					if (!Info.LocomotorInfo.MoveIntoShroud && order.Target.Type != TargetType.Invalid)
 					{
-						var cell = self.World.Map.CellContaining(order.Target.CenterPosition);
-						if (!self.Owner.Shroud.IsExplored(cell))
+						var cell = Actor.World.Map.CellContaining(order.Target.CenterPosition);
+						if (!Actor.Owner.Shroud.IsExplored(cell))
 							return null;
 					}
 
@@ -168,12 +164,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		class MoveOrderTargeter : IOrderTargeter
 		{
+			public readonly Actor Actor;
 			readonly TransformsIntoMobile mobile;
 			readonly bool rejectMove;
-			public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers)
+			public bool TargetOverridesSelection(in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers)
 			{
 				// Always prioritise orders over selecting other peoples actors or own actors that are already selected
-				if (target.Type == TargetType.Actor && (target.Actor.Owner != self.Owner || self.World.Selection.Contains(target.Actor)))
+				if (target.Type == TargetType.Actor && (target.Actor.Owner != Actor.Owner || Actor.World.Selection.Contains(target.Actor)))
 					return true;
 
 				return modifiers.HasModifier(TargetModifiers.ForceMove);
@@ -181,6 +178,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			public MoveOrderTargeter(Actor self, TransformsIntoMobile mobile)
 			{
+				Actor = mobile.Actor;
 				this.mobile = mobile;
 				rejectMove = !self.AcceptsOrder("Move");
 			}
@@ -189,30 +187,30 @@ namespace OpenRA.Mods.Common.Traits
 			public int OrderPriority => 4;
 			public bool IsQueued { get; protected set; }
 
-			public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
+			public bool CanTarget(in Target target, ref TargetModifiers modifiers, ref string cursor)
 			{
 				if (rejectMove || target.Type != TargetType.Terrain || (mobile.Info.RequiresForceMove && !modifiers.HasModifier(TargetModifiers.ForceMove)))
 					return false;
 
-				var location = self.World.Map.CellContaining(target.CenterPosition);
+				var location = Actor.World.Map.CellContaining(target.CenterPosition);
 				IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 
-				var explored = self.Owner.Shroud.IsExplored(location);
-				if (!self.World.Map.Contains(location) ||
-				    !(self.CurrentActivity is Transform || mobile.transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused))
+				var explored = Actor.Owner.Shroud.IsExplored(location);
+				if (!Actor.World.Map.Contains(location) ||
+				    !(Actor.CurrentActivity is Transform || mobile.transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused))
 				    || (!explored && !mobile.locomotor.Info.MoveIntoShroud)
-				    || (explored && !CanEnterCell(self, location)))
+				    || (explored && !CanEnterCell(location)))
 					cursor = mobile.Info.BlockedCursor;
-				else if (!explored || !mobile.Info.TerrainCursors.TryGetValue(self.World.Map.GetTerrainInfo(location).Type, out cursor))
+				else if (!explored || !mobile.Info.TerrainCursors.TryGetValue(Actor.World.Map.GetTerrainInfo(location).Type, out cursor))
 					cursor = mobile.Info.Cursor;
 
 				return true;
 			}
 
-			bool CanEnterCell(Actor self, CPos cell)
+			bool CanEnterCell(CPos cell)
 			{
 				return mobile.locomotor.MovementCostToEnterCell(
-					self, cell, BlockedByActor.All, null) != PathGraph.MovementCostForUnreachableCell;
+					cell, BlockedByActor.All, null) != PathGraph.MovementCostForUnreachableCell;
 			}
 		}
 	}

@@ -34,6 +34,7 @@ namespace OpenRA.Mods.Cnc.Activities
 		Actor rearmTarget;
 
 		public LayMines(Actor self, List<CPos> minefield = null)
+			: base(self)
 		{
 			minelayer = self.Trait<Minelayer>();
 			ammoPools = self.TraitsImplementing<AmmoPool>().ToArray();
@@ -43,55 +44,55 @@ namespace OpenRA.Mods.Cnc.Activities
 			this.minefield = minefield;
 		}
 
-		protected override void OnFirstRun(Actor self)
+		protected override void OnFirstRun()
 		{
 			if (minefield == null)
-				minefield = new List<CPos> { self.Location };
+				minefield = new List<CPos> { Actor.Location };
 		}
 
-		CPos? NextValidCell(Actor self)
+		CPos? NextValidCell()
 		{
 			if (minefield != null)
 				foreach (var c in minefield)
-					if (CanLayMine(self, c))
+					if (CanLayMine(c))
 						return c;
 
 			return null;
 		}
 
-		public override bool Tick(Actor self)
+		public override bool Tick()
 		{
 			returnToBase = false;
 
 			if (IsCanceling)
 				return true;
 
-			if ((minefield == null || minefield.Contains(self.Location)) && CanLayMine(self, self.Location))
+			if ((minefield == null || minefield.Contains(Actor.Location)) && CanLayMine(Actor.Location))
 			{
 				if (rearmableInfo != null && ammoPools.Any(p => p.Info.Name == minelayer.Info.AmmoPoolName && !p.HasAmmo))
 				{
 					// Rearm (and possibly repair) at rearm building, then back out here to refill the minefield some more
-					rearmTarget = self.World.Actors.Where(a => self.Owner.RelationshipWith(a.Owner) == PlayerRelationship.Ally && rearmableInfo.RearmActors.Contains(a.Info.Name))
-						.ClosestTo(self);
+					rearmTarget = Actor.World.Actors.Where(a => Actor.Owner.RelationshipWith(a.Owner) == PlayerRelationship.Ally && rearmableInfo.RearmActors.Contains(a.Info.Name))
+						.ClosestTo(Actor);
 
 					if (rearmTarget == null)
 						return true;
 
 					// Add a CloseEnough range of 512 to the Rearm/Repair activities in order to ensure that we're at the host actor
-					QueueChild(new MoveAdjacentTo(self, Target.FromActor(rearmTarget)));
-					QueueChild(movement.MoveTo(self.World.Map.CellContaining(rearmTarget.CenterPosition), ignoreActor: rearmTarget));
-					QueueChild(new Resupply(self, rearmTarget, new WDist(512)));
+					QueueChild(new MoveAdjacentTo(Actor, Target.FromActor(rearmTarget)));
+					QueueChild(movement.MoveTo(Actor.World.Map.CellContaining(rearmTarget.CenterPosition), ignoreActor: rearmTarget));
+					QueueChild(new Resupply(Actor, rearmTarget, new WDist(512)));
 					returnToBase = true;
 					return false;
 				}
 
-				LayMine(self);
-				QueueChild(new Wait(20)); // A little wait after placing each mine, for show
-				minefield.Remove(self.Location);
+				LayMine();
+				QueueChild(new Wait(Actor, 20)); // A little wait after placing each mine, for show
+				minefield.Remove(Actor.Location);
 				return false;
 			}
 
-			var nextCell = NextValidCell(self);
+			var nextCell = NextValidCell();
 			if (nextCell != null)
 			{
 				QueueChild(movement.MoveTo(nextCell.Value, 0));
@@ -102,7 +103,7 @@ namespace OpenRA.Mods.Cnc.Activities
 			return true;
 		}
 
-		public void CleanMineField(Actor self)
+		public void CleanMineField()
 		{
 			// Remove cells that have already been mined
 			// or that are revealed to be unmineable.
@@ -110,14 +111,14 @@ namespace OpenRA.Mods.Cnc.Activities
 			{
 				var positionable = (IPositionable)movement;
 				var mobile = positionable as Mobile;
-				minefield.RemoveAll(c => self.World.ActorMap.GetActorsAt(c)
-					.Any(a => a.Info.Name == minelayer.Info.Mine.ToLowerInvariant() && a.CanBeViewedByPlayer(self.Owner)) ||
+				minefield.RemoveAll(c => Actor.World.ActorMap.GetActorsAt(c)
+					.Any(a => a.Info.Name == minelayer.Info.Mine.ToLowerInvariant() && a.CanBeViewedByPlayer(Actor.Owner)) ||
 						((!positionable.CanEnterCell(c, null, BlockedByActor.Immovable) || (mobile != null && !mobile.CanStayInCell(c)))
-						&& self.Owner.Shroud.IsVisible(c)));
+						&& Actor.Owner.Shroud.IsVisible(c)));
 			}
 		}
 
-		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes()
 		{
 			if (returnToBase)
 				yield return new TargetLineNode(Target.FromActor(rearmTarget), moveInfo.GetTargetLineColor());
@@ -125,21 +126,21 @@ namespace OpenRA.Mods.Cnc.Activities
 			if (minefield == null || minefield.Count == 0)
 				yield break;
 
-			var nextCell = NextValidCell(self);
+			var nextCell = NextValidCell();
 			if (nextCell != null)
-				yield return new TargetLineNode(Target.FromCell(self.World, nextCell.Value), minelayer.Info.TargetLineColor);
+				yield return new TargetLineNode(Target.FromCell(Actor.World, nextCell.Value), minelayer.Info.TargetLineColor);
 
 			foreach (var c in minefield)
-				yield return new TargetLineNode(Target.FromCell(self.World, c), minelayer.Info.TargetLineColor, tile: minelayer.Tile);
+				yield return new TargetLineNode(Target.FromCell(Actor.World, c), minelayer.Info.TargetLineColor, tile: minelayer.Tile);
 		}
 
-		static bool CanLayMine(Actor self, CPos p)
+		bool CanLayMine(CPos p)
 		{
 			// If there is no unit (other than me) here, we can place a mine here
-			return self.World.ActorMap.GetActorsAt(p).All(a => a == self);
+			return Actor.World.ActorMap.GetActorsAt(p).All(a => a == Actor);
 		}
 
-		void LayMine(Actor self)
+		void LayMine()
 		{
 			if (ammoPools != null)
 			{
@@ -147,13 +148,13 @@ namespace OpenRA.Mods.Cnc.Activities
 				if (pool == null)
 					return;
 
-				pool.TakeAmmo(self, minelayer.Info.AmmoUsage);
+				pool.TakeAmmo(minelayer.Info.AmmoUsage);
 			}
 
-			self.World.AddFrameEndTask(w => w.CreateActor(minelayer.Info.Mine, new TypeDictionary
+			Actor.World.AddFrameEndTask(w => w.CreateActor(minelayer.Info.Mine, new TypeDictionary
 			{
-				new LocationInit(self.Location),
-				new OwnerInit(self.Owner),
+				new LocationInit(Actor.Location),
+				new OwnerInit(Actor.Owner),
 			}));
 		}
 	}
