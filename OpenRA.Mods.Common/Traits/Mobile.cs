@@ -707,6 +707,11 @@ namespace OpenRA.Mods.Common.Traits
 			return WrapMove(new LocalMoveIntoTarget(self, target, new WDist(512)));
 		}
 
+		public Activity MoveOntoTarget(Actor self, in Target target, int closeEnough, WAngle[] facings, Color? targetLineColor = null)
+		{
+			return WrapMove(new MoveAndTurn(closeEnough, target, facings, targetLineColor));
+		}
+
 		public Activity LocalMove(Actor self, WPos fromPos, WPos toPos)
 		{
 			return WrapMove(LocalMove(self, fromPos, toPos, self.Location));

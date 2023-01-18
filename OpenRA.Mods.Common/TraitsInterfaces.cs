@@ -448,6 +448,8 @@ namespace OpenRA.Mods.Common.Traits
 			WPos? initialTargetPosition = null, Color? targetLineColor = null);
 		Activity ReturnToCell(Actor self);
 		Activity MoveIntoTarget(Actor self, in Target target);
+		Activity MoveOntoTarget(Actor self, in Target target, int closeEnough,
+			WAngle[] facings, Color? targetLineColor = null);
 		Activity LocalMove(Actor self, WPos fromPos, WPos toPos);
 		int EstimatedMoveDuration(Actor self, WPos fromPos, WPos toPos);
 		CPos NearestMoveableCell(CPos target);

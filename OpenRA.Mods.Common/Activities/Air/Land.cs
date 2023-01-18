@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Common.Activities
 	{
 		readonly Aircraft aircraft;
 		readonly WVec offset;
-		readonly WAngle? desiredFacing;
+		readonly WAngle[] desiredFacing = Array.Empty<WAngle>();
 		readonly bool assignTargetOnFirstRun;
 		readonly CPos[] clearCells;
 		readonly WDist landRange;
@@ -34,22 +34,22 @@ namespace OpenRA.Mods.Common.Activities
 		bool landingInitiated;
 		bool finishedApproach;
 
-		public Land(Actor self, WAngle? facing = null, Color? targetLineColor = null)
+		public Land(Actor self, WAngle[] facing = null, Color? targetLineColor = null)
 			: this(self, Target.Invalid, new WDist(-1), WVec.Zero, facing, targetLineColor: targetLineColor)
 		{
 			assignTargetOnFirstRun = true;
 		}
 
-		public Land(Actor self, in Target target, WAngle? facing = null, Color? targetLineColor = null)
+		public Land(Actor self, in Target target, WAngle[] facing = null, Color? targetLineColor = null)
 			: this(self, target, new WDist(-1), WVec.Zero, facing, targetLineColor: targetLineColor) { }
 
-		public Land(Actor self, in Target target, WDist landRange, WAngle? facing = null, Color? targetLineColor = null)
+		public Land(Actor self, in Target target, WDist landRange, WAngle[] facing = null, Color? targetLineColor = null)
 			: this(self, target, landRange, WVec.Zero, facing, targetLineColor: targetLineColor) { }
 
-		public Land(Actor self, in Target target, in WVec offset, WAngle? facing = null, Color? targetLineColor = null)
+		public Land(Actor self, in Target target, in WVec offset, WAngle[] facing = null, Color? targetLineColor = null)
 			: this(self, target, WDist.Zero, offset, facing, targetLineColor: targetLineColor) { }
 
-		public Land(Actor self, in Target target, WDist landRange, in WVec offset, WAngle? facing = null, CPos[] clearCells = null, Color? targetLineColor = null)
+		public Land(Actor self, in Target target, WDist landRange, in WVec offset, WAngle[] facing = null, CPos[] clearCells = null, Color? targetLineColor = null)
 		{
 			aircraft = self.Trait<Aircraft>();
 			this.target = target;
@@ -60,8 +60,11 @@ namespace OpenRA.Mods.Common.Activities
 
 			// NOTE: Assigning null to desiredFacing means we should not prefer any particular facing and instead just
 			// use whatever facing gives us the most direct path to the landing site.
-			if (!facing.HasValue && aircraft.Info.TurnToLand)
-				desiredFacing = aircraft.Info.InitialFacing;
+			if (facing == null)
+			{
+				if (aircraft.Info.TurnToLand)
+					desiredFacing.Append(aircraft.Info.InitialFacing);
+			}
 			else
 				desiredFacing = facing;
 		}
@@ -142,10 +145,15 @@ namespace OpenRA.Mods.Common.Activities
 					return false;
 				}
 
-				if (desiredFacing.HasValue && desiredFacing.Value != aircraft.Facing)
+				if (desiredFacing.Length != 0)
 				{
-					QueueChild(new Turn(self, desiredFacing.Value));
-					return false;
+					var facing = aircraft.Facing;
+					var closestFacing = desiredFacing.MinBy((f) => Math.Abs(f.Angle - facing.Angle));
+					if (facing != closestFacing)
+					{
+						QueueChild(new Turn(self, closestFacing));
+						return false;
+					}
 				}
 			}
 
@@ -160,8 +168,15 @@ namespace OpenRA.Mods.Common.Activities
 				// Approach landing from the opposite direction of the desired facing
 				// TODO: Calculate sensible trajectory without preferred facing.
 				var rotation = WRot.None;
-				if (desiredFacing.HasValue)
-					rotation = WRot.FromYaw(desiredFacing.Value);
+				if (desiredFacing.Length != 0)
+				{
+					var facing = aircraft.Facing;
+					var closestFacing = desiredFacing.MinBy((f) => Math.Abs(f.Angle - facing.Angle));
+					if (facing != closestFacing)
+					{
+						rotation = WRot.FromYaw(closestFacing);
+					}
+				}
 
 				var approachStart = targetPosition + new WVec(0, landDistance, altitude).Rotate(rotation);
 
