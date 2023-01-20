@@ -937,6 +937,11 @@ namespace OpenRA.Mods.Common.Traits
 			return new Land(self, target);
 		}
 
+		public Activity MoveOntoTarget(Actor self, in Target target, in WVec offset, WAngle? facings, Color? targetLineColor = null)
+		{
+			return new Land(self, target, offset, facings, targetLineColor);
+		}
+
 		public Activity LocalMove(Actor self, WPos fromPos, WPos toPos)
 		{
 			// TODO: Ignore repulsion when moving

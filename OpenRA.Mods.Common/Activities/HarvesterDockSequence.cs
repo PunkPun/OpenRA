@@ -20,7 +20,7 @@ namespace OpenRA.Mods.Common.Activities
 {
 	public abstract class HarvesterDockSequence : Activity
 	{
-		protected enum DockingState { Wait, Turn, Drag, Dock, Loop, Undock, Complete }
+		protected enum DockingState { Wait, Drag, Dock, Loop, Undock, Complete }
 
 		protected readonly Actor Refinery;
 		protected readonly Harvester Harv;
@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Common.Activities
 
 		public HarvesterDockSequence(Actor self, Actor refinery, WAngle dockAngle, bool isDragRequired, in WVec dragOffset, int dragLength)
 		{
-			dockingState = DockingState.Turn;
+			dockingState = DockingState.Drag;
 			Refinery = refinery;
 			DockAngle = dockAngle;
 			IsDragRequired = isDragRequired;
@@ -51,11 +51,6 @@ namespace OpenRA.Mods.Common.Activities
 			switch (dockingState)
 			{
 				case DockingState.Wait:
-					return false;
-
-				case DockingState.Turn:
-					dockingState = DockingState.Drag;
-					QueueChild(new Turn(self, DockAngle));
 					return false;
 
 				case DockingState.Drag:
