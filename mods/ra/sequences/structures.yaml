@@ -516,6 +516,45 @@ fix:
 	fake-icon:
 		Filename: fixficon.shp
 
+fix2:
+	Defaults:
+		Filename: fix.shp
+		Scale: 2
+	idle:
+		Offset: 0,1
+		ZOffset: -1c511
+	damaged-idle:
+		Start: 7
+		Offset: 0,1
+		ZOffset: -1c511
+	active:
+		Start: 1
+		Length: 6
+		Offset: 0,1
+		ZOffset: -1c511
+	damaged-active:
+		Start: 8
+		Length: 6
+		Offset: 0,1
+		ZOffset: -1c511
+	make:
+		Filename: fixmake.shp
+		Length: *
+		Offset: 0,1
+	bib:
+		TilesetFilenames:
+			SNOW: mbFIX.sno
+			INTERIOR: mbFIX.int
+			TEMPERAT: mbFIX.tem
+			DESERT: mbFIX.des
+		Length: *
+		ZOffset: -1c511
+		Offset: 0,-4
+	icon:
+		Filename: fixicon.shp
+	fake-icon:
+		Filename: fixficon.shp
+
 gun:
 	Defaults:
 		Filename: gun.shp

@@ -366,6 +366,20 @@ HARV:
 			Ore: pip-yellow
 			Gems: pip-red
 
+HARV2:
+	Inherits: HARV
+	Harvester:
+		Type: UnloadStealth
+	Cloak:
+		InitialDelay: 10
+		CloakDelay: 10
+		CloakSound: appear1.aud
+		UncloakSound: appear1.aud
+		IsPlayerPalette: true
+		UncloakOn: Attack, Unload, Heal, Dock
+	RenderSprites:
+		Image: harv
+
 MCV:
 	Inherits: ^Vehicle
 	Inherits@selection: ^SelectableSupportUnit
