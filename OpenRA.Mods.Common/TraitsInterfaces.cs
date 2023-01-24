@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using OpenRA.Activities;
 using OpenRA.Graphics;
-using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
@@ -201,6 +200,20 @@ namespace OpenRA.Mods.Common.Traits
 		void Harvested(Actor self, string resourceType);
 	}
 
+	public interface IDockClientInfo : ITraitInfoInterface { }
+
+	public interface IDockClient
+	{
+		BitSet<DockType> GetDockType { get; }
+		DockClientManager DockClientManager { get; }
+		bool IsEnabledAndInWorld { get; }
+		bool DockingPossible(BitSet<DockType> type);
+		bool CanDockAt(Actor hostActor, DockHost host, bool allowedToForceEnter);
+		void DockStarted(Actor self, Actor hostActor, DockHost host);
+		bool DockTick(Actor self, Actor hostActor, DockHost dock);
+		void DockCompleted(Actor self, Actor hostActor, DockHost host);
+	}
+
 	[RequireExplicitImplementation]
 	public interface INotifyUnload
 	{
@@ -264,14 +277,9 @@ namespace OpenRA.Mods.Common.Traits
 		void Undeploy(Actor self, bool skipMakeAnim);
 	}
 
-	public interface IAcceptResourcesInfo : ITraitInfoInterface { }
 	public interface IAcceptResources
 	{
-		void OnDock(Actor harv, DeliverResources dockOrder);
-		int AcceptResources(string resourceType, int count = 1);
-		WPos DeliveryPosition { get; }
-		WAngle DeliveryAngle { get; }
-		bool AllowDocking { get; }
+		int AcceptResources(Actor self, string resourceType, int count = 1);
 	}
 
 	public interface IProvidesAssetBrowserPalettes

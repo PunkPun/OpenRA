@@ -20,11 +20,11 @@ namespace OpenRA.Mods.Cnc.Activities
 		readonly WithVoxelUnloadBody body;
 		readonly WithDockingOverlay spriteOverlay;
 
-		public VoxelHarvesterDockSequence(Actor self, Actor refineryActor, Refinery refinery)
-			: base(self, refineryActor, refinery)
+		public VoxelHarvesterDockSequence(Actor self, DockClientManager client, Actor hostActor, DockHost host)
+			: base(self, client, hostActor, host)
 		{
 			body = self.Trait<WithVoxelUnloadBody>();
-			spriteOverlay = RefineryActor.TraitOrDefault<WithDockingOverlay>();
+			spriteOverlay = DockHostActor.TraitOrDefault<WithDockingOverlay>();
 		}
 
 		public override void OnStateDock(Actor self)
@@ -49,7 +49,7 @@ namespace OpenRA.Mods.Cnc.Activities
 			// If body.Docked wasn't set, we didn't actually dock and have to skip the undock overlay
 			if (!body.Docked)
 				dockingState = DockingState.Complete;
-			else if (RefineryActor.IsInWorld && !RefineryActor.IsDead && spriteOverlay != null && !spriteOverlay.Visible)
+			else if (DockHostActor.IsInWorld && !DockHostActor.IsDead && spriteOverlay != null && !spriteOverlay.Visible)
 			{
 				dockingState = DockingState.Wait;
 				spriteOverlay.Visible = true;

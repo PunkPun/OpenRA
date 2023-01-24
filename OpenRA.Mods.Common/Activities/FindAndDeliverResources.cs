@@ -24,8 +24,6 @@ namespace OpenRA.Mods.Common.Activities
 		readonly HarvesterInfo harvInfo;
 		readonly Mobile mobile;
 		readonly ResourceClaimLayer claimLayer;
-
-		Actor deliverActor;
 		CPos? orderLocation;
 		CPos? lastHarvestedCell;
 		bool hasDeliveredLoad;
@@ -34,19 +32,14 @@ namespace OpenRA.Mods.Common.Activities
 
 		public bool LastSearchFailed { get; private set; }
 
-		public FindAndDeliverResources(Actor self, Actor deliverActor = null)
+		public FindAndDeliverResources(Actor self, CPos? orderLocation = null)
 		{
 			harv = self.Trait<Harvester>();
 			harvInfo = self.Info.TraitInfo<HarvesterInfo>();
 			mobile = self.Trait<Mobile>();
 			claimLayer = self.World.WorldActor.Trait<ResourceClaimLayer>();
-			this.deliverActor = deliverActor;
-		}
-
-		public FindAndDeliverResources(Actor self, CPos orderLocation)
-			: this(self, null)
-		{
-			this.orderLocation = orderLocation;
+			if (orderLocation.HasValue)
+				this.orderLocation = orderLocation.Value;
 		}
 
 		protected override void OnFirstRun(Actor self)
@@ -62,14 +55,6 @@ namespace OpenRA.Mods.Common.Activities
 				// so we keep deliveredLoad false.
 				if (harv.IsFull)
 					QueueChild(new DeliverResources(self));
-			}
-
-			// If an explicit "deliver" order is given, the harvester goes immediately to the refinery.
-			if (deliverActor != null)
-			{
-				QueueChild(new DeliverResources(self, deliverActor));
-				hasDeliveredLoad = true;
-				deliverActor = null;
 			}
 		}
 
@@ -128,10 +113,10 @@ namespace OpenRA.Mods.Common.Activities
 			// of the refinery entrance.
 			if (LastSearchFailed)
 			{
-				var lastproc = harv.LastLinkedProc ?? harv.LinkedProc;
-				if (lastproc != null && !lastproc.Disposed)
+				var lastproc = harv.DockClientManager.LastReservedHost;
+				if (lastproc != null)
 				{
-					var deliveryLoc = lastproc.Trait<IAcceptResources>().DeliveryPosition;
+					var deliveryLoc = lastproc.DockPosition;
 					if (self.CenterPosition == deliveryLoc && harv.IsEmpty)
 					{
 						var unblockCell = self.World.Map.CellContaining(deliveryLoc) + harv.Info.UnblockCell;
@@ -171,7 +156,7 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			// Determine where to search from and how far to search:
-			var procLoc = GetSearchFromProcLocation();
+			var procLoc = GetSearchFromProcLocation(self);
 			var searchFromLoc = lastHarvestedCell ?? procLoc ?? self.Location;
 			var searchRadius = lastHarvestedCell.HasValue ? harvInfo.SearchFromHarvesterRadius : harvInfo.SearchFromProcRadius;
 
@@ -239,17 +224,19 @@ namespace OpenRA.Mods.Common.Activities
 
 			if (orderLocation != null)
 				yield return new TargetLineNode(Target.FromCell(self.World, orderLocation.Value), harvInfo.HarvestLineColor);
-			else if (deliverActor != null)
-				yield return new TargetLineNode(Target.FromActor(deliverActor), harvInfo.DeliverLineColor);
+			else
+			{
+				var manager = harv.DockClientManager;
+				if (manager.ReservedHostActor != null)
+					yield return new TargetLineNode(Target.FromActor(manager.ReservedHostActor), manager.DockLineColor);
+			}
 		}
 
-		CPos? GetSearchFromProcLocation()
+		CPos? GetSearchFromProcLocation(Actor self)
 		{
-			if (harv.LastLinkedProc != null && !harv.LastLinkedProc.IsDead && harv.LastLinkedProc.IsInWorld)
-				return harv.LastLinkedProc.World.Map.CellContaining(harv.LastLinkedProc.Trait<IAcceptResources>().DeliveryPosition);
-
-			if (harv.LinkedProc != null && !harv.LinkedProc.IsDead && harv.LinkedProc.IsInWorld)
-				return harv.LinkedProc.World.Map.CellContaining(harv.LinkedProc.Trait<IAcceptResources>().DeliveryPosition);
+			var dock = harv.DockClientManager.LastReservedHost;
+			if (dock != null)
+				return self.World.Map.CellContaining(dock.DockPosition);
 
 			return null;
 		}

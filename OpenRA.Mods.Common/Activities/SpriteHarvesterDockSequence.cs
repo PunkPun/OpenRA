@@ -20,8 +20,8 @@ namespace OpenRA.Mods.Common.Activities
 		readonly WithDockingAnimationInfo wda;
 		protected bool dockAnimPlayed;
 
-		public SpriteHarvesterDockSequence(Actor self, Actor refineryActor, Refinery refinery)
-			: base(self, refineryActor, refinery)
+		public SpriteHarvesterDockSequence(Actor self, DockClientManager client, Actor hostActor, DockHost host)
+			: base(self, client, hostActor, host)
 		{
 			wsb = self.Trait<WithSpriteBody>();
 			wda = self.Info.TraitInfoOrDefault<WithDockingAnimationInfo>();

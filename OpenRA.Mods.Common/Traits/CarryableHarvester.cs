@@ -36,9 +36,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyHarvesterAction.MovingToRefinery(Actor self, Actor refineryActor)
 		{
-			var iao = refineryActor.Trait<IAcceptResources>();
+			var dock = refineryActor.Trait<DockHost>();
 			foreach (var t in transports)
-				t.RequestTransport(self, self.World.Map.CellContaining(iao.DeliveryPosition));
+				t.RequestTransport(self, self.World.Map.CellContaining(dock.DockPosition));
 		}
 
 		void INotifyHarvesterAction.MovementCancelled(Actor self)
