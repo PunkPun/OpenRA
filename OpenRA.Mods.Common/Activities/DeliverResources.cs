@@ -23,7 +23,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly DockClientManager dockClient;
 		Actor dockHostActor;
 		DockHost dockHost;
-		readonly INotifyHarvesterAction[] notifyHarvesterActions;
+		readonly INotifyDockClientMoving[] notifyDockClientMoving;
 
 		public DeliverResources(Actor self, Actor dockHostActor = null, DockHost dockHost = null)
 		{
@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.Activities
 			dockClient = self.Trait<DockClientManager>();
 			this.dockHostActor = dockHostActor;
 			this.dockHost = dockHost;
-			notifyHarvesterActions = self.TraitsImplementing<INotifyHarvesterAction>().ToArray();
+			notifyDockClientMoving = self.TraitsImplementing<INotifyDockClientMoving>().ToArray();
 		}
 
 		public override bool Tick(Actor self)
@@ -65,8 +65,8 @@ namespace OpenRA.Mods.Common.Activities
 				// Mobile cannot freely move in WPos so when we calculate close enough, we convert to CPos.
 				if (movement is Mobile ? self.Location != self.World.Map.CellContaining(dockHost.DockPosition) : self.CenterPosition != dockHost.DockPosition)
 				{
-					foreach (var n in notifyHarvesterActions)
-						n.MovingToRefinery(self, dockHostActor);
+					foreach (var ndcm in notifyDockClientMoving)
+						ndcm.MovingToDock(self, dockHostActor, dockHost);
 
 					QueueChild(movement.MoveOntoTarget(self, Target.FromActor(dockHostActor), dockHost.DockPosition - dockHostActor.CenterPosition, dockHost.DockAngle));
 					return false;
@@ -85,8 +85,8 @@ namespace OpenRA.Mods.Common.Activities
 		public override void Cancel(Actor self, bool keepQueue = false)
 		{
 			dockClient.UnreserveHost();
-			foreach (var n in notifyHarvesterActions)
-				n.MovementCancelled(self);
+			foreach (var ndcm in notifyDockClientMoving)
+				ndcm.MovementCancelled(self);
 
 			base.Cancel(self, keepQueue);
 		}
