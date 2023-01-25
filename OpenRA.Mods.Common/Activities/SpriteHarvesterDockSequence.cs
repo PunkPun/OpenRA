@@ -14,7 +14,7 @@ using OpenRA.Mods.Common.Traits.Render;
 
 namespace OpenRA.Mods.Common.Activities
 {
-	public class SpriteHarvesterDockSequence : HarvesterDockSequence
+	public class SpriteHarvesterDockSequence : GenericDockSequence
 	{
 		readonly WithSpriteBody wsb;
 		readonly WithDockingAnimationInfo wda;

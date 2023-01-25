@@ -17,7 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
 {
-	public class DeliverResources : Activity
+	public class MoveToDock : Activity
 	{
 		readonly IMove movement;
 		readonly DockClientManager dockClient;
@@ -25,7 +25,7 @@ namespace OpenRA.Mods.Common.Activities
 		DockHost dockHost;
 		readonly INotifyDockClientMoving[] notifyDockClientMoving;
 
-		public DeliverResources(Actor self, Actor dockHostActor = null, DockHost dockHost = null)
+		public MoveToDock(Actor self, Actor dockHostActor = null, DockHost dockHost = null)
 		{
 			movement = self.Trait<IMove>();
 			dockClient = self.Trait<DockClientManager>();

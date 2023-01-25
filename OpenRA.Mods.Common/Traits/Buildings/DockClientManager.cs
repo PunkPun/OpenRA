@@ -174,7 +174,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!dock.HasValue)
 					return;
 
-				self.QueueActivity(order.Queued, new DeliverResources(self, dock.Value.Actor, dock.Value.Trait));
+				self.QueueActivity(order.Queued, new MoveToDock(self, dock.Value.Actor, dock.Value.Trait));
 				self.ShowTargetLines();
 			}
 		}

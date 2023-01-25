@@ -19,7 +19,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
 {
-	public abstract class HarvesterDockSequence : Activity
+	public abstract class GenericDockSequence : Activity
 	{
 		protected enum DockingState { Wait, Drag, Dock, Loop, Undock, Complete }
 
@@ -38,7 +38,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly INotifyDockClient[] notifyDockClients;
 		readonly INotifyDockHost[] notifyDockHosts;
 
-		public HarvesterDockSequence(Actor self, DockClientManager client, Actor hostActor, DockHost host)
+		public GenericDockSequence(Actor self, DockClientManager client, Actor hostActor, DockHost host)
 		{
 			dockingState = DockingState.Drag;
 			DockClient = client;

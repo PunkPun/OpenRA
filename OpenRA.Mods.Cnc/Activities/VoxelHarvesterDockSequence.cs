@@ -15,7 +15,7 @@ using OpenRA.Mods.Common.Traits;
 
 namespace OpenRA.Mods.Cnc.Activities
 {
-	public class VoxelHarvesterDockSequence : HarvesterDockSequence
+	public class VoxelHarvesterDockSequence : GenericDockSequence
 	{
 		readonly WithVoxelUnloadBody body;
 		readonly WithDockingOverlay spriteOverlay;
