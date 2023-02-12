@@ -256,6 +256,8 @@ namespace OpenRA.Mods.Common.Traits
 		bool CanBeReserved { get; }
 		WPos DockPosition { get; }
 		int DockWait { get; }
+
+		// TODO: This will need to be changed once aircraft are aware of DockAngles when calculating flight path.
 		WAngle DockAngle { get; }
 
 		/// <summary>Can this <paramref name="client"/> dock at this <see cref="IDockHost"/>.</summary>
