@@ -181,7 +181,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (IsTraitDisabled)
 					return;
 
-				var dock = AvailableDockHosts(target.Actor, false, true).ClosestDock(self, this);
+				var dock = AvailableDockHosts(target.Actor, default, false, true).ClosestDock(self, this);
 				if (!dock.HasValue)
 					return;
 
@@ -201,7 +201,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (IsTraitDisabled)
 					return;
 
-				var dock = AvailableDockHosts(target.Actor, true, true).ClosestDock(self, this);
+				var dock = AvailableDockHosts(target.Actor, default, true, true).ClosestDock(self, this);
 				if (!dock.HasValue)
 					return;
 
@@ -262,6 +262,14 @@ namespace OpenRA.Mods.Common.Traits
 			return !IsTraitDisabled && target.TraitsImplementing<IDockHost>().Any(host => dockClients.Any(client => client.CanDockAt(target, host, forceEnter, ignoreOccupancy)));
 		}
 
+		/// <summary>Can we dock to this <paramref name="target"/>.</summary>
+		/// <remarks>If <paramref name="type"/> is not set, checks all clients.</remarks>
+		public bool CanDockAt(Actor target, BitSet<DockType> type, bool forceEnter = false, bool ignoreOccupancy = false)
+		{
+			var clients = type.IsEmpty ? dockClients : AvailableDockClients(type, forceEnter);
+			return !IsTraitDisabled && target.TraitsImplementing<IDockHost>().Any(host => clients.Any(client => client.CanDockAt(target, host, forceEnter, ignoreOccupancy)));
+		}
+
 		/// <summary>Find the closest viable <see cref="IDockHost"/>.</summary>
 		/// <remarks>If <paramref name="type"/> is not set, scans all clients. Does not check if <see cref="DockClientManager"/> is enabled.</remarks>
 		public TraitPair<IDockHost>? ClosestDock(IDockHost ignore, BitSet<DockType> type = default, bool forceEnter = false, bool ignoreOccupancy = false)
@@ -273,11 +281,12 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		/// <summary>Get viable <see cref="IDockHost"/>'s on the <paramref name="target"/>.</summary>
-		/// <remarks>Does not check if <see cref="DockClientManager"/> is enabled.</remarks>
-		public IEnumerable<TraitPair<IDockHost>> AvailableDockHosts(Actor target, bool forceEnter = false, bool ignoreOccupancy = false)
+		/// <remarks>If <paramref name="type"/> is not set, checks all clients. Does not check if <see cref="DockClientManager"/> is enabled.</remarks>
+		public IEnumerable<TraitPair<IDockHost>> AvailableDockHosts(Actor target, BitSet<DockType> type = default, bool forceEnter = false, bool ignoreOccupancy = false)
 		{
+			var clients = type.IsEmpty ? dockClients : AvailableDockClients(type, forceEnter);
 			return target.TraitsImplementing<IDockHost>()
-				.Where(host => dockClients.Any(client => client.CanDockAt(target, host, forceEnter, ignoreOccupancy)))
+				.Where(host => clients.Any(client => client.CanDockAt(target, host, forceEnter, ignoreOccupancy)))
 				.Select(host => new TraitPair<IDockHost>(target, host));
 		}
 
