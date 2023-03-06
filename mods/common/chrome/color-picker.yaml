@@ -5,7 +5,7 @@ Background@COLOR_CHOOSER:
 		PaletteCustomRows: 1
 	Background: dialog2
 	Width: 326
-	Height: 154
+	Height: 246
 	Children:
 		Button@RANDOM_BUTTON:
 			Key: tab
@@ -42,17 +42,17 @@ Background@COLOR_CHOOSER:
 			Text: Palette
 			Font: Bold
 		Background@MIXER_TAB:
-			Background: dialog3
+			Background: dialog2
 			X: 5
 			Y: 5
 			Width: PARENT_RIGHT - 90
 			Height: PARENT_BOTTOM - 34
 			Children:
-				ColorMixer@MIXER:
-					X: 2
-					Y: 2
-					Width: PARENT_RIGHT - 4
-					Height: PARENT_BOTTOM - 4
+				HoneyCombColorPicker@MIXER:
+					X: 10
+					Y: 10
+					Width: PARENT_RIGHT - 20
+					Height: PARENT_BOTTOM - 20
 		Background@PALETTE_TAB:
 			Background: dialog3
 			X: 5

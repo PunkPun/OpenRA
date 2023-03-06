@@ -28,12 +28,21 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		public ColorPickerLogic(Widget widget, ModData modData, World world, Color initialColor, string initialFaction, Action<Color> onChange,
 			Dictionary<string, MiniYaml> logicArgs)
 		{
-			var mixer = widget.Get<ColorMixerWidget>("MIXER");
+			var mixer = widget.Get<HoneyCombColorPickerWidget>("MIXER");
+			// var slider = widget.Get<BrightnessSliderWidget>("V");
 
 			// Set the initial state
 			// All users need to use the same TraitInfo instance, chosen as the default mod rules
 			var colorManager = modData.DefaultRules.Actors[SystemActors.World].TraitInfo<ColorPickerManagerInfo>();
-			mixer.SetColorLimits(colorManager.HsvSaturationRange[0], colorManager.HsvSaturationRange[1], colorManager.V);
+			// slider.OnChange += (v) =>
+			// {
+			// 	mixer.SetColorLimits(colorManager.HsvSaturationRange[0], colorManager.HsvSaturationRange[1], v);
+			// 	onChange(mixer.Color);
+			// };
+
+			// slider.UpdateValue(initialColor.ToAhsv().V);
+			// slider.IsVisible = () => false;
+
 			mixer.OnChange += () => onChange(mixer.Color);
 			mixer.Set(initialColor);
 

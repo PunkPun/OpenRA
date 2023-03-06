@@ -18,7 +18,7 @@ namespace OpenRA.Graphics
 {
 	public class RgbaColorRenderer
 	{
-		static readonly float3 Offset = new float3(0.5f, 0.5f, 0f);
+		public static readonly float3 Offset = new float3(0.5f, 0.5f, 0f);
 
 		readonly SpriteRenderer parent;
 		readonly Vertex[] vertices = new Vertex[6];
@@ -247,6 +247,11 @@ namespace OpenRA.Graphics
 			vertices[4] = VertexWithColor(d + Offset, bottomLeftColor);
 			vertices[5] = VertexWithColor(a + Offset, topLeftColor);
 
+			parent.DrawRGBAVertices(vertices, blendMode);
+		}
+
+		public void DrawVertices(Vertex[] vertices, BlendMode blendMode = BlendMode.Alpha)
+		{
 			parent.DrawRGBAVertices(vertices, blendMode);
 		}
 
