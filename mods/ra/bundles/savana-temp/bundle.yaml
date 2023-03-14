@@ -1,0 +1,9 @@
+BundleFormat: 1
+
+RequiresMod: ra
+
+Title: Savana temparate palette
+
+Author: Lad
+
+Rules: rules.yaml

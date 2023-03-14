@@ -98,14 +98,15 @@ namespace OpenRA
 			IReadOnlyFileSystem fileSystem,
 			IEnumerable<string> files,
 			MiniYaml additional,
+			Dictionary<MapBundle, MiniYaml> bundles,
 			IReadOnlyDictionary<string, T> defaults,
 			Func<MiniYamlNode, T> makeObject,
 			Func<MiniYamlNode, bool> filterNode = null)
 		{
-			if (additional == null && defaults != null)
+			if (additional == null && defaults != null && (bundles == null || bundles.Values.All(b => b == null)))
 				return defaults;
 
-			IEnumerable<MiniYamlNode> yamlNodes = MiniYaml.Load(fileSystem, files, additional);
+			IEnumerable<MiniYamlNode> yamlNodes = MiniYaml.Load(fileSystem, files, additional, bundles);
 
 			// Optionally, the caller can filter out elements from the loaded set of nodes. Default behavior is unfiltered.
 			if (filterNode != null)
@@ -122,23 +123,23 @@ namespace OpenRA
 			Ruleset ruleset = null;
 			void LoadRuleset()
 			{
-				var actors = MergeOrDefault("Manifest,Rules", fs, m.Rules, null, null,
+				var actors = MergeOrDefault("Manifest,Rules", fs, m.Rules, null, null, null,
 					k => new ActorInfo(modData.ObjectCreator, k.Key.ToLowerInvariant(), k.Value),
 					filterNode: n => n.Key.StartsWith(ActorInfo.AbstractActorPrefix, StringComparison.Ordinal));
 
-				var weapons = MergeOrDefault("Manifest,Weapons", fs, m.Weapons, null, null,
+				var weapons = MergeOrDefault("Manifest,Weapons", fs, m.Weapons, null, null, null,
 					k => new WeaponInfo(k.Value));
 
-				var voices = MergeOrDefault("Manifest,Voices", fs, m.Voices, null, null,
+				var voices = MergeOrDefault("Manifest,Voices", fs, m.Voices, null, null, null,
 					k => new SoundInfo(k.Value));
 
-				var notifications = MergeOrDefault("Manifest,Notifications", fs, m.Notifications, null, null,
+				var notifications = MergeOrDefault("Manifest,Notifications", fs, m.Notifications, null, null, null,
 					k => new SoundInfo(k.Value));
 
-				var music = MergeOrDefault("Manifest,Music", fs, m.Music, null, null,
+				var music = MergeOrDefault("Manifest,Music", fs, m.Music, null, null, null,
 					k => new MusicInfo(k.Key, k.Value));
 
-				var modelSequences = MergeOrDefault("Manifest,ModelSequences", fs, m.ModelSequences, null, null,
+				var modelSequences = MergeOrDefault("Manifest,ModelSequences", fs, m.ModelSequences, null, null, null,
 					k => k);
 
 				// The default ruleset does not include a preferred tileset
@@ -172,28 +173,31 @@ namespace OpenRA
 
 		public static Ruleset Load(ModData modData, IReadOnlyFileSystem fileSystem, string tileSet,
 			MiniYaml mapRules, MiniYaml mapWeapons, MiniYaml mapVoices, MiniYaml mapNotifications,
-			MiniYaml mapMusic, MiniYaml mapModelSequences)
+			MiniYaml mapMusic, MiniYaml mapModelSequences, MapBundle[] bundles)
 		{
 			var m = modData.Manifest;
 			var dr = modData.DefaultRules;
+			bundles = bundles == null ? Array.Empty<MapBundle>() : bundles.Where(b => b.Package != null).ToArray();
 
 			Ruleset ruleset = null;
 			void LoadRuleset()
 			{
-				var actors = MergeOrDefault("Rules", fileSystem, m.Rules, mapRules, dr.Actors,
+				Console.WriteLine($"Merging map with {bundles.Length} bundles ");
+
+				var actors = MergeOrDefault("Rules", fileSystem, m.Rules, mapRules, bundles.ToDictionary(b => b, b => b.RuleDefinitions), dr.Actors,
 					k => new ActorInfo(modData.ObjectCreator, k.Key.ToLowerInvariant(), k.Value),
 					filterNode: n => n.Key.StartsWith(ActorInfo.AbstractActorPrefix, StringComparison.Ordinal));
 
-				var weapons = MergeOrDefault("Weapons", fileSystem, m.Weapons, mapWeapons, dr.Weapons,
+				var weapons = MergeOrDefault("Weapons", fileSystem, m.Weapons, mapWeapons, bundles.ToDictionary(b => b, b => b.WeaponDefinitions), dr.Weapons,
 					k => new WeaponInfo(k.Value));
 
-				var voices = MergeOrDefault("Voices", fileSystem, m.Voices, mapVoices, dr.Voices,
+				var voices = MergeOrDefault("Voices", fileSystem, m.Voices, mapVoices, bundles.ToDictionary(b => b, b => b.VoiceDefinitions), dr.Voices,
 					k => new SoundInfo(k.Value));
 
-				var notifications = MergeOrDefault("Notifications", fileSystem, m.Notifications, mapNotifications, dr.Notifications,
+				var notifications = MergeOrDefault("Notifications", fileSystem, m.Notifications, mapNotifications, bundles.ToDictionary(b => b, b => b.NotificationDefinitions), dr.Notifications,
 					k => new SoundInfo(k.Value));
 
-				var music = MergeOrDefault("Music", fileSystem, m.Music, mapMusic, dr.Music,
+				var music = MergeOrDefault("Music", fileSystem, m.Music, mapMusic, bundles.ToDictionary(b => b, b => b.MusicDefinitions), dr.Music,
 					k => new MusicInfo(k.Key, k.Value));
 
 				// TODO: Add support for merging custom terrain modifications
@@ -201,8 +205,8 @@ namespace OpenRA
 
 				var modelSequences = dr.ModelSequences;
 				if (mapModelSequences != null)
-					modelSequences = MergeOrDefault("ModelSequences", fileSystem, m.ModelSequences, mapModelSequences, dr.ModelSequences,
-						k => k);
+					modelSequences = MergeOrDefault("ModelSequences", fileSystem, m.ModelSequences, mapModelSequences, bundles.ToDictionary(b => b, b => b.ModelSequenceDefinitions),
+						dr.ModelSequences, k => k);
 
 				ruleset = new Ruleset(actors, weapons, voices, notifications, music, terrainInfo, modelSequences);
 			}

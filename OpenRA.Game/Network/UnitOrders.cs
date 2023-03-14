@@ -152,7 +152,7 @@ namespace OpenRA.Network
 						else
 							TextNotificationsManager.AddSystemLine("The game has started.");
 
-						Game.StartGame(orderManager.LobbyInfo.GlobalSettings.Map, WorldType.Regular);
+						Game.StartGame(orderManager.LobbyInfo.GlobalSettings.Map, orderManager.LobbyInfo.GlobalSettings.Bundles, WorldType.Regular);
 						break;
 					}
 

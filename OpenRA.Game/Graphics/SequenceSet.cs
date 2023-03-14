@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using OpenRA.FileSystem;
 using OpenRA.Primitives;
 
@@ -49,13 +50,14 @@ namespace OpenRA.Graphics
 		readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, ISpriteSequence>> images;
 		public SpriteCache SpriteCache { get; }
 
-		public SequenceSet(IReadOnlyFileSystem fileSystem, ModData modData, string tileSet, MiniYaml additionalSequences)
+		public SequenceSet(IReadOnlyFileSystem fileSystem, ModData modData, string tileSet, MiniYaml additionalSequences, MapBundle[] bundles)
 		{
 			this.modData = modData;
 			this.tileSet = tileSet;
 			SpriteCache = new SpriteCache(fileSystem, modData.SpriteLoaders, modData.SpriteSequenceLoader.BgraSheetSize, modData.SpriteSequenceLoader.IndexedSheetSize);
+
 			using (new Support.PerfTimer("LoadSequences"))
-				images = Load(fileSystem, additionalSequences);
+				images = Load(fileSystem, additionalSequences, bundles?.Where(b => b.Package != null).ToDictionary(b => b, b => b.SequenceDefinitions));
 		}
 
 		public ISpriteSequence GetSequence(string image, string sequence)
@@ -87,9 +89,9 @@ namespace OpenRA.Graphics
 			return sequences.Keys;
 		}
 
-		IReadOnlyDictionary<string, IReadOnlyDictionary<string, ISpriteSequence>> Load(IReadOnlyFileSystem fileSystem, MiniYaml additionalSequences)
+		IReadOnlyDictionary<string, IReadOnlyDictionary<string, ISpriteSequence>> Load(IReadOnlyFileSystem fileSystem, MiniYaml additionalSequences, Dictionary<MapBundle, MiniYaml> bundles)
 		{
-			var nodes = MiniYaml.Load(fileSystem, modData.Manifest.Sequences, additionalSequences);
+			var nodes = MiniYaml.Load(fileSystem, modData.Manifest.Sequences, additionalSequences, bundles);
 			var images = new Dictionary<string, IReadOnlyDictionary<string, ISpriteSequence>>();
 			foreach (var node in nodes)
 			{

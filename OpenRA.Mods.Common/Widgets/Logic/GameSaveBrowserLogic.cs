@@ -354,7 +354,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				Order.Command($"state {Session.ClientState.Ready}")
 			};
 
-			Game.CreateAndStartLocalServer(map.Uid, orders);
+			Game.CreateAndStartLocalServer(map.Uid, save.GlobalSettings.Bundles, orders);
 		}
 
 		void Save(World world)

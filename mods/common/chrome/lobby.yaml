@@ -97,6 +97,13 @@ Background@SERVER_LOBBY:
 			Height: 25
 			Text: Change Map
 			Font: Bold
+		DropDownButton@CHANGEBUNDLE_BUTTON:
+			X: PARENT_RIGHT - WIDTH - 20
+			Y: 20
+			Width: 174
+			Height: 25
+			Text: Change Bundle
+			Font: Bold
 		Container@LOBBYCHAT:
 			X: 20
 			Y: PARENT_BOTTOM - HEIGHT - 20

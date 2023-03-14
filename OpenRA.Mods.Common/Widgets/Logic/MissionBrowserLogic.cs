@@ -440,10 +440,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var fsPlayer = fullscreenVideoPlayer.Get<VideoPlayerWidget>("PLAYER");
 				fullscreenVideoPlayer.Visible = true;
 				PlayVideo(fsPlayer, missionData.StartVideo, PlayingVideo.GameStart,
-					() => Game.CreateAndStartLocalServer(selectedMap.Uid, orders));
+					() => Game.CreateAndStartLocalServer(selectedMap.Uid, null, orders));
 			}
 			else
-				Game.CreateAndStartLocalServer(selectedMap.Uid, orders);
+				Game.CreateAndStartLocalServer(selectedMap.Uid, null, orders);
 		}
 
 		class DropDownOption

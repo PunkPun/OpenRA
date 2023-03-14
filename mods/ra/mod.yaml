@@ -42,6 +42,10 @@ MapFolders:
 	ra|maps: System
 	~^SupportDir|maps/ra/{DEV_VERSION}: User
 
+BundleFolders:
+	ra|bundles: System
+	~^SupportDir|bundles/ra/{DEV_VERSION}: User
+
 Rules:
 	ra|rules/misc.yaml
 	ra|rules/ai.yaml

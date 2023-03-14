@@ -1,0 +1,17 @@
+BundleFormat: 1
+
+RequiresMod: ra
+
+Title: Bigger IC
+
+Author: Longely
+
+Rules:
+	IRON:
+		Inherits@shape: ^2x2Shape
+		Building:
+			Footprint: xx xx
+			Dimensions: 2,2
+		Selectable:
+			Bounds: 2048, 2133, 0, -170
+			-DecorationBounds: 2133, 2133, 0, -512

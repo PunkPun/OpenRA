@@ -97,6 +97,9 @@ namespace OpenRA.Mods.Common.Server
 		const string HostChangeMap = "notification-admin-change-map";
 
 		[TranslationReference]
+		const string HostChangeBundle = "notification-admin-change-bundle";
+
+		[TranslationReference]
 		const string UnknownMap = "notification-unknown-map";
 
 		[TranslationReference]
@@ -113,6 +116,9 @@ namespace OpenRA.Mods.Common.Server
 
 		[TranslationReference("player", "map")]
 		const string ChangedMap = "notification-changed-map";
+
+		[TranslationReference("player")]
+		const string ChangedBundle = "notification-changed-bundle";
 
 		[TranslationReference]
 		const string MapBotsDisabled = "notification-map-bots-disabled";
@@ -167,6 +173,7 @@ namespace OpenRA.Mods.Common.Server
 			{ "slot_open", SlotOpen },
 			{ "slot_bot", SlotBot },
 			{ "map", Map },
+			{ "bundles", Bundles },
 			{ "option", Option },
 			{ "assignteams", AssignTeams },
 			{ "kick", Kick },
@@ -553,7 +560,7 @@ namespace OpenRA.Mods.Common.Server
 			}
 		}
 
-		static bool Map(S server, Connection conn, Session.Client client, string s)
+		static bool Map(S server, Connection conn, Session.Client client, string mapUID)
 		{
 			lock (server.LobbyInfo)
 			{
@@ -564,6 +571,7 @@ namespace OpenRA.Mods.Common.Server
 				}
 
 				var lastMap = server.LobbyInfo.GlobalSettings.Map;
+				var lastBundles = server.LobbyInfo.GlobalSettings.Bundles;
 				void SelectMap(MapPreview map)
 				{
 					lock (server.LobbyInfo)
@@ -573,10 +581,9 @@ namespace OpenRA.Mods.Common.Server
 							return;
 
 						server.LobbyInfo.GlobalSettings.Map = map.Uid;
-
 						var oldSlots = server.LobbyInfo.Slots.Keys.ToArray();
 						server.Map = server.ModData.MapCache[server.LobbyInfo.GlobalSettings.Map];
-						server.LobbyInfo.GlobalSettings.MapStatus = server.MapStatusCache[server.Map];
+						server.LobbyInfo.GlobalSettings.MapStatus = server.MapStatusCache.GetStatus(server.Map, server.Bundles);
 
 						server.LobbyInfo.Slots = server.Map.Players.Players
 							.Select(p => MakeSlotFromPlayerReference(p.Value))
@@ -654,7 +661,8 @@ namespace OpenRA.Mods.Common.Server
 
 				void QueryFailed() => server.SendLocalizedMessageTo(conn, UnknownMap);
 
-				var m = server.ModData.MapCache[s];
+				var m = server.ModData.MapCache[mapUID];
+
 				if (m.Status == MapStatus.Available || m.Status == MapStatus.DownloadAvailable)
 					SelectMap(m);
 				else if (server.Settings.QueryMapRepository)
@@ -662,7 +670,7 @@ namespace OpenRA.Mods.Common.Server
 					server.SendLocalizedMessageTo(conn, SearchingMap);
 					var mapRepository = server.ModData.Manifest.Get<WebServices>().MapRepository;
 					var reported = false;
-					server.ModData.MapCache.QueryRemoteMapDetails(mapRepository, new[] { s }, SelectMap, _ =>
+					server.ModData.MapCache.QueryRemoteMapDetails(mapRepository, new[] { mapUID }, SelectMap, _ =>
 					{
 						if (!reported)
 							QueryFailed();
@@ -673,6 +681,52 @@ namespace OpenRA.Mods.Common.Server
 				else
 					QueryFailed();
 
+				return true;
+			}
+		}
+
+		static bool Bundles(S server, Connection conn, Session.Client client, string concatBundles)
+		{
+			lock (server.LobbyInfo)
+			{
+				if (!client.IsAdmin)
+				{
+					server.SendLocalizedMessageTo(conn, HostChangeBundle);
+					return true;
+				}
+
+				var lastBundles = server.LobbyInfo.GlobalSettings.Bundles;
+				void SelectBundle(string[] bundles)
+				{
+					lock (server.LobbyInfo)
+					{
+						// Make sure the map hasn't changed in the meantime
+						if (server.LobbyInfo.GlobalSettings.Bundles != lastBundles)
+							return;
+
+						server.Bundles = Game.ModData.BundleCache.GetBundles(bundles);
+						server.LobbyInfo.GlobalSettings.Bundles = bundles;
+						server.LobbyInfo.GlobalSettings.MapStatus = server.MapStatusCache.GetStatus(server.Map, server.Bundles);
+
+						LoadMapSettings(server, server.LobbyInfo.GlobalSettings, server.Map);
+
+						server.SyncLobbyInfo();
+						server.SendLocalizedMessage(ChangedBundle, Translation.Arguments("player", client.Name));
+						if ((server.LobbyInfo.GlobalSettings.MapStatus & Session.MapStatus.UnsafeCustomRules) != 0)
+							server.SendLocalizedMessage(CustomRules);
+
+						if (!server.LobbyInfo.GlobalSettings.EnableSingleplayer)
+							server.SendLocalizedMessage(TwoHumansRequired);
+						else if (server.Map.Players.Players.Where(p => p.Value.Playable).All(p => !p.Value.AllowBots))
+							server.SendLocalizedMessage(MapBotsDisabled);
+
+						var briefing = MissionBriefingOrDefault(server);
+						if (briefing != null)
+							server.SendMessage(briefing);
+					}
+				}
+
+				SelectBundle(server.ModData.BundleCache.ValidateBundles(concatBundles.Split('∫')));
 				return true;
 			}
 		}

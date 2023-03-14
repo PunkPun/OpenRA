@@ -95,6 +95,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly TabCompletionLogic tabCompletion = new();
 
 		MapPreview map;
+		string[] bundles;
 		Session.MapStatus mapStatus;
 
 		bool chatEnabled;
@@ -238,6 +239,75 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						{ "onSelect", Game.IsHost ? onSelect : null },
 						{ "filter", MapVisibility.Lobby },
 					});
+				};
+			}
+
+			var allBundles = modData.BundleCache.ToArray();
+
+			Widget CreateCategoriesPanel()
+			{
+				var categoriesPanel = Ui.LoadWidget("COPY_FILTER_PANEL", null, new WidgetArgs());
+				var categoryTemplate = categoriesPanel.Get<CheckboxWidget>("CATEGORY_TEMPLATE");
+
+				foreach (var bundle in allBundles)
+				{
+					var category = (CheckboxWidget)categoryTemplate.Clone();
+					category.GetText = () => bundle.Title;
+					var isChecked = new PredictedCachedTransform<string[], bool>(b => bundles != null && bundles.Contains(bundle.Uid));
+					category.IsChecked = () => isChecked.Update(bundles);
+					category.IsVisible = () => true;
+					category.OnClick = () =>
+					{
+						isChecked.Update(bundles);
+
+						string[] tempBundles;
+						if (bundles == null)
+						{
+							tempBundles = new string[] { bundle.Uid };
+							isChecked.Predict(true);
+						}
+						else if (bundles.Contains(bundle.Uid))
+						{
+							tempBundles = bundles.Where(b => b != bundle.Uid).ToArray();
+							isChecked.Predict(false);
+						}
+						else
+						{
+							tempBundles = bundles.Append(bundle.Uid).ToArray();
+							isChecked.Predict(true);
+						}
+
+						if (tempBundles.Length == 0)
+						{
+							orderManager.IssueOrder(Order.Command("bundles "));
+							Game.Settings.Server.Bundles = null;
+						}
+						else
+						{
+							orderManager.IssueOrder(Order.Command("bundles " + string.Join('∫', tempBundles)));
+							Game.Settings.Server.Bundles = tempBundles;
+						}
+
+						Game.Settings.Save();
+					};
+
+					categoriesPanel.AddChild(category);
+				}
+
+				return categoriesPanel;
+			}
+
+			var bundleButton = lobby.GetOrNull<DropDownButtonWidget>("CHANGEBUNDLE_BUTTON");
+			if (bundleButton != null)
+			{
+				bundleButton.IsVisible = () => panel != PanelType.Servers;
+				bundleButton.IsDisabled = () => gameStarting || panel == PanelType.Kick || panel == PanelType.ForceStart ||
+					orderManager.LocalClient == null || orderManager.LocalClient.IsReady;
+
+				bundleButton.OnMouseDown = _ =>
+				{
+					bundleButton.RemovePanel();
+					bundleButton.AttachPanel(CreateCategoriesPanel());
 				};
 			}
 
@@ -584,6 +654,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			mapStatus = orderManager.LobbyInfo.GlobalSettings.MapStatus;
 			var uid = orderManager.LobbyInfo.GlobalSettings.Map;
+			bundles = orderManager.LobbyInfo.GlobalSettings.Bundles;
+
 			if (map.Uid == uid)
 				return;
 

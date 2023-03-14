@@ -67,7 +67,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					{
 						Console.WriteLine($"Testing default sequences for {tileset}");
 
-						var sequences = new SequenceSet(modData.DefaultFileSystem, modData, tileset, null);
+						var sequences = new SequenceSet(modData.DefaultFileSystem, modData, tileset, null, null);
 						CheckSequences(modData, modData.DefaultRules, sequences);
 					}
 

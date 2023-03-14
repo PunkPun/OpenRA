@@ -23,7 +23,7 @@ namespace OpenRA.Mods.Common.Lint
 	{
 		void ILintServerMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, MapPreview map, Ruleset mapRules)
 		{
-			using (var sequences = new SequenceSet(map, modData, map.TileSet, map.SequenceDefinitions))
+			using (var sequences = new SequenceSet(map, modData, map.TileSet, map.SequenceDefinitions, null))
 			{
 				Run(emitError, emitWarning, mapRules, sequences);
 			}

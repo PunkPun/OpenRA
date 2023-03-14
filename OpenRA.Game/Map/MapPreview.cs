@@ -242,11 +242,11 @@ namespace OpenRA
 				innerData.NotificationDefinitions, innerData.SequenceDefinitions);
 		}
 
-		public Ruleset LoadRuleset()
+		public Ruleset LoadRuleset(MapBundle[] bundleUIDs)
 		{
 			return Ruleset.Load(modData, this, TileSet, innerData.RuleDefinitions,
 				innerData.WeaponDefinitions, innerData.VoiceDefinitions, innerData.NotificationDefinitions,
-				innerData.MusicDefinitions, innerData.ModelSequenceDefinitions);
+				innerData.MusicDefinitions, innerData.ModelSequenceDefinitions, bundleUIDs);
 		}
 
 		public MapPreview(ModData modData, string uid, MapGridType gridType, MapCache cache)

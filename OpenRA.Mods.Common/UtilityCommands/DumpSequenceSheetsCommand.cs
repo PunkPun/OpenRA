@@ -36,7 +36,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 
 			SequenceSet sequences;
 			if (modData.DefaultTerrainInfo.ContainsKey(args[2]))
-				sequences = new SequenceSet(modData.ModFiles, modData, args[2], null);
+				sequences = new SequenceSet(modData.ModFiles, modData, args[2], null, null);
 			else
 			{
 				var mapPackage = new Folder(Platform.EngineDir).OpenPackage(args[2], modData.ModFiles);

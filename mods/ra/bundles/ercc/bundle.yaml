@@ -1,0 +1,11 @@
+BundleFormat: 1
+
+RequiresMod: ra
+
+Title: ERCC
+
+Author: Widow, FRenzy
+
+Rules: bi-rules-ERCC21andBCC11.yaml
+
+Sequences: bi-sequences-ERCC2.yaml

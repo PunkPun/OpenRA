@@ -457,7 +457,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			Game.Settings.Server.Map = map;
 			Game.Settings.Save();
 
-			ConnectionLogic.Connect(Game.CreateLocalServer(map),
+			ConnectionLogic.Connect(Game.CreateLocalServer(map, Game.Settings.Server.Bundles),
 				"",
 				OpenSkirmishLobbyPanel,
 				() => { Game.CloseServer(); SwitchMenu(MenuType.Main); });

@@ -215,6 +215,7 @@ namespace OpenRA
 		// Generated data
 		public readonly MapGrid Grid;
 		public IReadOnlyPackage Package { get; private set; }
+		public MapBundle[] BundlePackages { get; private set; } = Array.Empty<MapBundle>();
 		public string Uid { get; private set; }
 
 		public Ruleset Rules { get; private set; }
@@ -346,10 +347,10 @@ namespace OpenRA
 				Height.CellEntryChanged += UpdateProjection;
 			}
 
-			PostInit();
+			PostInit(null);
 		}
 
-		public Map(ModData modData, IReadOnlyPackage package)
+		public Map(ModData modData, IReadOnlyPackage package, string[] bundleUIDs = null)
 		{
 			this.modData = modData;
 			Package = package;
@@ -363,6 +364,8 @@ namespace OpenRA
 
 			if (MapFormat < SupportedMapFormat)
 				throw new InvalidDataException($"Map format {MapFormat} is not supported.\n File: {package.Name}");
+
+			var bundles = modData.BundleCache.GetBundles(bundleUIDs);
 
 			PlayerDefinitions = MiniYaml.NodesOrEmpty(yaml, "Players");
 			ActorDefinitions = MiniYaml.NodesOrEmpty(yaml, "Actors");
@@ -427,17 +430,20 @@ namespace OpenRA
 				Height.CellEntryChanged += UpdateProjection;
 			}
 
-			PostInit();
+			PostInit(bundles);
 
 			Uid = ComputeUID(Package, MapFormat);
 		}
 
-		void PostInit()
+		void PostInit(MapBundle[] bundles)
 		{
 			try
 			{
+				BundlePackages = Array.Empty<MapBundle>();
 				Rules = Ruleset.Load(modData, this, Tileset, RuleDefinitions, WeaponDefinitions,
-					VoiceDefinitions, NotificationDefinitions, MusicDefinitions, ModelSequenceDefinitions);
+					VoiceDefinitions, NotificationDefinitions, MusicDefinitions, ModelSequenceDefinitions, bundles);
+
+				BundlePackages = bundles ?? Array.Empty<MapBundle>();
 			}
 			catch (Exception e)
 			{
@@ -448,7 +454,7 @@ namespace OpenRA
 				Rules = Ruleset.LoadDefaultsForTileSet(modData, Tileset);
 			}
 
-			Sequences = new SequenceSet(this, modData, Tileset, SequenceDefinitions);
+			Sequences = new SequenceSet(this, modData, Tileset, SequenceDefinitions, bundles);
 
 			var tl = new MPos(0, 0).ToCPos(this);
 			var br = new MPos(MapSize.X - 1, MapSize.Y - 1).ToCPos(this);
@@ -1362,11 +1368,27 @@ namespace OpenRA
 			return FindTilesInAnnulus(center, 0, maxRange, allowOutsideBounds);
 		}
 
+		IReadOnlyPackage GetPackage(string filename)
+		{
+			for (var i = BundlePackages.Length - 1; i >= 0; i--)
+				if (BundlePackages[i].Package.Contains(filename))
+					return BundlePackages[i].Package;
+
+			if (Package.Contains(filename))
+				return Package;
+
+			return null;
+		}
+
 		public Stream Open(string filename)
 		{
 			// Explicit package paths never refer to a map
-			if (!filename.Contains('|') && Package.Contains(filename))
-				return Package.GetStream(filename);
+			if (!filename.Contains('|'))
+			{
+				var package = GetPackage(filename);
+				if (package != null)
+					return package.GetStream(filename);
+			}
 
 			return modData.DefaultFileSystem.Open(filename);
 		}
@@ -1382,9 +1404,13 @@ namespace OpenRA
 			// Explicit package paths never refer to a map
 			if (!filename.Contains('|'))
 			{
-				s = Package.GetStream(filename);
-				if (s != null)
-					return true;
+				var package = GetPackage(filename);
+				if (package != null)
+				{
+					s = package.GetStream(filename);
+					if (s != null)
+						return true;
+				}
 			}
 
 			return modData.DefaultFileSystem.TryOpen(filename, out s);
@@ -1393,8 +1419,12 @@ namespace OpenRA
 		public bool Exists(string filename)
 		{
 			// Explicit package paths never refer to a map
-			if (!filename.Contains('|') && Package.Contains(filename))
-				return true;
+			if (!filename.Contains('|'))
+			{
+				var package = GetPackage(filename);
+				if (package != null)
+					return true;
+			}
 
 			return modData.DefaultFileSystem.Exists(filename);
 		}

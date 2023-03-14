@@ -504,6 +504,34 @@ namespace OpenRA
 
 			return Merge(yaml);
 		}
+
+		public static List<MiniYamlNode> Load(IReadOnlyFileSystem fileSystem, IEnumerable<string> files, MiniYaml mapRules, Dictionary<MapBundle, MiniYaml> bundles)
+		{
+			if (mapRules != null && mapRules.Value != null)
+			{
+				var mapFiles = FieldLoader.GetValue<string[]>("value", mapRules.Value);
+				files = files.Append(mapFiles);
+			}
+
+			var yaml = files.Select(s => FromStream(fileSystem.Open(s), s));
+			if (mapRules != null && mapRules.Nodes.Count > 0)
+				yaml = yaml.Append(mapRules.Nodes);
+
+			if (bundles != null)
+			{
+				foreach (var bundle in bundles)
+				{
+					if (bundle.Value != null)
+					{
+						var mapFiles = FieldLoader.GetValue<string[]>("value", bundle.Value.Value);
+						yaml = yaml.Append(bundle.Value.Nodes);
+						yaml = yaml.Concat(mapFiles.Select(s => FromStream(((IReadOnlyFileSystem)bundle.Key).Open(s), s)));
+					}
+				}
+			}
+
+			return Merge(yaml);
+		}
 	}
 
 	[Serializable]

@@ -28,6 +28,7 @@ namespace OpenRA
 		public readonly ObjectCreator ObjectCreator;
 		public readonly WidgetLoader WidgetLoader;
 		public readonly MapCache MapCache;
+		public readonly BundleCache BundleCache;
 		public readonly IPackageLoader[] PackageLoaders;
 		public readonly ISoundLoader[] SoundLoaders;
 		public readonly ISpriteLoader[] SpriteLoaders;
@@ -69,6 +70,7 @@ namespace OpenRA
 
 			WidgetLoader = new WidgetLoader(this);
 			MapCache = new MapCache(this);
+			BundleCache = new BundleCache(this);
 
 			SoundLoaders = ObjectCreator.GetLoaders<ISoundLoader>(Manifest.SoundFormats, "sound");
 			SpriteLoaders = ObjectCreator.GetLoaders<ISpriteLoader>(Manifest.SpriteFormats, "sprite");
@@ -143,7 +145,7 @@ namespace OpenRA
 
 		public IEnumerable<string> Languages { get; }
 
-		public Map PrepareMap(string uid)
+		public Map PrepareMap(string uid, string[] bundleUIDs)
 		{
 			LoadScreen?.Display();
 
@@ -152,7 +154,7 @@ namespace OpenRA
 
 			Map map;
 			using (new Support.PerfTimer("Map"))
-				map = new Map(this, MapCache[uid].Package);
+				map = new Map(this, MapCache[uid].Package, bundleUIDs);
 
 			// Reinitialize all our assets
 			InitializeLoaders(map);
@@ -170,6 +172,7 @@ namespace OpenRA
 		{
 			LoadScreen?.Dispose();
 			MapCache.Dispose();
+			BundleCache.Dispose();
 
 			ObjectCreator?.Dispose();
 

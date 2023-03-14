@@ -179,7 +179,7 @@ namespace OpenRA
 		}
 
 		public static event Action BeforeGameStart = () => { };
-		internal static void StartGame(string mapUID, WorldType type)
+		internal static void StartGame(string mapUID, string[] bundleUIDs, WorldType type)
 		{
 			// Dispose of the old world before creating a new one.
 			worldRenderer?.Dispose();
@@ -188,7 +188,7 @@ namespace OpenRA
 			BeforeGameStart();
 
 			using (new PerfTimer("NewWorld"))
-				OrderManager.World = new World(mapUID, ModData, OrderManager, type);
+				OrderManager.World = new World(mapUID, bundleUIDs, ModData, OrderManager, type);
 
 			OrderManager.World.GameOver += FinishBenchmark;
 
@@ -258,10 +258,10 @@ namespace OpenRA
 			if (replay != null)
 				JoinReplay(replayName);
 			else
-				CreateAndStartLocalServer(lobbyInfo.GlobalSettings.Map, orders);
+				CreateAndStartLocalServer(lobbyInfo.GlobalSettings.Map, lobbyInfo.GlobalSettings.Bundles, orders);
 		}
 
-		public static void CreateAndStartLocalServer(string mapUID, IEnumerable<Order> setupOrders)
+		public static void CreateAndStartLocalServer(string mapUID, string[] bundleUIDs, IEnumerable<Order> setupOrders)
 		{
 			OrderManager om = null;
 
@@ -274,7 +274,7 @@ namespace OpenRA
 
 			LobbyInfoChanged += LobbyReady;
 
-			om = JoinServer(CreateLocalServer(mapUID), "");
+			om = JoinServer(CreateLocalServer(mapUID, bundleUIDs), "");
 		}
 
 		public static bool IsHost
@@ -479,6 +479,9 @@ namespace OpenRA
 			using (new PerfTimer("LoadMaps"))
 				ModData.MapCache.LoadMaps();
 
+			using (new PerfTimer("LoadBundles"))
+				ModData.BundleCache.LoadBundles();
+
 			var grid = ModData.Manifest.Contains<MapGrid>() ? ModData.Manifest.Get<MapGrid>() : null;
 			Renderer.InitializeDepthBuffer(grid);
 
@@ -504,7 +507,7 @@ namespace OpenRA
 		public static void LoadEditor(string mapUid)
 		{
 			JoinLocal();
-			StartGame(mapUid, WorldType.Editor);
+			StartGame(mapUid, null, WorldType.Editor);
 		}
 
 		public static void LoadShellMap()
@@ -512,7 +515,7 @@ namespace OpenRA
 			var shellmap = ChooseShellmap();
 			using (new PerfTimer("StartGame"))
 			{
-				StartGame(shellmap, WorldType.Shellmap);
+				StartGame(shellmap, null, WorldType.Shellmap);
 				OnShellmapLoaded();
 			}
 		}
@@ -920,12 +923,13 @@ namespace OpenRA
 			return server.GetEndpointForLocalConnection();
 		}
 
-		public static ConnectionTarget CreateLocalServer(string map)
+		public static ConnectionTarget CreateLocalServer(string map, string[] bundleUIDs)
 		{
 			var settings = new ServerSettings()
 			{
 				Name = "Skirmish Game",
 				Map = map,
+				Bundles = bundleUIDs,
 				AdvertiseOnline = false
 			};
 
@@ -968,7 +972,7 @@ namespace OpenRA
 			if (map == null)
 				throw new ArgumentException($"Could not find map '{launchMap}'.");
 
-			CreateAndStartLocalServer(map.Uid, orders);
+			CreateAndStartLocalServer(map.Uid, null, orders);
 		}
 
 		public static void FinishBenchmark()

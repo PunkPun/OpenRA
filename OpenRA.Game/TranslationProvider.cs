@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Linq;
 using OpenRA.FileSystem;
 
 namespace OpenRA
@@ -26,9 +27,23 @@ namespace OpenRA
 			lock (SyncObject)
 			{
 				modTranslation = new Translation(Game.Settings.Player.Language, modData.Manifest.Translations, fileSystem);
-				mapTranslation = fileSystem is Map map && map.TranslationDefinitions != null
-					? new Translation(Game.Settings.Player.Language, FieldLoader.GetValue<string[]>("value", map.TranslationDefinitions.Value), fileSystem)
-					: null;
+
+				if (fileSystem is Map map && map.TranslationDefinitions != null)
+				{
+					var translationDefinitions = FieldLoader.GetValue<string[]>("value", map.TranslationDefinitions.Value).AsEnumerable();
+
+					foreach (var bundle in map.BundlePackages)
+					{
+						if (bundle.TranslationDefinitions != null)
+						{
+							var translations = FieldLoader.GetValue<string[]>("value", bundle.TranslationDefinitions.Value);
+							if (translations.Length != 0)
+								translationDefinitions = translationDefinitions.Concat(translations);
+						}
+					}
+
+					mapTranslation = new Translation(Game.Settings.Player.Language, translationDefinitions.ToArray(), fileSystem);
+				}
 			}
 		}
 

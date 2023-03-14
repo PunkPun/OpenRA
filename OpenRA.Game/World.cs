@@ -189,13 +189,13 @@ namespace OpenRA
 
 		bool wasLoadingGameSave;
 
-		internal World(string mapUID, ModData modData, OrderManager orderManager, WorldType type)
+		internal World(string mapUID, string[] bundleUIDs, ModData modData, OrderManager orderManager, WorldType type)
 		{
 			this.modData = modData;
 			Type = type;
 			OrderManager = orderManager;
 			using (new PerfTimer("PrepareMap"))
-				Map = modData.PrepareMap(mapUID);
+				Map = modData.PrepareMap(mapUID, bundleUIDs);
 
 			if (string.IsNullOrEmpty(modData.Manifest.DefaultOrderGenerator))
 				throw new InvalidDataException("mod.yaml must define a DefaultOrderGenerator");

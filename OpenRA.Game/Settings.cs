@@ -65,6 +65,8 @@ namespace OpenRA
 
 		[Desc("Starts the game with a default map. Input as hash that can be obtained by the utility.")]
 		public string Map = null;
+		[Desc("Starts the game with default bundles. Input as hash that can be obtained by the utility.")]
+		public string[] Bundles = null;
 
 		[Desc("Takes a comma separated list of IP addresses that are not allowed to join.")]
 		public string[] Ban = Array.Empty<string>();

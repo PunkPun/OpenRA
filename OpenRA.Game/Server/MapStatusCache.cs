@@ -65,42 +65,39 @@ namespace OpenRA.Server
 			onStatusChanged?.Invoke(map.Uid, status);
 		}
 
-		public Session.MapStatus this[MapPreview map]
+		public Session.MapStatus GetStatus(MapPreview map, MapBundle[] bundles)
 		{
-			get
-			{
-				if (cache.TryGetValue(map, out var status))
-					return status;
-
-				Ruleset rules = null;
-				try
-				{
-					rules = map.LoadRuleset();
-
-					// Locally installed maps are assumed to not require linting
-					status = enableRemoteLinting && map.Status != MapStatus.Available ? Session.MapStatus.Validating : Session.MapStatus.Playable;
-					if (map.DefinesUnsafeCustomRules())
-						status |= Session.MapStatus.UnsafeCustomRules;
-				}
-				catch (Exception e)
-				{
-					Log.Write("server", $"Failed to load rules for `{map.Title}` with error: {e.Message}");
-					status = Session.MapStatus.Incompatible;
-				}
-
-				if (map.Players.Players.Count > MapPlayers.MaximumPlayerCount)
-				{
-					Log.Write("server", $"Failed to load `{map.Title}`: Player count exceeds maximum ({map.Players.Players.Count}/{MapPlayers.MaximumPlayerCount}).");
-					status = Session.MapStatus.Incompatible;
-				}
-
-				cache[map] = status;
-
-				if ((status & Session.MapStatus.Validating) != 0)
-					ThreadPool.QueueUserWorkItem(_ => RunLintTests(map, rules));
-
+			if (cache.TryGetValue(map, out var status))
 				return status;
+
+			Ruleset rules = null;
+			try
+			{
+				rules = map.LoadRuleset(bundles);
+
+				// Locally installed maps are assumed to not require linting
+				status = enableRemoteLinting && map.Status != MapStatus.Available ? Session.MapStatus.Validating : Session.MapStatus.Playable;
+				if (map.DefinesUnsafeCustomRules())
+					status |= Session.MapStatus.UnsafeCustomRules;
 			}
+			catch (Exception e)
+			{
+				Log.Write("server", $"Failed to load rules for `{map.Title}` with error: {e.Message}");
+				status = Session.MapStatus.Incompatible;
+			}
+
+			if (map.Players.Players.Count > MapPlayers.MaximumPlayerCount)
+			{
+				Log.Write("server", $"Failed to load `{map.Title}`: Player count exceeds maximum ({map.Players.Players.Count}/{MapPlayers.MaximumPlayerCount}).");
+				status = Session.MapStatus.Incompatible;
+			}
+
+			cache[map] = status;
+
+			if ((status & Session.MapStatus.Validating) != 0)
+				ThreadPool.QueueUserWorkItem(_ => RunLintTests(map, rules));
+
+			return status;
 		}
 	}
 }

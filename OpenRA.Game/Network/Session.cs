@@ -208,6 +208,7 @@ namespace OpenRA.Network
 		{
 			public string ServerName;
 			public string Map;
+			public string[] Bundles;
 			public MapStatus MapStatus;
 			public int RandomSeed = 0;
 			public bool AllowSpectators = true;

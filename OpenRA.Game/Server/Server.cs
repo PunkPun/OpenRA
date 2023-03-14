@@ -127,6 +127,7 @@ namespace OpenRA.Server
 
 		// Managed by LobbyCommands
 		public MapPreview Map;
+		public MapBundle[] Bundles;
 		public readonly MapStatusCache MapStatusCache;
 		public GameSave GameSave = null;
 
@@ -316,6 +317,13 @@ namespace OpenRA.Server
 
 			Map = ModData.MapCache[settings.Map];
 			MapStatusCache = new MapStatusCache(modData, MapStatusChanged, type == ServerType.Dedicated && settings.EnableLintChecks);
+			var bundles = modData.BundleCache.ValidateBundles(settings.Bundles);
+
+			if (bundles != settings.Bundles)
+			{
+				settings.Bundles = bundles;
+				Game.Settings.Save();
+			}
 
 			playerMessageTracker = new PlayerMessageTracker(this, DispatchOrdersToClient, SendLocalizedMessageTo);
 
@@ -325,6 +333,7 @@ namespace OpenRA.Server
 				{
 					RandomSeed = randomSeed,
 					Map = Map.Uid,
+					Bundles = bundles,
 					MapStatus = Session.MapStatus.Unknown,
 					ServerName = settings.Name,
 					EnableSingleplayer = settings.EnableSingleplayer || Type != ServerType.Dedicated,
@@ -346,12 +355,14 @@ namespace OpenRA.Server
 			new Thread(_ =>
 			{
 				// Initial status is set off the main thread to avoid triggering a load screen when joining a skirmish game
-				LobbyInfo.GlobalSettings.MapStatus = MapStatusCache[Map];
+				LobbyInfo.GlobalSettings.MapStatus = MapStatusCache.GetStatus(Map, modData.BundleCache.GetBundles(LobbyInfo.GlobalSettings.Bundles));
 				foreach (var t in serverTraits.WithInterface<INotifyServerStart>())
 					t.ServerStarted(this);
 
 				Log.Write("server", $"Initial mod: {ModData.Manifest.Id}");
 				Log.Write("server", $"Initial map: {LobbyInfo.GlobalSettings.Map}");
+				if (LobbyInfo.GlobalSettings.Bundles != null)
+					Log.Write("server", $"Initial bundes: {string.Join(", ", LobbyInfo.GlobalSettings.Bundles)}");
 
 				while (true)
 				{
