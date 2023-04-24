@@ -140,7 +140,7 @@ namespace OpenRA.Mods.Common.Traits
 				currentActors.Clear();
 				currentActors.UnionWith(
 					am.ActorsInBox(position - delta, position + delta)
-					.Where(a => (a.CenterPosition - position).HorizontalLengthSquared < range.LengthSquared
+					.Where(a => (a.CenterPosition - position).HorizontalLengthSquared <= range.LengthSquared
 						&& (vRange.Length == 0 || (a.World.Map.DistanceAboveTerrain(a.CenterPosition).LengthSquared <= vRange.LengthSquared))));
 
 				if (onActorEntered != null)
