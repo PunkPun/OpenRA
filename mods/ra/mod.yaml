@@ -38,6 +38,8 @@ Packages:
 	common|scripts
 	ra|uibits
 
+Gen1MapLoader:
+
 MapFolders:
 	ra|maps: System
 	~^SupportDir|maps/ra/{DEV_VERSION}: User

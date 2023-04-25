@@ -29,6 +29,8 @@ SoundFormats:
 
 SpriteFormats:
 
+Gen1MapLoader:
+
 TerrainFormat: DefaultTerrain
 
 SpriteSequenceFormat: DefaultSpriteSequence

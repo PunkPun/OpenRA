@@ -35,6 +35,8 @@ Packages:
 	common|scripts
 	cnc|uibits
 
+Gen1MapLoader:
+
 MapFolders:
 	cnc|maps: System
 	~^SupportDir|maps/cnc/{DEV_VERSION}: User

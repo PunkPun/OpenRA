@@ -8,6 +8,8 @@ Packages:
 	^EngineDir|mods/modcontent: modcontent
 	^EngineDir|mods/common: common
 
+Gen1MapLoader:
+
 Rules:
 	modcontent|rules.yaml
 

@@ -50,6 +50,8 @@ Packages:
 	ts|bits
 	ts|uibits
 
+Gen2MapLoader:
+
 MapFolders:
 	ts|maps: System
 	~^SupportDir|maps/ts/{DEV_VERSION}: User

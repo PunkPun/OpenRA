@@ -34,6 +34,7 @@ namespace OpenRA
 		public readonly ITerrainLoader TerrainLoader;
 		public readonly ISpriteSequenceLoader SpriteSequenceLoader;
 		public readonly IModelSequenceLoader ModelSequenceLoader;
+		public readonly IMapLoader MapLoader;
 		public readonly IVideoLoader[] VideoLoaders;
 		public readonly HotkeyManager Hotkeys;
 		public ILoadScreen LoadScreen { get; }
@@ -99,6 +100,8 @@ namespace OpenRA
 			ModelSequenceLoader = (IModelSequenceLoader)modelCtor.Invoke(new[] { this });
 			ModelSequenceLoader.OnMissingModelError = s => Log.Write("debug", s);
 
+			MapLoader = Manifest.Get<IMapLoader>();
+
 			Hotkeys = new HotkeyManager(ModFiles, Game.Settings.Keys, Manifest);
 
 			defaultRules = Exts.Lazy(() => Ruleset.LoadDefaults(this));
@@ -152,7 +155,7 @@ namespace OpenRA
 
 			Map map;
 			using (new Support.PerfTimer("Map"))
-				map = new Map(this, MapCache[uid].Package);
+				map = MapLoader.Load(this, MapCache[uid].Package);
 
 			// Reinitialize all our assets
 			InitializeLoaders(map);

@@ -23,6 +23,8 @@ Packages:
 	common|scripts
 	d2k|uibits
 
+Gen1MapLoader:
+
 MapFolders:
 	d2k|maps: System
 	~^SupportDir|maps/d2k/{DEV_VERSION}: User
