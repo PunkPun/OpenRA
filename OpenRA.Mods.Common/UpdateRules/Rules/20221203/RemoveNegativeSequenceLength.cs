@@ -31,11 +31,20 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 
 		readonly Queue<Action> actionQueue = new();
 
+		static MiniYamlNode GetNode(string key, MiniYamlNode node, MiniYamlNode defaultNode)
+		{
+			var searchNode = node.LastChildMatching(key, includeRemovals: false);
+			if (searchNode == null && defaultNode != null)
+				searchNode = defaultNode.LastChildMatching("Start", includeRemovals: false);
+
+			return searchNode;
+		}
+
 		public override IEnumerable<string> UpdateSequenceNode(ModData modData, MiniYamlNode imageNode)
 		{
 			foreach (var node in imageNode.Value.Nodes)
 			{
-				var lengthNode = node.LastChildMatching("Length", includeRemovals: false);
+				var lengthNode = GetNode("Length", node, null);
 				if (lengthNode == null || lengthNode.Value.Value == "*")
 					continue;
 
@@ -43,38 +52,34 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 				if (length >= 0)
 					continue;
 
-				var startNode = node.LastChildMatching("Start", includeRemovals: false);
-				if (startNode == null && node.Value.Value != "Defaults")
-					startNode = imageNode.LastChildMatching("Defaults")?.LastChildMatching("Start", includeRemovals: false);
+				var defaultNode = node.Value.Value == "Defaults" ? null : imageNode.LastChildMatching("Defaults");
+				var resolvedImage = resolvedImagesNodes.First(n => n.Key == imageNode.Key);
+				var resolvedNode = resolvedImage.LastChildMatching(node.Key);
+				var resolvedDefaultNode = resolvedNode.Value.Value == "Defaults" ? null : resolvedImage.LastChildMatching("Defaults");
 
+				var startNode = GetNode("Start", node, defaultNode) ?? GetNode("Start", resolvedNode, resolvedDefaultNode);
 				if (startNode == null)
+					continue;
+
+				var facingsNode = GetNode("Facings", node, defaultNode) ?? GetNode("Facings", resolvedNode, resolvedDefaultNode);
+				var transposeNode = GetNode("Transpose", node, defaultNode) ?? GetNode("Transpose", resolvedNode, resolvedDefaultNode);
+
+				var start = FieldLoader.GetValue<int>(startNode.Key, startNode.Value.Value);
+				var facings = facingsNode == null ? 1 : FieldLoader.GetValue<int>(facingsNode.Key, facingsNode.Value.Value);
+				var transpose = transposeNode != null && FieldLoader.GetValue<bool>(transposeNode.Key, transposeNode.Value.Value);
+
+				length *= -1;
+				var frames = new int[Math.Min(length, start)];
+				start -= 1;
+				for (var i = 0; i < frames.Length; i++)
+					frames[i] = start - i;
+
+				actionQueue.Enqueue(() =>
 				{
-					var resolvedImage = resolvedImagesNodes.First(n => n.Key == imageNode.Key);
-					startNode = resolvedImage.LastChildMatching(node.Key)?.LastChildMatching("Start", includeRemovals: false);
-
-					if (startNode == null && node.Value.Value != "Defaults")
-						startNode = resolvedImage.LastChildMatching("Defaults")?.LastChildMatching("Start", includeRemovals: false);
-				}
-
-				if (startNode != null)
-				{
-					var start = FieldLoader.GetValue<int>(startNode.Key, startNode.Value.Value);
-					if (start > 0)
-					{
-						length *= -1;
-						var frames = new int[Math.Min(length, start)];
-						start -= 1;
-						for (var i = 0; i < frames.Length; i++)
-							frames[i] = start - i;
-
-						actionQueue.Enqueue(() =>
-						{
-							node.RemoveNodes("Start");
-							node.RemoveNodes("Length");
-							node.AddNode("Frames", frames);
-						});
-					}
-				}
+					node.RemoveNodes("Start");
+					node.RemoveNodes("Length");
+					node.AddNode("Frames", frames);
+				});
 			}
 
 			while (actionQueue.Count > 0)
