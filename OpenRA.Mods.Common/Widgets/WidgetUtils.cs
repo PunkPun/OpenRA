@@ -232,7 +232,7 @@ namespace OpenRA.Mods.Common.Widgets
 			var textSize = font.Measure(text);
 			if (textSize.X > width)
 			{
-				var lines = text.Split('\n').ToList();
+				var lines = text.Replace("\r\n", "\n").Split('\n').ToList();
 
 				for (var i = 0; i < lines.Count; i++)
 				{
