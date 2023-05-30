@@ -240,7 +240,7 @@ World:
 		TimeLimitDisplayOrder: 2
 	ColorPickerManager:
 		PreviewActor: carryall.colorpicker
-		PresetColors: F21818, F2C218, E1F218, 44F218, 18F2D2, 184FF2, E118F2, F218A8, F2798F, F2B79D, CDF291, 91F2AA, 79E0F2, 79AAF2, C291F2, F29DEA
+		PresetColors: 9023cd, f53333, ffae00, fff830, 87f506, f872ad, da06f3, ddb8ff, def7b2, 39c46f, 200738, 280df6, 2f86f2, 76d2f8, 498221, 392929
 	OrderEffects:
 		TerrainFlashImage: moveflsh
 		TerrainFlashSequence: idle
