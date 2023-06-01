@@ -32,6 +32,16 @@ namespace OpenRA
 			}
 		}
 
+		/// <summary>Initialises only server translations.</summary>
+		public static void InitializeServer(ModData modData, IReadOnlyFileSystem fileSystem)
+		{
+			lock (SyncObject)
+			{
+				modTranslation = new Translation(Game.Settings.Player.Language, modData.Manifest.ServerTranslations, fileSystem);
+				mapTranslation = null;
+			}
+		}
+
 		public static string GetString(string key, IDictionary<string, object> args = null)
 		{
 			lock (SyncObject)

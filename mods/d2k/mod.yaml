@@ -129,6 +129,9 @@ Translations:
 	common|languages/server/en.ftl
 	d2k|languages/rules/en.ftl
 
+ServerTranslations:
+	common|languages/server/en.ftl
+
 Weapons:
 	d2k|weapons/debris.yaml
 	d2k|weapons/smallguns.yaml

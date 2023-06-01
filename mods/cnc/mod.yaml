@@ -149,6 +149,9 @@ Translations:
 	common|languages/server/en.ftl
 	cnc|languages/rules/en.ftl
 
+ServerTranslations:
+	common|languages/server/en.ftl
+
 Voices:
 	cnc|audio/voices.yaml
 

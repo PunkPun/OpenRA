@@ -73,7 +73,7 @@ namespace OpenRA
 		public readonly string[]
 			Rules, ServerTraits,
 			Sequences, ModelSequences, Cursors, Chrome, Assemblies, ChromeLayout,
-			Weapons, Voices, Notifications, Music, Translations, TileSets,
+			Weapons, Voices, Notifications, Music, Translations, ServerTranslations, TileSets,
 			ChromeMetrics, MapCompatibility, Missions, Hotkeys;
 
 		public readonly IReadOnlyDictionary<string, string> Packages;
@@ -90,7 +90,7 @@ namespace OpenRA
 		{
 			"Include", "Metadata", "Folders", "MapFolders", "Packages", "Rules",
 			"Sequences", "ModelSequences", "Cursors", "Chrome", "Assemblies", "ChromeLayout", "Weapons",
-			"Voices", "Notifications", "Music", "Translations", "TileSets", "ChromeMetrics", "Missions", "Hotkeys",
+			"Voices", "Notifications", "Music", "Translations", "ServerTranslations", "TileSets", "ChromeMetrics", "Missions", "Hotkeys",
 			"ServerTraits", "LoadScreen", "DefaultOrderGenerator", "SupportsMapsFrom", "SoundFormats", "SpriteFormats", "VideoFormats",
 			"RequiresMods", "PackageFormats"
 		};
@@ -144,6 +144,7 @@ namespace OpenRA
 			Notifications = YamlList(yaml, "Notifications");
 			Music = YamlList(yaml, "Music");
 			Translations = YamlList(yaml, "Translations");
+			ServerTranslations = YamlList(yaml, "ServerTranslations");
 			TileSets = YamlList(yaml, "TileSets");
 			ChromeMetrics = YamlList(yaml, "ChromeMetrics");
 			Missions = YamlList(yaml, "Missions");
