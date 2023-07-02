@@ -111,13 +111,17 @@ Container@SKIRMISH_STATS:
 							Y: 5
 							Width: 32
 							Height: 16
-						LabelWithTooltip@FACTION:
+						Label@FACTION:
 							X: 264
 							Width: 123
 							Height: 25
 							Shadow: True
+						Button@FACTION_TOOLTIP:
+							X: 230
+							Width: 157
+							Height: 25
 							TooltipContainer: TOOLTIP_CONTAINER
-							TooltipTemplate: SIMPLE_TOOLTIP
+							Background: scrollitem-nohover
 						Label@SCORE:
 							X: 392
 							Width: 60

@@ -161,16 +161,33 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					var flag = item.Get<ImageWidget>("FACTIONFLAG");
 					flag.GetImageCollection = () => "flags";
 
+					// HACK: to avoid creating a custom widget and logic for the faction tooltip, we use ButtonWidget and disable it.
+					var factionTooltip = item.Get<ButtonWidget>("FACTION_TOOLTIP");
+					factionTooltip.IsDisabled = () => true;
+					factionTooltip.ClickDisabledSound = null;
+
 					var factionName = pp.DisplayFaction.Name;
 					if (player == null || player.RelationshipWith(pp) == PlayerRelationship.Ally || player.WinState != WinState.Undefined)
 					{
 						flag.GetImageName = () => pp.Faction.InternalName;
 						factionName = pp.Faction.Name != factionName ? $"{factionName} ({pp.Faction.Name})" : pp.Faction.Name;
+
+						var (tooltipFaction, factionDesc) = LobbyUtils.SplitOnFirstToken(pp.Faction.Description);
+						factionTooltip.GetTooltipText = () => tooltipFaction;
+						factionTooltip.GetTooltipDesc = () => factionDesc;
 					}
 					else
+					{
 						flag.GetImageName = () => pp.DisplayFaction.InternalName;
 
-					WidgetUtils.TruncateLabelToTooltip(item.Get<LabelWithTooltipWidget>("FACTION"), factionName);
+						var (tooltipFaction, factionDesc) = LobbyUtils.SplitOnFirstToken(pp.DisplayFaction.Description);
+						factionTooltip.GetTooltipText = () => tooltipFaction;
+						factionTooltip.GetTooltipDesc = () => factionDesc;
+					}
+
+					var factionLabel = item.Get<LabelWidget>("FACTION");
+					var factionText = WidgetUtils.TruncateText(factionName, factionLabel.Bounds.Width, Game.Renderer.Fonts[factionLabel.Font]);
+					factionLabel.GetText = () => factionText;
 
 					var scoreCache = new CachedTransform<int, string>(s => s.ToString());
 					item.Get<LabelWidget>("SCORE").GetText = () => scoreCache.Update(p.PlayerStatistics?.Experience ?? 0);
