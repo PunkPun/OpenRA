@@ -34,6 +34,7 @@ namespace OpenRA.Mods.Common.Graphics
 			this.decorationBounds = decorationBounds;
 		}
 
+		public bool Opaque => false;
 		public WPos Pos { get; }
 		public bool DisplayHealth { get; }
 		public bool DisplayExtra { get; }

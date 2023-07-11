@@ -39,6 +39,8 @@ namespace OpenRA.Graphics
 				Palette = null;
 		}
 
+		public bool Opaque => Palette.Palette.Opaque;
+
 		// Does not exist in the world, so a world positions don't make sense
 		public WPos Pos { get; }
 		public WVec Offset => WVec.Zero;

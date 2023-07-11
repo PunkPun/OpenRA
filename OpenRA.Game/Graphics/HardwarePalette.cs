@@ -74,7 +74,7 @@ namespace OpenRA.Graphics
 			}
 
 			if (allowModifiers)
-				mutablePalettes.Add(name, new MutablePalette(p));
+				mutablePalettes.Add(name, new MutablePalette(p, p.Opaque));
 			else
 				CopyPaletteToBuffer(index, p);
 		}
@@ -85,7 +85,7 @@ namespace OpenRA.Graphics
 		public void ReplacePalette(string name, IPalette p)
 		{
 			if (mutablePalettes.ContainsKey(name))
-				CopyPaletteToBuffer(indices[name], mutablePalettes[name] = new MutablePalette(p));
+				CopyPaletteToBuffer(indices[name], mutablePalettes[name] = new MutablePalette(p, p.Opaque));
 			else if (palettes.ContainsKey(name))
 				CopyPaletteToBuffer(indices[name], palettes[name] = new ImmutablePalette(p));
 			else

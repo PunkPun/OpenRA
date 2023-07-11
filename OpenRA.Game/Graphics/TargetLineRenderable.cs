@@ -28,8 +28,11 @@ namespace OpenRA.Graphics
 			this.color = color;
 			this.width = width;
 			this.markerSize = markerSize;
+
+			Opaque = color.A == 0xff;
 		}
 
+		public bool Opaque { get; }
 		public WPos Pos => waypoints.First();
 		public int ZOffset => 0;
 		public bool IsDecoration => true;

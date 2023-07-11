@@ -34,6 +34,8 @@ namespace OpenRA.Mods.Common.Graphics
 			this.bgDark = bgDark;
 			this.bgLight = bgLight;
 			this.text = text;
+
+			Opaque = color.A == 0xff && bgDark.A == 0xff && bgLight.A == 0xff;
 		}
 
 		public UITextRenderable(SpriteFont font, WPos effectiveWorldPos, int2 screenPos, int zOffset, Color color, string text)
@@ -42,6 +44,7 @@ namespace OpenRA.Mods.Common.Graphics
 				ChromeMetrics.Get<Color>("TextContrastColorLight"),
 				text) { }
 
+		public bool Opaque { get; }
 		public WPos Pos { get; }
 		public int ZOffset { get; }
 		public bool IsDecoration => true;

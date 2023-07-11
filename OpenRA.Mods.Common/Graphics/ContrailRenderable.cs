@@ -48,8 +48,11 @@ namespace OpenRA.Mods.Common.Graphics
 			this.startcolor = startcolor;
 			this.endcolor = endcolor;
 			ZOffset = zOffset;
+
+			Opaque = startcolor.A == 0xff && endcolor.A == 0xff;
 		}
 
+		public bool Opaque { get; }
 		public WPos Pos => trail[Index(next - 1)];
 		public int ZOffset { get; }
 		public bool IsDecoration => true;

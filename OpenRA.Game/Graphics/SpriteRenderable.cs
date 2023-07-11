@@ -53,6 +53,7 @@ namespace OpenRA.Graphics
 		public WPos Pos => pos + Offset;
 		public WVec Offset { get; }
 		public PaletteReference Palette { get; }
+		public bool Opaque => Palette.Palette.Opaque;
 		public int ZOffset { get; }
 		public bool IsDecoration { get; }
 

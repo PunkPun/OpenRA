@@ -18,6 +18,7 @@ namespace OpenRA.Graphics
 {
 	public interface IPalette
 	{
+		bool Opaque { get; }
 		uint this[int index] { get; }
 		void CopyToArray(Array destination, int destinationOffset);
 	}
@@ -37,13 +38,14 @@ namespace OpenRA.Graphics
 		{
 			if (palette is ImmutablePalette)
 				return palette;
-			return new ReadOnlyPalette(palette);
+			return new ReadOnlyPalette(palette, palette.Opaque);
 		}
 
 		sealed class ReadOnlyPalette : IPalette
 		{
+			public bool Opaque { get; }
 			readonly IPalette palette;
-			public ReadOnlyPalette(IPalette palette) { this.palette = palette; }
+			public ReadOnlyPalette(IPalette palette, bool opaque) { this.palette = palette; Opaque = opaque; }
 			public uint this[int index] => palette[index];
 
 			public void CopyToArray(Array destination, int destinationOffset)
@@ -55,6 +57,7 @@ namespace OpenRA.Graphics
 
 	public class ImmutablePalette : IPalette
 	{
+		public bool Opaque { get; }
 		readonly uint[] colors = new uint[Palette.Size];
 
 		public uint this[int index] => colors[index];
@@ -66,12 +69,18 @@ namespace OpenRA.Graphics
 
 		public ImmutablePalette(string filename, int[] remapTransparent, int[] remap)
 		{
+			if (remapTransparent.Length == 0)
+				Opaque = true;
+
 			using (var s = File.OpenRead(filename))
 				LoadFromStream(s, remapTransparent, remap);
 		}
 
 		public ImmutablePalette(Stream s, int[] remapTransparent, int[] remapShadow)
 		{
+			if (remapTransparent.Length == 0)
+				Opaque = true;
+
 			LoadFromStream(s, remapTransparent, remapShadow);
 		}
 
@@ -102,12 +111,16 @@ namespace OpenRA.Graphics
 		public ImmutablePalette(IPalette p, IPaletteRemap r)
 			: this(p)
 		{
+			Opaque = p.Opaque;
+
 			for (var i = 0; i < Palette.Size; i++)
 				colors[i] = (uint)r.GetRemappedColor(this.GetColor(i), i).ToArgb();
 		}
 
 		public ImmutablePalette(IPalette p)
 		{
+			Opaque = p.Opaque;
+
 			for (var i = 0; i < Palette.Size; i++)
 				colors[i] = p[i];
 		}
@@ -122,6 +135,7 @@ namespace OpenRA.Graphics
 
 	public class MutablePalette : IPalette
 	{
+		public bool Opaque { get; }
 		readonly uint[] colors = new uint[Palette.Size];
 
 		public uint this[int index]
@@ -135,8 +149,9 @@ namespace OpenRA.Graphics
 			Buffer.BlockCopy(colors, 0, destination, destinationOffset * 4, Palette.Size * 4);
 		}
 
-		public MutablePalette(IPalette p)
+		public MutablePalette(IPalette p, bool opaque)
 		{
+			Opaque = opaque;
 			SetFromPalette(p);
 		}
 

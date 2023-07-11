@@ -42,6 +42,7 @@ namespace OpenRA.Mods.Common.Graphics
 			this.bounds = bounds;
 		}
 
+		public bool Opaque { get; } = false;
 		public WPos Pos { get; }
 		public bool DisplayHealth { get; }
 		public bool DisplayExtra { get; }

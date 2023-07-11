@@ -54,6 +54,7 @@ namespace OpenRA.Mods.Cnc.Graphics
 			this.brightSequence = brightSequence;
 		}
 
+		public bool Opaque => false;
 		public WPos Pos { get; }
 		public PaletteReference Palette => null;
 		public int ZOffset { get; }

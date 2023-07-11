@@ -36,8 +36,11 @@ namespace OpenRA.Mods.Common.Graphics
 			helixRadius = info.HelixRadius + new WDist(ticks * info.HelixRadiusDeltaPerTick);
 			alpha = (railgun.HelixColor.A + ticks * info.HelixAlphaDeltaPerTick).Clamp(0, 255);
 			angle = new WAngle(ticks * info.HelixAngleDeltaPerTick.Angle);
+
+			Opaque = info.BeamColor.A == 0xff && info.HelixColor.A == 0xff && info.BeamAlphaDeltaPerTick == 0 && info.HelixAlphaDeltaPerTick == 0;
 		}
 
+		public bool Opaque { get; }
 		public WPos Pos { get; }
 		public int ZOffset { get; }
 		public bool IsDecoration => true;

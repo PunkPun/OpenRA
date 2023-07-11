@@ -36,8 +36,11 @@ namespace OpenRA.Mods.Common.Graphics
 			this.width = width;
 			this.startColor = startColor;
 			this.endColor = endColor;
+
+			Opaque = startColor.A == 0xff && endColor.A == 0xff;
 		}
 
+		public bool Opaque { get; }
 		public WPos Pos { get; }
 		public int ZOffset => 0;
 		public bool IsDecoration => true;

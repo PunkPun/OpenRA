@@ -59,6 +59,7 @@ namespace OpenRA.Mods.Common.Graphics
 			TintModifiers = tintModifiers;
 		}
 
+		public bool Opaque => Palette.Palette.Opaque;
 		public WPos Pos { get; }
 		public PaletteReference Palette { get; }
 		public int ZOffset { get; }

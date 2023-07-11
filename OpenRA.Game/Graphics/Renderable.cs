@@ -16,6 +16,7 @@ namespace OpenRA.Graphics
 {
 	public interface IRenderable
 	{
+		bool Opaque { get; }
 		WPos Pos { get; }
 		int ZOffset { get; }
 		bool IsDecoration { get; }

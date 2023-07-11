@@ -118,39 +118,120 @@ namespace OpenRA.Graphics
 			palette.SetColorShift(name, hueOffset, satOffset, valueModifier, minHue, maxHue);
 		}
 
-		// PERF: Avoid LINQ.
-		void GenerateRenderables()
+		public void Draw()
 		{
-			foreach (var actor in onScreenActors)
-				renderablesBuffer.AddRange(actor.Render(this));
+			if (World.WorldActor.Disposed)
+				return;
 
-			renderablesBuffer.AddRange(World.WorldActor.Render(this));
+			RefreshPalette();
+
+			var debugGeometry = debugVis.Value != null && debugVis.Value.RenderGeometry;
+
+			debugVis.Value?.UpdateDepthBuffer();
+
+			var bounds = Viewport.GetScissorBounds(World.Type != WorldType.Editor);
+			Game.Renderer.EnableScissor(bounds);
+
+			if (enableDepthBuffer)
+				Game.Renderer.Context.EnableDepthBuffer();
+
+			terrainRenderer?.RenderTerrain(this, Viewport);
+
+			Game.Renderer.Flush();
+
+			// PERF: Reuse collection to avoid allocations.
+			onScreenActors.UnionWith(World.ScreenMap.RenderableActorsInBox(Viewport.TopLeft, Viewport.BottomRight));
+
+			foreach (var actor in onScreenActors)
+			{
+				foreach (var r in actor.Render(this))
+				{
+					if (r.Opaque)
+						r.Render(this);
+					else
+						renderablesBuffer.Add(r);
+
+					if (debugGeometry)
+						preparedRenderables.Add(r);
+				}
+			}
+
+			foreach (var r in World.WorldActor.Render(this))
+			{
+				if (r.Opaque)
+					r.Render(this);
+				else
+					renderablesBuffer.Add(r);
+
+				if (debugGeometry)
+					preparedRenderables.Add(r);
+			}
 
 			if (World.RenderPlayer != null)
-				renderablesBuffer.AddRange(World.RenderPlayer.PlayerActor.Render(this));
+			{
+				foreach (var r in World.RenderPlayer.PlayerActor.Render(this))
+				{
+					if (r.Opaque)
+						r.Render(this);
+					else
+						renderablesBuffer.Add(r);
+
+					if (debugGeometry)
+						preparedRenderables.Add(r);
+				}
+			}
 
 			if (World.OrderGenerator != null)
-				renderablesBuffer.AddRange(World.OrderGenerator.Render(this, World));
+			{
+				foreach (var r in World.OrderGenerator.Render(this, World))
+				{
+					if (r.Opaque)
+						r.Render(this);
+					else
+						renderablesBuffer.Add(r);
+
+					if (debugGeometry)
+						preparedRenderables.Add(r);
+				}
+			}
 
 			// Unpartitioned effects
 			foreach (var e in World.UnpartitionedEffects)
-				renderablesBuffer.AddRange(e.Render(this));
+			{
+				foreach (var r in e.Render(this))
+				{
+					if (r.Opaque)
+						r.Render(this);
+					else
+						renderablesBuffer.Add(r);
+
+					if (debugGeometry)
+						preparedRenderables.Add(r);
+				}
+			}
 
 			// Partitioned, currently on-screen effects
 			foreach (var e in World.ScreenMap.RenderableEffectsInBox(Viewport.TopLeft, Viewport.BottomRight))
-				renderablesBuffer.AddRange(e.Render(this));
+			{
+				foreach (var r in e.Render(this))
+				{
+					if (r.Opaque)
+						r.Render(this);
+					else
+						renderablesBuffer.Add(r);
+
+					if (debugGeometry)
+						preparedRenderables.Add(r);
+				}
+			}
 
 			// Renderables must be ordered using a stable sorting algorithm to avoid flickering artefacts
 			foreach (var renderable in renderablesBuffer.OrderBy(RenderableZPositionComparisonKey))
-				preparedRenderables.Add(renderable);
+				renderable.Render(this);
 
 			// PERF: Reuse collection to avoid allocations.
 			renderablesBuffer.Clear();
-		}
 
-		// PERF: Avoid LINQ.
-		void GenerateOverlayRenderables()
-		{
 			World.ApplyToActorsWithTrait<IRenderAboveShroud>((actor, trait) =>
 			{
 				if (!actor.IsInWorld || actor.Disposed || (trait.SpatiallyPartitionable && !onScreenActors.Contains(actor)))
@@ -187,79 +268,6 @@ namespace OpenRA.Graphics
 			if (World.OrderGenerator != null)
 				foreach (var renderable in World.OrderGenerator.RenderAboveShroud(this, World))
 					preparedOverlayRenderables.Add(renderable);
-		}
-
-		// PERF: Avoid LINQ.
-		void GenerateAnnotationRenderables()
-		{
-			World.ApplyToActorsWithTrait<IRenderAnnotations>((actor, trait) =>
-			{
-				if (!actor.IsInWorld || actor.Disposed || (trait.SpatiallyPartitionable && !onScreenActors.Contains(actor)))
-					return;
-
-				foreach (var renderAnnotation in trait.RenderAnnotations(actor, this))
-					preparedAnnotationRenderables.Add(renderAnnotation);
-			});
-
-			foreach (var a in World.Selection.Actors)
-			{
-				if (!a.IsInWorld || a.Disposed)
-					continue;
-
-				foreach (var t in a.TraitsImplementing<IRenderAnnotationsWhenSelected>())
-				{
-					if (t.SpatiallyPartitionable && !onScreenActors.Contains(a))
-						continue;
-
-					foreach (var renderAnnotation in t.RenderAnnotations(a, this))
-						preparedAnnotationRenderables.Add(renderAnnotation);
-				}
-			}
-
-			foreach (var e in World.Effects)
-			{
-				if (e is not IEffectAnnotation ea)
-					continue;
-
-				foreach (var renderAnnotation in ea.RenderAnnotation(this))
-					preparedAnnotationRenderables.Add(renderAnnotation);
-			}
-
-			if (World.OrderGenerator != null)
-				foreach (var renderAnnotation in World.OrderGenerator.RenderAnnotations(this, World))
-					preparedAnnotationRenderables.Add(renderAnnotation);
-		}
-
-		public void Draw()
-		{
-			if (World.WorldActor.Disposed)
-				return;
-
-			RefreshPalette();
-
-			// PERF: Reuse collection to avoid allocations.
-			onScreenActors.UnionWith(World.ScreenMap.RenderableActorsInBox(Viewport.TopLeft, Viewport.BottomRight));
-
-			GenerateRenderables();
-			GenerateOverlayRenderables();
-			GenerateAnnotationRenderables();
-
-			onScreenActors.Clear();
-
-			debugVis.Value?.UpdateDepthBuffer();
-
-			var bounds = Viewport.GetScissorBounds(World.Type != WorldType.Editor);
-			Game.Renderer.EnableScissor(bounds);
-
-			if (enableDepthBuffer)
-				Game.Renderer.Context.EnableDepthBuffer();
-
-			terrainRenderer?.RenderTerrain(this, Viewport);
-
-			Game.Renderer.Flush();
-
-			for (var i = 0; i < preparedRenderables.Count; i++)
-				preparedRenderables[i].Render(this);
 
 			if (enableDepthBuffer)
 				Game.Renderer.ClearDepthBuffer();
@@ -291,22 +299,79 @@ namespace OpenRA.Graphics
 
 		public void DrawAnnotations()
 		{
+			var debugGeometry = debugVis.Value != null && debugVis.Value.RenderGeometry;
+
 			Game.Renderer.EnableAntialiasingFilter();
-			for (var i = 0; i < preparedAnnotationRenderables.Count; i++)
-				preparedAnnotationRenderables[i].Render(this);
+			World.ApplyToActorsWithTrait<IRenderAnnotations>((actor, trait) =>
+			{
+				if (!actor.IsInWorld || actor.Disposed || (trait.SpatiallyPartitionable && !onScreenActors.Contains(actor)))
+					return;
+
+				foreach (var renderAnnotation in trait.RenderAnnotations(actor, this))
+				{
+					renderAnnotation.Render(this);
+					if (debugGeometry)
+						preparedAnnotationRenderables.Add(renderAnnotation);
+				}
+			});
+
+			foreach (var a in World.Selection.Actors)
+			{
+				if (!a.IsInWorld || a.Disposed)
+					continue;
+
+				foreach (var t in a.TraitsImplementing<IRenderAnnotationsWhenSelected>())
+				{
+					if (t.SpatiallyPartitionable && !onScreenActors.Contains(a))
+						continue;
+
+					foreach (var renderAnnotation in t.RenderAnnotations(a, this))
+					{
+						renderAnnotation.Render(this);
+						if (debugGeometry)
+							preparedAnnotationRenderables.Add(renderAnnotation);
+					}
+				}
+			}
+
+			foreach (var e in World.Effects)
+			{
+				if (e is not IEffectAnnotation ea)
+					continue;
+
+				foreach (var renderAnnotation in ea.RenderAnnotation(this))
+				{
+					renderAnnotation.Render(this);
+					if (debugGeometry)
+						preparedAnnotationRenderables.Add(renderAnnotation);
+				}
+			}
+
+			if (World.OrderGenerator != null)
+				foreach (var renderAnnotation in World.OrderGenerator.RenderAnnotations(this, World))
+				{
+					renderAnnotation.Render(this);
+					if (debugGeometry)
+						preparedAnnotationRenderables.Add(renderAnnotation);
+				}
+
 			Game.Renderer.DisableAntialiasingFilter();
 
 			// Engine debugging overlays
-			if (debugVis.Value != null && debugVis.Value.RenderGeometry)
+			if (debugGeometry)
 			{
 				for (var i = 0; i < preparedRenderables.Count; i++)
 					preparedRenderables[i].RenderDebugGeometry(this);
+
+				preparedRenderables.Clear();
 
 				for (var i = 0; i < preparedOverlayRenderables.Count; i++)
 					preparedOverlayRenderables[i].RenderDebugGeometry(this);
 
 				for (var i = 0; i < preparedAnnotationRenderables.Count; i++)
 					preparedAnnotationRenderables[i].RenderDebugGeometry(this);
+
+				preparedAnnotationRenderables.Clear();
 			}
 
 			if (debugVis.Value != null && debugVis.Value.ScreenMap)
@@ -333,9 +398,8 @@ namespace OpenRA.Graphics
 
 			Game.Renderer.Flush();
 
-			preparedRenderables.Clear();
+			onScreenActors.Clear();
 			preparedOverlayRenderables.Clear();
-			preparedAnnotationRenderables.Clear();
 		}
 
 		public void RefreshPalette()

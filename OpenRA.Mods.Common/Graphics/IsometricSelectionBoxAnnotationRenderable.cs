@@ -37,6 +37,8 @@ namespace OpenRA.Mods.Common.Graphics
 			Pos = actor.CenterPosition;
 			this.bounds = bounds;
 			this.color = color;
+
+			Opaque = color.A == 0xff;
 		}
 
 		public IsometricSelectionBoxAnnotationRenderable(WPos pos, in Polygon bounds, Color color)
@@ -44,8 +46,11 @@ namespace OpenRA.Mods.Common.Graphics
 			Pos = pos;
 			this.bounds = bounds;
 			this.color = color;
+
+			Opaque = color.A == 0xff;
 		}
 
+		public bool Opaque { get; }
 		public WPos Pos { get; }
 
 		public int ZOffset => 0;

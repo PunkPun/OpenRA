@@ -48,6 +48,7 @@ namespace OpenRA.Mods.Common.Graphics
 			shadowPalette = shadow;
 		}
 
+		public bool Opaque => Palette.Palette.Opaque;
 		public WPos Pos { get; }
 		public PaletteReference Palette { get; }
 		public int ZOffset { get; }
