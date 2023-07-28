@@ -17,7 +17,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Cnc.Graphics
 {
-	sealed class TeslaZapRenderable : IPalettedRenderable, IFinalizedRenderable
+	sealed class TeslaZapRenderable : IPalettedRenderable
 	{
 		static readonly int[][] Steps = new[]
 		{
@@ -37,9 +37,9 @@ namespace OpenRA.Mods.Cnc.Graphics
 		readonly string brightSequence;
 		readonly int brightZaps, dimZaps;
 
-		readonly WPos cachedPos;
-		readonly WVec cachedLength;
-		IEnumerable<IFinalizedRenderable> cache;
+		readonly WPos cachedPos = WPos.Zero;
+		readonly WVec cachedLength = WVec.Zero;
+		IEnumerable<IRenderable> cache = Array.Empty<IRenderable>();
 
 		public TeslaZapRenderable(WPos pos, int zOffset, in WVec length, string image, string brightSequence, int brightZaps, string dimSequence, int dimZaps, string palette)
 		{
@@ -52,10 +52,6 @@ namespace OpenRA.Mods.Cnc.Graphics
 			this.dimZaps = dimZaps;
 			this.dimSequence = dimSequence;
 			this.brightSequence = brightSequence;
-
-			cachedPos = WPos.Zero;
-			cachedLength = WVec.Zero;
-			cache = Array.Empty<IFinalizedRenderable>();
 		}
 
 		public WPos Pos { get; }
@@ -72,7 +68,6 @@ namespace OpenRA.Mods.Cnc.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return new TeslaZapRenderable(Pos + vec, ZOffset, length, image, brightSequence, brightZaps, dimSequence, dimZaps, palette); }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void RenderDebugGeometry(WorldRenderer wr) { }
 		public void Render(WorldRenderer wr)
 		{
@@ -88,7 +83,7 @@ namespace OpenRA.Mods.Cnc.Graphics
 
 		public Rectangle ScreenBounds(WorldRenderer wr) { return Rectangle.Empty; }
 
-		public IEnumerable<IFinalizedRenderable> GenerateRenderables(WorldRenderer wr)
+		public IEnumerable<IRenderable> GenerateRenderables(WorldRenderer wr)
 		{
 			var bright = wr.World.Map.Sequences.GetSequence(image, brightSequence);
 			var dim = wr.World.Map.Sequences.GetSequence(image, dimSequence);
@@ -104,12 +99,12 @@ namespace OpenRA.Mods.Cnc.Graphics
 					yield return z;
 		}
 
-		static IEnumerable<IFinalizedRenderable> DrawZapWandering(WorldRenderer wr, float2 from, float2 to, ISpriteSequence s, string pal)
+		static IEnumerable<IRenderable> DrawZapWandering(WorldRenderer wr, float2 from, float2 to, ISpriteSequence s, string pal)
 		{
 			var dist = to - from;
 			var norm = 1f / dist.Length * new float2(-dist.Y, dist.X);
 
-			var renderables = new List<IFinalizedRenderable>();
+			var renderables = new List<IRenderable>();
 			if (Game.CosmeticRandom.Next(2) != 0)
 			{
 				var p1 = from + 1 / 3f * dist + WDist.FromPDF(Game.CosmeticRandom, 2).Length * dist.Length / 4096 * norm;
@@ -130,12 +125,12 @@ namespace OpenRA.Mods.Cnc.Graphics
 			return renderables;
 		}
 
-		static IEnumerable<IFinalizedRenderable> DrawZap(WorldRenderer wr, float2 from, float2 to, ISpriteSequence s, out float2 p, string palette)
+		static IEnumerable<IRenderable> DrawZap(WorldRenderer wr, float2 from, float2 to, ISpriteSequence s, out float2 p, string palette)
 		{
 			var dist = to - from;
 			var q = new float2(-dist.Y, dist.X);
 			var c = -float2.Dot(from, q);
-			var rs = new List<IFinalizedRenderable>();
+			var rs = new List<IRenderable>();
 			var z = from;
 			var pal = wr.Palette(palette);
 
@@ -146,7 +141,7 @@ namespace OpenRA.Mods.Cnc.Graphics
 
 				var pos = wr.ProjectedPosition((z + new float2(step[2], step[3])).ToInt2());
 				var tintModifiers = s.IgnoreWorldTint ? TintModifiers.IgnoreWorldTint : TintModifiers.None;
-				rs.Add(new SpriteRenderable(s.GetSprite(step[4]), pos, WVec.Zero, 0, pal, 1f, s.GetAlpha(step[4]), float3.Ones, tintModifiers, true).PrepareRender(wr));
+				rs.Add(new SpriteRenderable(s.GetSprite(step[4]), pos, WVec.Zero, 0, pal, 1f, s.GetAlpha(step[4]), float3.Ones, tintModifiers, true));
 
 				z += new float2(step[0], step[1]);
 				if (rs.Count >= 1000)

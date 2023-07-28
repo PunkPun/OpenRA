@@ -15,7 +15,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class ContrailRenderable : IRenderable, IFinalizedRenderable
+	public class ContrailRenderable : IRenderable
 	{
 		const int MaxSmoothLength = 4;
 
@@ -64,7 +64,6 @@ namespace OpenRA.Mods.Common.Graphics
 
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			// Note: The length of contrail is now actually the number of the points to draw the contrail

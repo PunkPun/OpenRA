@@ -14,7 +14,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class CircleAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class CircleAnnotationRenderable : IRenderable
 	{
 		const int CircleSegments = 32;
 		static readonly WVec[] FacingOffsets = Exts.MakeArray(CircleSegments, i => new WVec(1024, 0, 0).Rotate(WRot.FromFacing(i * 256 / CircleSegments)));
@@ -40,7 +40,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return new CircleAnnotationRenderable(Pos + vec, radius, width, color, filled); }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			var cr = Game.Renderer.RgbaColorRenderer;

@@ -13,7 +13,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
 {
-	public class UISpriteRenderable : IRenderable, IPalettedRenderable, IFinalizedRenderable
+	public class UISpriteRenderable : IRenderable, IPalettedRenderable
 	{
 		readonly Sprite sprite;
 		readonly int2 screenPos;
@@ -52,7 +52,6 @@ namespace OpenRA.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return this; }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			Game.Renderer.SpriteRenderer.DrawSprite(sprite, Palette, screenPos, scale, float3.Ones, alpha, rotation);

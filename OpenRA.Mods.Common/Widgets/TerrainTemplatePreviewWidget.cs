@@ -72,7 +72,7 @@ namespace OpenRA.Mods.Common.Widgets
 			var origin = RenderOrigin + PreviewOffset + new int2(RenderBounds.Size.Width / 2, RenderBounds.Size.Height / 2);
 
 			foreach (var r in terrainRenderer.RenderUIPreview(worldRenderer, template, origin, scale))
-				r.PrepareRender(worldRenderer).Render(worldRenderer);
+				r.Render(worldRenderer);
 		}
 	}
 }

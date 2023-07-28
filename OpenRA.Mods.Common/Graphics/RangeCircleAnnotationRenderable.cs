@@ -14,7 +14,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class RangeCircleAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class RangeCircleAnnotationRenderable : IRenderable
 	{
 		const int RangeCircleSegments = 32;
 		static readonly Int32Matrix4x4[] RangeCircleStartRotations = Exts.MakeArray(RangeCircleSegments, i => WRot.FromFacing(8 * i).AsMatrix());
@@ -44,7 +44,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return new RangeCircleAnnotationRenderable(Pos + vec, radius, ZOffset, color, width, borderColor, borderWidth); }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			DrawRangeCircle(wr, Pos, radius, width, color, borderWidth, borderColor);

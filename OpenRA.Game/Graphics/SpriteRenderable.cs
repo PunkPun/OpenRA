@@ -15,7 +15,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
 {
-	public class SpriteRenderable : IPalettedRenderable, IModifyableRenderable, IFinalizedRenderable
+	public class SpriteRenderable : IPalettedRenderable, IModifyableRenderable
 	{
 		public static readonly IEnumerable<IRenderable> None = Array.Empty<IRenderable>();
 
@@ -96,7 +96,6 @@ namespace OpenRA.Graphics
 			return wr.Screen3DPxPosition(pos) + wr.ScreenPxOffset(Offset) - new float3((int)s.X, (int)s.Y, s.Z);
 		}
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			var wsr = Game.Renderer.WorldSpriteRenderer;

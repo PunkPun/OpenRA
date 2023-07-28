@@ -46,8 +46,6 @@ namespace OpenRA.Mods.Common.Widgets
 
 		protected readonly WorldRenderer WorldRenderer;
 
-		IFinalizedRenderable renderable;
-
 		[ObjectCreator.UseCtor]
 		public ModelWidget(WorldRenderer worldRenderer)
 		{
@@ -98,14 +96,6 @@ namespace OpenRA.Mods.Common.Widgets
 		PaletteReference paletteReferenceShadow;
 
 		public override void Draw()
-		{
-			if (renderable == null)
-				return;
-
-			renderable.Render(WorldRenderer);
-		}
-
-		public override void PrepareRenderables()
 		{
 			var voxel = GetVoxel();
 			var palette = GetPalette();
@@ -210,7 +200,7 @@ namespace OpenRA.Mods.Common.Widgets
 				WRot.None, cachedLightAmbientColor, cachedLightDiffuseColor,
 				paletteReferencePlayer, paletteReferenceNormals, paletteReferenceShadow);
 
-			renderable = modelRenderable.PrepareRender(WorldRenderer);
+			modelRenderable.Render(WorldRenderer);
 		}
 	}
 }

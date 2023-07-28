@@ -39,9 +39,9 @@ namespace OpenRA.Graphics
 		readonly Func<string, PaletteReference> createPaletteReference;
 		readonly bool enableDepthBuffer;
 
-		readonly List<IFinalizedRenderable> preparedRenderables = new();
-		readonly List<IFinalizedRenderable> preparedOverlayRenderables = new();
-		readonly List<IFinalizedRenderable> preparedAnnotationRenderables = new();
+		readonly List<IRenderable> preparedRenderables = new();
+		readonly List<IRenderable> preparedOverlayRenderables = new();
+		readonly List<IRenderable> preparedAnnotationRenderables = new();
 
 		readonly List<IRenderable> renderablesBuffer = new();
 
@@ -142,7 +142,7 @@ namespace OpenRA.Graphics
 
 			// Renderables must be ordered using a stable sorting algorithm to avoid flickering artefacts
 			foreach (var renderable in renderablesBuffer.OrderBy(RenderableZPositionComparisonKey))
-				preparedRenderables.Add(renderable.PrepareRender(this));
+				preparedRenderables.Add(renderable);
 
 			// PERF: Reuse collection to avoid allocations.
 			renderablesBuffer.Clear();
@@ -157,7 +157,7 @@ namespace OpenRA.Graphics
 					return;
 
 				foreach (var renderable in trait.RenderAboveShroud(actor, this))
-					preparedOverlayRenderables.Add(renderable.PrepareRender(this));
+					preparedOverlayRenderables.Add(renderable);
 			});
 
 			foreach (var a in World.Selection.Actors)
@@ -171,7 +171,7 @@ namespace OpenRA.Graphics
 						continue;
 
 					foreach (var renderable in t.RenderAboveShroud(a, this))
-						preparedOverlayRenderables.Add(renderable.PrepareRender(this));
+						preparedOverlayRenderables.Add(renderable);
 				}
 			}
 
@@ -181,12 +181,12 @@ namespace OpenRA.Graphics
 					continue;
 
 				foreach (var renderable in ea.RenderAboveShroud(this))
-					preparedOverlayRenderables.Add(renderable.PrepareRender(this));
+					preparedOverlayRenderables.Add(renderable);
 			}
 
 			if (World.OrderGenerator != null)
 				foreach (var renderable in World.OrderGenerator.RenderAboveShroud(this, World))
-					preparedOverlayRenderables.Add(renderable.PrepareRender(this));
+					preparedOverlayRenderables.Add(renderable);
 		}
 
 		// PERF: Avoid LINQ.
@@ -198,7 +198,7 @@ namespace OpenRA.Graphics
 					return;
 
 				foreach (var renderAnnotation in trait.RenderAnnotations(actor, this))
-					preparedAnnotationRenderables.Add(renderAnnotation.PrepareRender(this));
+					preparedAnnotationRenderables.Add(renderAnnotation);
 			});
 
 			foreach (var a in World.Selection.Actors)
@@ -212,7 +212,7 @@ namespace OpenRA.Graphics
 						continue;
 
 					foreach (var renderAnnotation in t.RenderAnnotations(a, this))
-						preparedAnnotationRenderables.Add(renderAnnotation.PrepareRender(this));
+						preparedAnnotationRenderables.Add(renderAnnotation);
 				}
 			}
 
@@ -222,15 +222,15 @@ namespace OpenRA.Graphics
 					continue;
 
 				foreach (var renderAnnotation in ea.RenderAnnotation(this))
-					preparedAnnotationRenderables.Add(renderAnnotation.PrepareRender(this));
+					preparedAnnotationRenderables.Add(renderAnnotation);
 			}
 
 			if (World.OrderGenerator != null)
 				foreach (var renderAnnotation in World.OrderGenerator.RenderAnnotations(this, World))
-					preparedAnnotationRenderables.Add(renderAnnotation.PrepareRender(this));
+					preparedAnnotationRenderables.Add(renderAnnotation);
 		}
 
-		public void PrepareRenderables()
+		public void Draw()
 		{
 			if (World.WorldActor.Disposed)
 				return;
@@ -245,12 +245,6 @@ namespace OpenRA.Graphics
 			GenerateAnnotationRenderables();
 
 			onScreenActors.Clear();
-		}
-
-		public void Draw()
-		{
-			if (World.WorldActor.Disposed)
-				return;
 
 			debugVis.Value?.UpdateDepthBuffer();
 

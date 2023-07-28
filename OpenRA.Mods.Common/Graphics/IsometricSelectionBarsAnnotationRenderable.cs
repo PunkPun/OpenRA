@@ -15,7 +15,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class IsometricSelectionBarsAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class IsometricSelectionBarsAnnotationRenderable : IRenderable
 	{
 		const int BarWidth = 3;
 		const int BarHeight = 4;
@@ -133,7 +133,6 @@ namespace OpenRA.Mods.Common.Graphics
 				health.DamageState == DamageState.Heavy ? Color.Yellow : Color.LimeGreen;
 		}
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			if (!actor.IsInWorld || actor.IsDead)
