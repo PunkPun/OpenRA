@@ -661,24 +661,13 @@ namespace OpenRA
 			{
 				++RenderFrame;
 
-				// Prepare renderables (i.e. render voxels) before calling BeginFrame
-				using (new PerfSample("render_prepare"))
-				{
-					// World rendering is disabled while the loading screen is displayed
-					if (worldRenderer != null && !worldRenderer.World.IsLoadingGameSave)
-					{
-						worldRenderer.Viewport.Tick();
-						worldRenderer.PrepareRenderables();
-					}
-
-					Ui.PrepareRenderables();
-				}
-
 				// worldRenderer is null during the initial install/download screen
 				// World rendering is disabled while the loading screen is displayed
 				// Use worldRenderer.World instead of OrderManager.World to avoid a rendering mismatch while processing orders
 				if (worldRenderer != null && !worldRenderer.World.IsLoadingGameSave)
 				{
+					worldRenderer.Viewport.Tick();
+
 					Renderer.BeginWorld(worldRenderer.Viewport.Rectangle);
 					Sound.SetListenerPosition(worldRenderer.Viewport.CenterPosition);
 					using (new PerfSample("render_world"))

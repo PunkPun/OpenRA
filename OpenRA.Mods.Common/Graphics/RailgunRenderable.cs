@@ -15,7 +15,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class RailgunHelixRenderable : IRenderable, IFinalizedRenderable
+	public class RailgunHelixRenderable : IRenderable
 	{
 		readonly Railgun railgun;
 		readonly RailgunInfo info;
@@ -45,8 +45,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable WithZOffset(int newOffset) { return new RailgunHelixRenderable(Pos, newOffset, railgun, info, ticks); }
 		public IRenderable OffsetBy(in WVec vec) { return new RailgunHelixRenderable(Pos + vec, ZOffset, railgun, info, ticks); }
 		public IRenderable AsDecoration() { return this; }
-
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			if (railgun.ForwardStep == WVec.Zero)

@@ -62,24 +62,16 @@ namespace OpenRA.Mods.Common.Widgets
 			PreviewOffset = -new int2((int)(b.Left * viewportSizes.DefaultScale), (int)(b.Top * viewportSizes.DefaultScale)) - IdealPreviewSize / 2;
 		}
 
-		IFinalizedRenderable[] renderables;
-		public override void PrepareRenderables()
+		public override void Draw()
 		{
 			var scale = GetScale() * viewportSizes.DefaultScale;
 			var origin = RenderOrigin + PreviewOffset + new int2(RenderBounds.Size.Width / 2, RenderBounds.Size.Height / 2);
 
-			renderables = preview
-				.SelectMany(p => p.RenderUI(worldRenderer, origin, scale))
-				.OrderBy(WorldRenderer.RenderableZPositionComparisonKey)
-				.Select(r => r.PrepareRender(worldRenderer))
-				.ToArray();
-		}
-
-		public override void Draw()
-		{
 			Game.Renderer.EnableAntialiasingFilter();
-			foreach (var r in renderables)
+
+			foreach (var r in preview.SelectMany(p => p.RenderUI(worldRenderer, origin, scale)).OrderBy(WorldRenderer.RenderableZPositionComparisonKey))
 				r.Render(worldRenderer);
+
 			Game.Renderer.DisableAntialiasingFilter();
 		}
 

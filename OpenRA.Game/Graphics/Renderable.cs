@@ -24,7 +24,9 @@ namespace OpenRA.Graphics
 		IRenderable OffsetBy(in WVec offset);
 		IRenderable AsDecoration();
 
-		IFinalizedRenderable PrepareRender(WorldRenderer wr);
+		void Render(WorldRenderer wr);
+		void RenderDebugGeometry(WorldRenderer wr);
+		Rectangle ScreenBounds(WorldRenderer wr);
 	}
 
 	public interface IPalettedRenderable : IRenderable
@@ -49,12 +51,5 @@ namespace OpenRA.Graphics
 
 		IModifyableRenderable WithAlpha(float newAlpha);
 		IModifyableRenderable WithTint(in float3 newTint, TintModifiers newTintModifiers);
-	}
-
-	public interface IFinalizedRenderable
-	{
-		void Render(WorldRenderer wr);
-		void RenderDebugGeometry(WorldRenderer wr);
-		Rectangle ScreenBounds(WorldRenderer wr);
 	}
 }

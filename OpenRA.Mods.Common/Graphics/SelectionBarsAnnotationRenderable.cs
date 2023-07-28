@@ -15,7 +15,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class SelectionBarsAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class SelectionBarsAnnotationRenderable : IRenderable
 	{
 		readonly Actor actor;
 		readonly Rectangle decorationBounds;
@@ -135,7 +135,6 @@ namespace OpenRA.Mods.Common.Graphics
 			}
 		}
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			if (!actor.IsInWorld || actor.IsDead)

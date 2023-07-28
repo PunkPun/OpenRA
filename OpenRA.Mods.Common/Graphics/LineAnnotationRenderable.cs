@@ -14,7 +14,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class LineAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class LineAnnotationRenderable : IRenderable
 	{
 		readonly WPos end;
 		readonly float width;
@@ -46,7 +46,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return new LineAnnotationRenderable(Pos + vec, end + vec, width, startColor, endColor); }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			Game.Renderer.RgbaColorRenderer.DrawLine(

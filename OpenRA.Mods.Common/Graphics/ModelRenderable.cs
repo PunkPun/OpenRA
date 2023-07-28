@@ -17,7 +17,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class ModelRenderable : IPalettedRenderable, IModifyableRenderable, IFinalizedRenderable
+	public class ModelRenderable : IPalettedRenderable, IModifyableRenderable
 	{
 		readonly IEnumerable<ModelAnimation> models;
 		readonly WRot camera;
@@ -109,8 +109,6 @@ namespace OpenRA.Mods.Common.Graphics
 				lightSource, lightAmbientColor, lightDiffuseColor,
 				Palette, normalsPalette, shadowPalette, Alpha, newTint, newTintModifiers);
 		}
-
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 
 		public void Render(WorldRenderer wr)
 		{

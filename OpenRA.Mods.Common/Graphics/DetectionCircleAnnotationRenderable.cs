@@ -14,7 +14,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class DetectionCircleAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class DetectionCircleAnnotationRenderable : IRenderable
 	{
 		readonly WDist radius;
 		readonly int trailCount;
@@ -58,7 +58,6 @@ namespace OpenRA.Mods.Common.Graphics
 
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			var cr = Game.Renderer.RgbaColorRenderer;

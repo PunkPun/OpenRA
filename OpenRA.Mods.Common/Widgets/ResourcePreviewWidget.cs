@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Widgets
 				(int)(0.5f * (RenderBounds.Size.Height - scale * tileSize.Height)));
 
 			foreach (var r in resourceRenderer.RenderUIPreview(worldRenderer, resourceType, origin, scale))
-				r.PrepareRender(worldRenderer).Render(worldRenderer);
+				r.Render(worldRenderer);
 		}
 	}
 }

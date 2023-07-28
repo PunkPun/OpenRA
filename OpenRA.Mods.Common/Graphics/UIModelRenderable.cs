@@ -17,7 +17,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class UIModelRenderable : IRenderable, IPalettedRenderable, IFinalizedRenderable
+	public class UIModelRenderable : IRenderable, IPalettedRenderable
 	{
 		readonly IEnumerable<ModelAnimation> models;
 		readonly int2 screenPos;
@@ -65,7 +65,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return this; }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr) { }
 
 		public void RenderDebugGeometry(WorldRenderer wr) { }

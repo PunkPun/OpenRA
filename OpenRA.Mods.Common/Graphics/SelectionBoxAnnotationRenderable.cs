@@ -14,7 +14,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class SelectionBoxAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class SelectionBoxAnnotationRenderable : IRenderable
 	{
 		readonly Rectangle decorationBounds;
 		readonly Color color;
@@ -38,7 +38,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return new SelectionBoxAnnotationRenderable(Pos + vec, decorationBounds, color); }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			var tl = wr.Viewport.WorldToViewPx(new float2(decorationBounds.Left, decorationBounds.Top)).ToFloat2();

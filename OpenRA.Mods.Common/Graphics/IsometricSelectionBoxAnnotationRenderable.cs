@@ -15,7 +15,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class IsometricSelectionBoxAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class IsometricSelectionBoxAnnotationRenderable : IRenderable
 	{
 		static readonly float2 TLOffset = new(-12, -6);
 		static readonly float2 TROffset = new(12, -6);
@@ -54,8 +54,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable WithZOffset(int newOffset) { return this; }
 		public IRenderable OffsetBy(in WVec vec) { return new IsometricSelectionBoxAnnotationRenderable(Pos + vec, bounds, color); }
 		public IRenderable AsDecoration() { return this; }
-
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 
 		public void Render(WorldRenderer wr)
 		{

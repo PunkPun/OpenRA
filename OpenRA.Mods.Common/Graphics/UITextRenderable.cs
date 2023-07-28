@@ -15,7 +15,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class UITextRenderable : IRenderable, IFinalizedRenderable
+	public class UITextRenderable : IRenderable
 	{
 		readonly SpriteFont font;
 		readonly int2 screenPos;
@@ -50,7 +50,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return new UITextRenderable(font, Pos + vec, screenPos, ZOffset, color, text); }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			font.DrawTextWithContrast(text, screenPos, color, bgDark, bgLight, 1);

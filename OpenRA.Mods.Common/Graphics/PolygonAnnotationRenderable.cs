@@ -15,7 +15,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class PolygonAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class PolygonAnnotationRenderable : IRenderable
 	{
 		readonly WPos[] vertices;
 		readonly int width;
@@ -44,7 +44,6 @@ namespace OpenRA.Mods.Common.Graphics
 
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			var verts = vertices.Select(v => wr.Viewport.WorldToViewPx(wr.ScreenPosition(v)).ToFloat2()).ToArray();

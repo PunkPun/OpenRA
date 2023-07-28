@@ -15,7 +15,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
 {
-	public class TargetLineRenderable : IRenderable, IFinalizedRenderable
+	public class TargetLineRenderable : IRenderable
 	{
 		readonly IEnumerable<WPos> waypoints;
 		readonly Color color;
@@ -45,7 +45,6 @@ namespace OpenRA.Graphics
 
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			if (!waypoints.Any())

@@ -15,7 +15,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class TextAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class TextAnnotationRenderable : IRenderable
 	{
 		readonly SpriteFont font;
 		readonly Color color;
@@ -48,7 +48,6 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return new TextAnnotationRenderable(font, Pos + vec, ZOffset, color, text); }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			var screenPos = wr.Viewport.WorldToViewPx(wr.ScreenPosition(Pos)) - 0.5f * font.Measure(text).ToFloat2();
