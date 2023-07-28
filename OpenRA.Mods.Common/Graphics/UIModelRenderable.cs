@@ -17,7 +17,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public class UIModelRenderable : IRenderable, IPalettedRenderable
+	public class UIModelRenderable : IRenderable, IPalettedRenderable, IFinalizedRenderable
 	{
 		readonly IEnumerable<ModelAnimation> models;
 		readonly int2 screenPos;
@@ -65,87 +65,56 @@ namespace OpenRA.Mods.Common.Graphics
 		public IRenderable OffsetBy(in WVec vec) { return this; }
 		public IRenderable AsDecoration() { return this; }
 
-		public IFinalizedRenderable PrepareRender(WorldRenderer wr)
+		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
+		public void Render(WorldRenderer wr) { }
+
+		public void RenderDebugGeometry(WorldRenderer wr) { }
+
+		public Rectangle ScreenBounds(WorldRenderer wr)
 		{
-			return new FinalizedUIModelRenderable(wr, this);
+			return Screen3DBounds(wr).Bounds;
 		}
 
-		sealed class FinalizedUIModelRenderable : IFinalizedRenderable
+		static readonly uint[] CornerXIndex = { 0, 0, 0, 0, 3, 3, 3, 3 };
+		static readonly uint[] CornerYIndex = { 1, 1, 4, 4, 1, 1, 4, 4 };
+		static readonly uint[] CornerZIndex = { 2, 5, 2, 5, 2, 5, 2, 5 };
+		(Rectangle Bounds, float2 Z) Screen3DBounds(WorldRenderer wr)
 		{
-			readonly UIModelRenderable model;
-			readonly ModelRenderProxy renderProxy;
+			var pxOrigin = screenPos;
+			var draw = models.Where(v => v.IsVisible);
+			var scaleTransform = OpenRA.Graphics.Util.ScaleMatrix(scale, scale, scale);
+			var cameraTransform = OpenRA.Graphics.Util.MakeFloatMatrix(camera.AsMatrix());
 
-			public FinalizedUIModelRenderable(WorldRenderer wr, UIModelRenderable model)
+			var minX = float.MaxValue;
+			var minY = float.MaxValue;
+			var minZ = float.MaxValue;
+			var maxX = float.MinValue;
+			var maxY = float.MinValue;
+			var maxZ = float.MinValue;
+
+			foreach (var v in draw)
 			{
-				this.model = model;
-				var draw = model.models.Where(v => v.IsVisible);
+				var bounds = v.Model.Bounds(v.FrameFunc());
+				var rotation = OpenRA.Graphics.Util.MakeFloatMatrix(v.RotationFunc().AsMatrix());
+				var worldTransform = OpenRA.Graphics.Util.MatrixMultiply(scaleTransform, rotation);
 
-				renderProxy = Game.Renderer.WorldModelRenderer.RenderAsync(
-					wr, draw, model.camera, model.scale, WRot.None, model.lightSource,
-					model.lightAmbientColor, model.lightDiffuseColor,
-					model.Palette, model.normalsPalette, model.shadowPalette);
-			}
+				var pxPos = pxOrigin + wr.ScreenVectorComponents(v.OffsetFunc());
+				var screenTransform = OpenRA.Graphics.Util.MatrixMultiply(cameraTransform, worldTransform);
 
-			public void Render(WorldRenderer wr)
-			{
-				var pxOrigin = model.screenPos;
-				var psb = renderProxy.ProjectedShadowBounds;
-				var sa = pxOrigin + psb[0];
-				var sb = pxOrigin + psb[2];
-				var sc = pxOrigin + psb[1];
-				var sd = pxOrigin + psb[3];
-				Game.Renderer.RgbaSpriteRenderer.DrawSprite(renderProxy.ShadowSprite, sa, sb, sc, sd, float3.Ones, 1f);
-				Game.Renderer.RgbaSpriteRenderer.DrawSprite(renderProxy.Sprite, pxOrigin - 0.5f * renderProxy.Sprite.Size);
-			}
-
-			public void RenderDebugGeometry(WorldRenderer wr) { }
-
-			public Rectangle ScreenBounds(WorldRenderer wr)
-			{
-				return Screen3DBounds(wr).Bounds;
-			}
-
-			static readonly uint[] CornerXIndex = { 0, 0, 0, 0, 3, 3, 3, 3 };
-			static readonly uint[] CornerYIndex = { 1, 1, 4, 4, 1, 1, 4, 4 };
-			static readonly uint[] CornerZIndex = { 2, 5, 2, 5, 2, 5, 2, 5 };
-			(Rectangle Bounds, float2 Z) Screen3DBounds(WorldRenderer wr)
-			{
-				var pxOrigin = model.screenPos;
-				var draw = model.models.Where(v => v.IsVisible);
-				var scaleTransform = OpenRA.Graphics.Util.ScaleMatrix(model.scale, model.scale, model.scale);
-				var cameraTransform = OpenRA.Graphics.Util.MakeFloatMatrix(model.camera.AsMatrix());
-
-				var minX = float.MaxValue;
-				var minY = float.MaxValue;
-				var minZ = float.MaxValue;
-				var maxX = float.MinValue;
-				var maxY = float.MinValue;
-				var maxZ = float.MinValue;
-
-				foreach (var v in draw)
+				for (var i = 0; i < 8; i++)
 				{
-					var bounds = v.Model.Bounds(v.FrameFunc());
-					var rotation = OpenRA.Graphics.Util.MakeFloatMatrix(v.RotationFunc().AsMatrix());
-					var worldTransform = OpenRA.Graphics.Util.MatrixMultiply(scaleTransform, rotation);
-
-					var pxPos = pxOrigin + wr.ScreenVectorComponents(v.OffsetFunc());
-					var screenTransform = OpenRA.Graphics.Util.MatrixMultiply(cameraTransform, worldTransform);
-
-					for (var i = 0; i < 8; i++)
-					{
-						var vec = new float[] { bounds[CornerXIndex[i]], bounds[CornerYIndex[i]], bounds[CornerZIndex[i]], 1 };
-						var screen = OpenRA.Graphics.Util.MatrixVectorMultiply(screenTransform, vec);
-						minX = Math.Min(minX, pxPos.X + screen[0]);
-						minY = Math.Min(minY, pxPos.Y + screen[1]);
-						minZ = Math.Min(minZ, pxPos.Z + screen[2]);
-						maxX = Math.Max(maxX, pxPos.X + screen[0]);
-						maxY = Math.Max(maxY, pxPos.Y + screen[1]);
-						maxZ = Math.Max(minZ, pxPos.Z + screen[2]);
-					}
+					var vec = new float[] { bounds[CornerXIndex[i]], bounds[CornerYIndex[i]], bounds[CornerZIndex[i]], 1 };
+					var screen = OpenRA.Graphics.Util.MatrixVectorMultiply(screenTransform, vec);
+					minX = Math.Min(minX, pxPos.X + screen[0]);
+					minY = Math.Min(minY, pxPos.Y + screen[1]);
+					minZ = Math.Min(minZ, pxPos.Z + screen[2]);
+					maxX = Math.Max(maxX, pxPos.X + screen[0]);
+					maxY = Math.Max(maxY, pxPos.Y + screen[1]);
+					maxZ = Math.Max(minZ, pxPos.Z + screen[2]);
 				}
-
-				return (Rectangle.FromLTRB((int)minX, (int)minY, (int)maxX, (int)maxY), new float2(minZ, maxZ));
 			}
+
+			return (Rectangle.FromLTRB((int)minX, (int)minY, (int)maxX, (int)maxY), new float2(minZ, maxZ));
 		}
 	}
 }
