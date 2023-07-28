@@ -113,6 +113,7 @@ namespace OpenRA
 			if (Fonts != null)
 				foreach (var font in Fonts.Values)
 					font.Dispose();
+
 			using (new PerfTimer("SpriteFonts"))
 			{
 				fontSheetBuilder?.Dispose();
@@ -253,7 +254,7 @@ namespace OpenRA
 			if (lastWorldViewport != worldViewport)
 			{
 				WorldSpriteRenderer.SetViewportParams(worldSheet.Size, WorldDownscaleFactor, depthMargin, worldViewport.Location);
-				WorldModelRenderer.SetViewportParams();
+				WorldModelRenderer.SetViewportParams(worldSheet.Size, WorldDownscaleFactor, depthMargin, worldViewport.Location);
 
 				lastWorldViewport = worldViewport;
 			}
