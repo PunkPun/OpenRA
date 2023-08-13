@@ -148,6 +148,8 @@ namespace OpenRA.Server
 		GameInformation gameInfo;
 		readonly List<GameInformation.Player> worldPlayers = new();
 		readonly Stopwatch pingUpdated = Stopwatch.StartNew();
+
+		public readonly VoteKickTracker VoteKickTracker;
 		readonly PlayerMessageTracker playerMessageTracker;
 
 		public ServerState State
@@ -318,6 +320,7 @@ namespace OpenRA.Server
 			MapStatusCache = new MapStatusCache(modData, MapStatusChanged, type == ServerType.Dedicated && settings.EnableLintChecks);
 
 			playerMessageTracker = new PlayerMessageTracker(this, DispatchOrdersToClient, SendLocalizedMessageTo);
+			VoteKickTracker = new VoteKickTracker(this);
 
 			LobbyInfo = new Session
 			{

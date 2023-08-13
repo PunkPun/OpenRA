@@ -22,7 +22,7 @@ using S = OpenRA.Server.Server;
 
 namespace OpenRA.Mods.Common.Server
 {
-	public class LobbyCommands : ServerTrait, IInterpretCommand, INotifyServerStart, INotifyServerEmpty, IClientJoined
+	public class LobbyCommands : ServerTrait, IInterpretCommand, INotifyServerStart, INotifyServerEmpty, IClientJoined, OpenRA.Server.ITick
 	{
 		[TranslationReference]
 		const string CustomRules = "notification-custom-rules";
@@ -56,6 +56,9 @@ namespace OpenRA.Mods.Common.Server
 
 		[TranslationReference("admin", "player")]
 		const string Kicked = "notification-kicked";
+
+		[TranslationReference("player")]
+		const string AnonymousKicked = "notification-anonymous-kicked";
 
 		[TranslationReference("admin", "player")]
 		const string TempBan = "notification-temp-ban";
@@ -156,6 +159,9 @@ namespace OpenRA.Mods.Common.Server
 		[TranslationReference]
 		const string YouWereKicked = "notification-you-were-kicked";
 
+		[TranslationReference]
+		const string VoteKickDisabled = "notification-vote-kick-disabled";
+
 		readonly IDictionary<string, Func<S, Connection, Session.Client, string, bool>> commandHandlers = new Dictionary<string, Func<S, Connection, Session.Client, string, bool>>
 		{
 			{ "state", State },
@@ -170,6 +176,7 @@ namespace OpenRA.Mods.Common.Server
 			{ "option", Option },
 			{ "assignteams", AssignTeams },
 			{ "kick", Kick },
+			{ "vote_kick", VoteKick },
 			{ "make_admin", MakeAdmin },
 			{ "make_spectator", MakeSpectator },
 			{ "name", Name },
@@ -207,7 +214,7 @@ namespace OpenRA.Mods.Common.Server
 			lock (server.LobbyInfo)
 			{
 				// Kick command is always valid for the host
-				if (command.StartsWith("kick ", StringComparison.Ordinal))
+				if (command.StartsWith("kick ", StringComparison.Ordinal) || command.StartsWith("vote_kick ", StringComparison.Ordinal))
 					return true;
 
 				if (server.State == ServerState.GameStarted)
@@ -829,6 +836,62 @@ namespace OpenRA.Mods.Common.Server
 				return true;
 			}
 		}
+
+		static bool VoteKick(S server, Connection conn, Session.Client client, string s)
+		{
+			lock (server.LobbyInfo)
+			{
+				var split = s.Split(' ');
+				if (split.Length != 2)
+				{
+					server.SendLocalizedMessageTo(conn, MalformedCommand, Translation.Arguments("command", "vote_kick"));
+					return true;
+				}
+
+				if (!server.Settings.EnableVoteKick)
+				{
+					server.SendLocalizedMessageTo(conn, VoteKickDisabled);
+					return true;
+				}
+
+				var kickConn = Exts.TryParseInt32Invariant(split[0], out var kickClientID)
+					? server.Conns.SingleOrDefault(c => server.GetClient(c)?.Index == kickClientID) : null;
+
+				if (kickConn == null)
+				{
+					server.SendLocalizedMessageTo(conn, KickNone);
+					return true;
+				}
+
+				var kickClient = server.GetClient(kickConn);
+				if (client == kickClient)
+				{
+					server.SendLocalizedMessageTo(conn, NoKickSelf);
+					return true;
+				}
+
+				if (!bool.TryParse(split[1], out var vote))
+				{
+					server.SendLocalizedMessageTo(conn, MalformedCommand, Translation.Arguments("command", "vote_kick"));
+					return true;
+				}
+
+				if (server.VoteKickTracker.VoteKick(conn, client, kickConn, kickClient, kickClientID, vote))
+				{
+					Log.Write("server", $"Kicking client {kickClientID}.");
+					server.SendLocalizedMessage(AnonymousKicked, Translation.Arguments("player", kickClient.Name));
+					server.SendOrderTo(kickConn, "ServerError", YouWereKicked);
+					server.DropClient(kickConn);
+
+					server.SyncLobbyClients();
+					server.SyncLobbySlots();
+				}
+
+				return true;
+			}
+		}
+
+		void OpenRA.Server.ITick.Tick(S server) => server.VoteKickTracker.Tick();
 
 		static bool MakeAdmin(S server, Connection conn, Session.Client client, string s)
 		{
