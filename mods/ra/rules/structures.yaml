@@ -2063,6 +2063,11 @@ FIX:
 		HasMinibib: true
 	WithResupplyAnimation:
 		RequiresCondition: !build-incomplete
+	DockHost:
+		Type: Rearm
+	WithDockedOverlay:
+		RequiresCondition: !build-incomplete
+		Sequence: active
 	Power:
 		Amount: -30
 	ProvidesPrerequisite@buildingname:

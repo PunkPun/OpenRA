@@ -24,12 +24,10 @@ namespace OpenRA.Mods.Common.Activities
 		readonly Minelayer minelayer;
 		readonly AmmoPool[] ammoPools;
 		readonly IMove movement;
-		readonly IMoveInfo moveInfo;
-		readonly RearmableInfo rearmableInfo;
+		readonly DockClientManager dockClient;
+		readonly RearmableClient rearmable;
 
 		List<CPos> minefield;
-		bool returnToBase;
-		Actor rearmTarget;
 		bool layingMine;
 
 		public LayMines(Actor self, List<CPos> minefield = null)
@@ -37,8 +35,8 @@ namespace OpenRA.Mods.Common.Activities
 			minelayer = self.Trait<Minelayer>();
 			ammoPools = self.TraitsImplementing<AmmoPool>().ToArray();
 			movement = self.Trait<IMove>();
-			moveInfo = self.Info.TraitInfo<IMoveInfo>();
-			rearmableInfo = self.Info.TraitInfoOrDefault<RearmableInfo>();
+			dockClient = self.TraitOrDefault<DockClientManager>();
+			rearmable = self.TraitOrDefault<RearmableClient>();
 			this.minefield = minefield;
 		}
 
@@ -59,8 +57,6 @@ namespace OpenRA.Mods.Common.Activities
 
 		public override bool Tick(Actor self)
 		{
-			returnToBase = false;
-
 			if (IsCanceling)
 			{
 				if (layingMine)
@@ -85,20 +81,16 @@ namespace OpenRA.Mods.Common.Activities
 
 			if ((minefield == null || minefield.Contains(self.Location)) && CanLayMine(self, self.Location))
 			{
-				if (rearmableInfo != null && ammoPools.Any(p => p.Info.Name == minelayer.Info.AmmoPoolName && !p.HasAmmo))
+				if (rearmable != null && ammoPools.Any(p => p.Info.Name == minelayer.Info.AmmoPoolName && !p.HasAmmo))
 				{
-					// Rearm (and possibly repair) at rearm building, then back out here to refill the minefield some more
-					rearmTarget = self.World.Actors.Where(a => self.Owner.RelationshipWith(a.Owner) == PlayerRelationship.Ally && rearmableInfo.RearmActors.Contains(a.Info.Name))
-						.ClosestTo(self);
-
-					if (rearmTarget == null)
+					if (dockClient.IsTraitDisabled || !dockClient.DockingPossible(rearmable.GetDockType))
 						return true;
 
-					// Add a CloseEnough range of 512 to the Rearm/Repair activities in order to ensure that we're at the host actor
-					QueueChild(new MoveAdjacentTo(self, Target.FromActor(rearmTarget)));
-					QueueChild(movement.MoveTo(self.World.Map.CellContaining(rearmTarget.CenterPosition), ignoreActor: rearmTarget));
-					QueueChild(new Resupply(self, rearmTarget, new WDist(512)));
-					returnToBase = true;
+					var dock = dockClient.ClosestDock(null, rearmable.GetDockType);
+					if (!dock.HasValue)
+						return true;
+
+					QueueChild(new MoveToDock(self, dock.Value.Actor, dock.Value.Trait));
 					return false;
 				}
 
@@ -147,8 +139,9 @@ namespace OpenRA.Mods.Common.Activities
 
 		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
 		{
-			if (returnToBase)
-				yield return new TargetLineNode(Target.FromActor(rearmTarget), moveInfo.GetTargetLineColor());
+			if (ChildActivity is MoveToDock)
+				foreach (var t in ChildActivity.TargetLineNodes(self))
+					yield return t;
 
 			if (minefield == null || minefield.Count == 0)
 				yield break;

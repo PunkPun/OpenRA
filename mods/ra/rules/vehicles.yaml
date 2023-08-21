@@ -531,6 +531,8 @@ MNLY:
 		Mine: MINV
 		TileUnknownName: build-valid
 		TerrainTypes: Clear, Road, Beach, Ore, Gems, Rough, Bridge
+	RearmableClient:
+	DockClientManager:
 	MineImmune:
 	AmmoPool:
 		Ammo: 5
@@ -543,8 +545,6 @@ MNLY:
 		Weapon: ATMine
 	RenderSprites:
 		Image: MNLY
-	Rearmable:
-		RearmActors: fix
 	Targetable:
 		TargetTypes: GroundActor, Vehicle, Mine
 	WithAmmoPipsDecoration:
