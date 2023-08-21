@@ -185,7 +185,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!dock.HasValue)
 					return;
 
-				self.QueueActivity(order.Queued, new MoveToDock(self, dock.Value.Actor, dock.Value.Trait));
+				self.QueueActivity(order.Queued, new MoveToDock(self, this, dock.Value.Actor, dock.Value.Trait, DockLineColor));
 				self.ShowTargetLines();
 			}
 			else if (order.OrderString == "ForceDock")
@@ -205,7 +205,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!dock.HasValue)
 					return;
 
-				self.QueueActivity(order.Queued, new MoveToDock(self, dock.Value.Actor, dock.Value.Trait));
+				self.QueueActivity(order.Queued, new MoveToDock(self, this, dock.Value.Actor, dock.Value.Trait, DockLineColor));
 				self.ShowTargetLines();
 			}
 		}

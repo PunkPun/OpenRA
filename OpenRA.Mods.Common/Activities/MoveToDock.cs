@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
@@ -23,12 +24,14 @@ namespace OpenRA.Mods.Common.Activities
 		Actor dockHostActor;
 		IDockHost dockHost;
 		readonly INotifyDockClientMoving[] notifyDockClientMoving;
+		readonly Color? dockLineColor = null;
 
-		public MoveToDock(Actor self, Actor dockHostActor = null, IDockHost dockHost = null)
+		public MoveToDock(Actor self, DockClientManager dockClient, Actor dockHostActor = null, IDockHost dockHost = null, Color? dockLineColor = null)
 		{
-			dockClient = self.Trait<DockClientManager>();
+			this.dockClient = dockClient;
 			this.dockHostActor = dockHostActor;
 			this.dockHost = dockHost;
+			this.dockLineColor = dockLineColor;
 			notifyDockClientMoving = self.TraitsImplementing<INotifyDockClientMoving>().ToArray();
 		}
 
@@ -92,12 +95,15 @@ namespace OpenRA.Mods.Common.Activities
 
 		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
 		{
+			if (!dockLineColor.HasValue)
+				yield break;
+
 			if (dockHostActor != null)
-				yield return new TargetLineNode(Target.FromActor(dockHostActor), dockClient.DockLineColor);
+				yield return new TargetLineNode(Target.FromActor(dockHostActor), dockLineColor.Value);
 			else
 			{
 				if (dockClient.ReservedHostActor != null)
-					yield return new TargetLineNode(Target.FromActor(dockClient.ReservedHostActor), dockClient.DockLineColor);
+					yield return new TargetLineNode(Target.FromActor(dockClient.ReservedHostActor), dockLineColor.Value);
 			}
 		}
 	}

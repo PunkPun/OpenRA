@@ -106,7 +106,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!dock.HasValue)
 				return;
 
-			QueueChild(new MoveToDock(self, dock.Value.Actor, dock.Value.Trait));
+			QueueChild(new MoveToDock(self, manager, dock.Value.Actor, dock.Value.Trait, manager.DockLineColor));
 		}
 
 		public override IEnumerable<Target> GetTargets(Actor self)
