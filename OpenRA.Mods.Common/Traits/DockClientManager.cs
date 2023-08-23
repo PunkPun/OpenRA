@@ -266,7 +266,7 @@ namespace OpenRA.Mods.Common.Traits
 		/// <remarks>If <paramref name="type"/> is not set, scans all clients. Does not check if <see cref="DockClientManager"/> is enabled.</remarks>
 		public TraitPair<IDockHost>? ClosestDock(IDockHost ignore, BitSet<DockType> type = default, bool forceEnter = false, bool ignoreOccupancy = false)
 		{
-			var clients = type.IsEmpty ? dockClients : AvailableDockClients(type);
+			var clients = type.IsEmpty ? dockClients : AvailableDockClients(type, forceEnter);
 			return self.World.ActorsWithTrait<IDockHost>()
 				.Where(host => host.Trait != ignore && clients.Any(client => client.CanDockAt(host.Actor, host.Trait, forceEnter, ignoreOccupancy)))
 				.ClosestDock(self, this);
@@ -283,9 +283,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		/// <summary>Get clients of matching <paramref name="type"/>.</summary>
 		/// <remarks>Does not check if <see cref="DockClientManager"/> is enabled.</remarks>
-		public IEnumerable<IDockClient> AvailableDockClients(BitSet<DockType> type)
+		public IEnumerable<IDockClient> AvailableDockClients(BitSet<DockType> type, bool forceEnter = false)
 		{
-			return dockClients.Where(client => client.IsDockingPossible(type));
+			return dockClients.Where(client => client.IsDockingPossible(type, forceEnter));
 		}
 
 		void INotifyKilled.Killed(Actor self, AttackInfo e) { UnreserveHost(); }
