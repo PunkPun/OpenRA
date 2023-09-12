@@ -84,6 +84,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Lower the value on rough terrain. Leave out entries for impassable terrain.")]
 		public readonly Dictionary<string, TerrainInfo> TerrainSpeeds;
 
+		public readonly short MovingUnitCostMultiplier = 3;
+		public readonly short NudgeCostMultiplier = 5;
+
 		protected static object LoadSpeeds(MiniYaml y)
 		{
 			var speeds = y.ToDictionary()["TerrainSpeeds"].Nodes;
@@ -213,8 +216,14 @@ namespace OpenRA.Mods.Common.Traits
 			var cellCost = MovementCostForCell(destNode);
 
 			if (cellCost == PathGraph.MovementCostForUnreachableCell ||
-				!CanMoveFreelyInto(actor, destNode, subCell, check, ignoreActor, ignoreSelf))
+				!CanMoveFreelyInto(actor, destNode, subCell, check, ignoreActor, ignoreSelf, out var exitedBecause))
 				return PathGraph.MovementCostForUnreachableCell;
+
+			if (exitedBecause == BlockedByActor.Stationary)
+				return (short)(cellCost * Info.MovingUnitCostMultiplier);
+
+			if (exitedBecause == BlockedByActor.Immovable)
+				return (short)(cellCost * Info.NudgeCostMultiplier);
 
 			return cellCost;
 		}
@@ -224,15 +233,23 @@ namespace OpenRA.Mods.Common.Traits
 			var cellCost = MovementCostForCell(destNode, srcNode);
 
 			if (cellCost == PathGraph.MovementCostForUnreachableCell ||
-				!CanMoveFreelyInto(actor, destNode, SubCell.FullCell, check, ignoreActor, ignoreSelf))
+				!CanMoveFreelyInto(actor, destNode, SubCell.FullCell, check, ignoreActor, ignoreSelf, out var exitedBecause))
 				return PathGraph.MovementCostForUnreachableCell;
+
+			if (exitedBecause == BlockedByActor.Stationary)
+				return (short)(cellCost * Info.MovingUnitCostMultiplier);
+
+			if (exitedBecause == BlockedByActor.Immovable)
+				return (short)(cellCost * Info.NudgeCostMultiplier);
 
 			return cellCost;
 		}
 
 		// Determines whether the actor is blocked by other Actors
-		bool CanMoveFreelyInto(Actor actor, CPos cell, SubCell subCell, BlockedByActor check, Actor ignoreActor, bool ignoreSelf)
+		bool CanMoveFreelyInto(Actor actor, CPos cell, SubCell subCell, BlockedByActor check, Actor ignoreActor, bool ignoreSelf, out BlockedByActor exitedBecause)
 		{
+			exitedBecause = BlockedByActor.None;
+
 			// If the check allows: We are not blocked by other actors.
 			if (check == BlockedByActor.None)
 				return true;
@@ -256,11 +273,17 @@ namespace OpenRA.Mods.Common.Traits
 
 			// If the check allows: We are not blocked by moving units.
 			if (check <= BlockedByActor.Stationary && !cellFlag.HasCellFlag(CellFlag.HasStationaryActor))
+			{
+				exitedBecause = BlockedByActor.Stationary;
 				return true;
+			}
 
 			// If the check allows: We are not blocked by units that we can force to move out of the way.
 			if (check <= BlockedByActor.Immovable && !cellCache.Immovable.Overlaps(actor.Owner.PlayerMask))
+			{
+				exitedBecause = BlockedByActor.Immovable;
 				return true;
+			}
 
 			// Cache doesn't account for ignored actors, subcells, temporary blockers or transit only actors.
 			// These must use the slow path.
