@@ -92,7 +92,7 @@ namespace OpenRA
 			RgbaSpriteRenderer = new RgbaSpriteRenderer(SpriteRenderer);
 			RgbaColorRenderer = new RgbaColorRenderer(SpriteRenderer);
 
-			tempBuffer = Context.CreateVertexBuffer(TempBufferSize);
+			tempBuffer = Context.CreateVertexBuffer<Vertex>(TempBufferSize);
 		}
 
 		static Size GetResolution(GraphicSettings graphicsSettings)
@@ -374,9 +374,9 @@ namespace OpenRA
 			}
 		}
 
-		public IVertexBuffer<Vertex> CreateVertexBuffer(int length)
+		public IVertexBuffer<T> CreateVertexBuffer<T>(int length) where T : struct
 		{
-			return Context.CreateVertexBuffer(length);
+			return Context.CreateVertexBuffer<T>(length);
 		}
 
 		public void EnableScissor(Rectangle rect)
