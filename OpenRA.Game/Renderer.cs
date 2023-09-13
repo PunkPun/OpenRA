@@ -84,11 +84,12 @@ namespace OpenRA
 			TempBufferSize = graphicSettings.BatchSize;
 			SheetSize = graphicSettings.SheetSize;
 
-			WorldSpriteRenderer = new SpriteRenderer(this, Context.CreateShader("combined"));
+			var combinedBindings = new CombinedShaderBindings();
+			WorldSpriteRenderer = new SpriteRenderer(this, Context.CreateShader(combinedBindings));
 			WorldRgbaSpriteRenderer = new RgbaSpriteRenderer(WorldSpriteRenderer);
 			WorldRgbaColorRenderer = new RgbaColorRenderer(WorldSpriteRenderer);
-			WorldModelRenderer = new ModelRenderer(this, Context.CreateShader("model"));
-			SpriteRenderer = new SpriteRenderer(this, Context.CreateShader("combined"));
+			WorldModelRenderer = new ModelRenderer(this, Context.CreateShader(new ModelShaderBindings()));
+			SpriteRenderer = new SpriteRenderer(this, Context.CreateShader(combinedBindings));
 			RgbaSpriteRenderer = new RgbaSpriteRenderer(SpriteRenderer);
 			RgbaColorRenderer = new RgbaColorRenderer(SpriteRenderer);
 
@@ -326,23 +327,24 @@ namespace OpenRA
 			renderType = RenderType.None;
 		}
 
-		public void DrawBatch(Vertex[] vertices, int numVertices, PrimitiveType type)
+		public void DrawBatch(Vertex[] vertices, IShader shader, int numVertices, PrimitiveType type)
 		{
 			tempBuffer.SetData(vertices, numVertices);
-			DrawBatch(tempBuffer, 0, numVertices, type);
+			DrawBatch(tempBuffer, shader, 0, numVertices, type);
 		}
 
-		public void DrawBatch(ref Vertex[] vertices, int numVertices, PrimitiveType type)
+		public void DrawBatch(ref Vertex[] vertices, IShader shader, int numVertices, PrimitiveType type)
 		{
 			tempBuffer.SetData(ref vertices, numVertices);
-			DrawBatch(tempBuffer, 0, numVertices, type);
+			DrawBatch(tempBuffer, shader, 0, numVertices, type);
 		}
 
-		public void DrawBatch<T>(IVertexBuffer<T> vertices,
+		public void DrawBatch<T>(IVertexBuffer<T> vertices, IShader shader,
 			int firstVertex, int numVertices, PrimitiveType type)
 			where T : struct
 		{
 			vertices.Bind();
+			shader.Bind();
 			Context.DrawPrimitives(type, firstVertex, numVertices);
 			PerfHistory.Increment("batches", 1);
 		}

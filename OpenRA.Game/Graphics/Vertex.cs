@@ -46,4 +46,34 @@ namespace OpenRA.Graphics
 			R = r; G = g; B = b; A = a;
 		}
 	}
+
+	public sealed class CombinedShaderBindings : ShaderBindings
+	{
+		public CombinedShaderBindings()
+			: base("combined")
+		{ }
+
+		public override ShaderVertexAttribute[] Attributes { get; }	= new[]
+		{
+			new ShaderVertexAttribute("aVertexPosition", 0, 3, 0),
+			new ShaderVertexAttribute("aVertexTexCoord", 1, 4, 12),
+			new ShaderVertexAttribute("aVertexTexMetadata", 2, 2, 28),
+			new ShaderVertexAttribute("aVertexTint", 3, 4, 36)
+		};
+	}
+
+	public sealed class ModelShaderBindings : ShaderBindings
+	{
+		public ModelShaderBindings()
+			: base("model")
+		{ }
+
+		public override ShaderVertexAttribute[] Attributes { get; }	= new[]
+		{
+			new ShaderVertexAttribute("aVertexPosition", 0, 3, 0),
+			new ShaderVertexAttribute("aVertexTexCoord", 1, 4, 12),
+			new ShaderVertexAttribute("aVertexTexMetadata", 2, 2, 28),
+			new ShaderVertexAttribute("aVertexTint", 3, 4, 36)
+		};
+	}
 }

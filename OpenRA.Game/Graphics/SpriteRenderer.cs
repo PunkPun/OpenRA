@@ -51,7 +51,7 @@ namespace OpenRA.Graphics
 				shader.PrepareRender();
 
 				// PERF: The renderer may choose to replace vertices with a different temporary buffer.
-				renderer.DrawBatch(ref vertices, nv, PrimitiveType.TriangleList);
+				renderer.DrawBatch(ref vertices, shader, nv, PrimitiveType.TriangleList);
 				renderer.Context.SetBlendMode(BlendMode.None);
 
 				nv = 0;
@@ -185,7 +185,7 @@ namespace OpenRA.Graphics
 
 			renderer.Context.SetBlendMode(blendMode);
 			shader.PrepareRender();
-			renderer.DrawBatch(buffer, start, length, type);
+			renderer.DrawBatch(buffer, shader, start, length, type);
 			renderer.Context.SetBlendMode(BlendMode.None);
 		}
 
