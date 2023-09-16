@@ -1,7 +1,8 @@
 #version {VERSION}
 
-uniform vec3 Scroll;
-uniform vec3 p1, p2;
+uniform vec2 Scroll;
+uniform vec2 p1;
+uniform vec2 p2 = vec2(-1, -1);
 
 #if __VERSION__ == 120
 attribute vec3 aVertexPosition;
@@ -12,7 +13,6 @@ attribute vec4 aVertexTint;
 varying vec4 vTexCoord;
 varying vec2 vTexMetadata;
 varying vec4 vChannelMask;
-varying vec4 vDepthMask;
 varying vec2 vTexSampler;
 
 varying vec4 vColorFraction;
@@ -28,7 +28,6 @@ in vec4 aVertexTint;
 out vec4 vTexCoord;
 out vec2 vTexMetadata;
 out vec4 vChannelMask;
-out vec4 vDepthMask;
 out vec2 vTexSampler;
 
 out vec4 vColorFraction;
@@ -116,7 +115,7 @@ vec4 SelectPalettedFraction(float x)
 
 void main()
 {
-	gl_Position = vec4((aVertexPosition - Scroll) * p1 + p2, 1);
+	gl_Position = vec4((aVertexPosition.xy - Scroll) * p1 + p2, 0, 1);
 	vTexCoord = aVertexTexCoord;
 	vTexMetadata = aVertexTexMetadata;
 
@@ -125,7 +124,6 @@ void main()
 	vColorFraction = SelectColorFraction(attrib.s);
 	vRGBAFraction = SelectRGBAFraction(attrib.s);
 	vPalettedFraction = SelectPalettedFraction(attrib.s);
-	vDepthMask = SelectChannelMask(attrib.t);
 	vTexSampler = attrib.pq;
 	vTint = aVertexTint;
 }

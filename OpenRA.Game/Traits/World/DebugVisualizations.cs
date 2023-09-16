@@ -62,7 +62,7 @@ namespace OpenRA.Traits
 		{
 			if (depthBufferDirty)
 			{
-				Game.Renderer.WorldSpriteRenderer.SetDepthPreview(DepthBuffer, DepthBufferContrast, DepthBufferOffset);
+				Game.Renderer.WorldSpriteRenderer.Material.SetDepthPreview(DepthBuffer, DepthBufferContrast, DepthBufferOffset);
 				depthBufferDirty = false;
 			}
 		}

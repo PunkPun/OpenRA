@@ -137,6 +137,26 @@ namespace OpenRA
 		ShaderVertexAttribute[] Attributes { get; }
 	}
 
+	public interface IMaterial<T> where T : struct
+	{
+		void Bind();
+	}
+
+	public interface IOpenRAMaterial<T> : IMaterial<T> where T : struct
+	{
+		IVertexBuffer<T> CreateVertexBuffer(int count);
+		void PrepareRender();
+		void SetTexture(short index, ITexture texture);
+		public void SetPalette(ITexture palette, ITexture colorShifts);
+		public void SetView(Size sheetSize, int downscale, float depthMargin, int2 scroll);
+		public void SetDepthPreview(bool enabled, float contrast, float offset);
+		public void SetAntialiasingPixelsPerTexel(float pxPerTx);
+		public void SetModelUniforms(
+			float[] transforms, float[] lightDirection,
+			float[] ambientLight, float[] diffuseLight,
+			float colorPaletteTextureMidIndex, float normalsPaletteTextureMidIndex);
+	}
+
 	public enum TextureScaleFilter { Nearest, Linear }
 
 	public interface ITexture : IDisposable

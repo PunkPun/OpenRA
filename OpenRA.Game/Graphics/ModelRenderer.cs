@@ -45,7 +45,7 @@ namespace OpenRA.Graphics
 		static readonly float[] GroundNormal = { 0, 0, 1, 1 };
 
 		readonly Renderer renderer;
-		readonly IShader shader;
+		public IOpenRAMaterial<ModelVertex> Material;
 
 		readonly Dictionary<Sheet, IFrameBuffer> mappedBuffers = new();
 		readonly Stack<KeyValuePair<Sheet, IFrameBuffer>> unmappedBuffers = new();
@@ -54,29 +54,14 @@ namespace OpenRA.Graphics
 		SheetBuilder sheetBuilderForFrame;
 		bool isInFrame;
 
-		public ModelRenderer(Renderer renderer, IShader shader)
+		public ModelRenderer(Renderer renderer)
 		{
 			this.renderer = renderer;
-			this.shader = shader;
 		}
 
-		public void SetPalette(ITexture palette)
+		public void Initialise(IGraphicsContext context, IOpenRAMaterial<ModelVertex> material)
 		{
-			shader.SetTexture("Palette", palette);
-		}
-
-		public void SetViewportParams()
-		{
-			var a = 2f / renderer.SheetSize;
-			var view = new[]
-			{
-				a, 0, 0, 0,
-				0, -a, 0, 0,
-				0, 0, -2 * a, 0,
-				-1, 1, 0, 1
-			};
-
-			shader.SetMatrix("View", view);
+			Material = material;
 		}
 
 		public ModelRenderProxy RenderAsync(
@@ -269,15 +254,10 @@ namespace OpenRA.Graphics
 			float[] ambientLight, float[] diffuseLight,
 			float colorPaletteTextureMidIndex, float normalsPaletteTextureMidIndex)
 		{
-			shader.SetTexture("DiffuseTexture", renderData.Sheet.GetTexture());
-			shader.SetVec("PaletteRows", colorPaletteTextureMidIndex, normalsPaletteTextureMidIndex);
-			shader.SetMatrix("TransformMatrix", t);
-			shader.SetVec("LightDirection", lightDirection, 4);
-			shader.SetVec("AmbientLight", ambientLight, 3);
-			shader.SetVec("DiffuseLight", diffuseLight, 3);
-
-			shader.PrepareRender();
-			renderer.DrawBatch(cache.VertexBuffer, shader, renderData.Start, renderData.Count, PrimitiveType.TriangleList);
+			Material.SetTexture(default, renderData.Sheet.GetTexture());
+			Material.SetModelUniforms(t, lightDirection, ambientLight, diffuseLight, colorPaletteTextureMidIndex, normalsPaletteTextureMidIndex);
+			Material.PrepareRender();
+			renderer.DrawBatch(cache.VertexBuffer, Material, renderData.Start, renderData.Count, PrimitiveType.TriangleList);
 		}
 
 		public void BeginFrame()

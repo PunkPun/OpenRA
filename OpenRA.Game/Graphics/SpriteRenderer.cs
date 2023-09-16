@@ -11,17 +11,15 @@
 
 using System;
 using System.Collections.Generic;
-using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
 {
 	public class SpriteRenderer : Renderer.IBatchRenderer
 	{
 		public const int SheetCount = 8;
-		static readonly string[] SheetIndexToTextureName = Exts.MakeArray(SheetCount, i => $"Texture{i}");
 
 		readonly Renderer renderer;
-		readonly IShader shader;
+		public IOpenRAMaterial<Vertex> Material;
 
 		Vertex[] vertices;
 		readonly Sheet[] sheets = new Sheet[SheetCount];
@@ -30,10 +28,14 @@ namespace OpenRA.Graphics
 		int nv = 0;
 		int ns = 0;
 
-		public SpriteRenderer(Renderer renderer, IShader shader)
+		public SpriteRenderer(Renderer renderer)
 		{
 			this.renderer = renderer;
-			this.shader = shader;
+		}
+
+		public void Initialise(IGraphicsContext context, IOpenRAMaterial<Vertex> material)
+		{
+			Material = material;
 			vertices = renderer.Context.CreateVertices<Vertex>(renderer.TempBufferSize);
 		}
 
@@ -41,17 +43,17 @@ namespace OpenRA.Graphics
 		{
 			if (nv > 0)
 			{
-				for (var i = 0; i < ns; i++)
+				for (short i = 0; i < ns; i++)
 				{
-					shader.SetTexture(SheetIndexToTextureName[i], sheets[i].GetTexture());
+					Material.SetTexture(i, sheets[i].GetTexture());
 					sheets[i] = null;
 				}
 
 				renderer.Context.SetBlendMode(currentBlend);
-				shader.PrepareRender();
+				Material.PrepareRender();
 
 				// PERF: The renderer may choose to replace vertices with a different temporary buffer.
-				renderer.DrawBatch(ref vertices, shader, nv, PrimitiveType.TriangleList);
+				renderer.DrawBatch(ref vertices, Material, nv, PrimitiveType.TriangleList);
 				renderer.Context.SetBlendMode(BlendMode.None);
 
 				nv = 0;
@@ -173,19 +175,19 @@ namespace OpenRA.Graphics
 
 		public void DrawVertexBuffer(IVertexBuffer<Vertex> buffer, int start, int length, PrimitiveType type, IEnumerable<Sheet> sheets, BlendMode blendMode)
 		{
-			var i = 0;
+			short i = 0;
 			foreach (var s in sheets)
 			{
 				if (i >= SheetCount)
 					ThrowSheetOverflow(nameof(sheets));
 
 				if (s != null)
-					shader.SetTexture(SheetIndexToTextureName[i++], s.GetTexture());
+					Material.SetTexture(i++, s.GetTexture());
 			}
 
 			renderer.Context.SetBlendMode(blendMode);
-			shader.PrepareRender();
-			renderer.DrawBatch(buffer, shader, start, length, type);
+			Material.PrepareRender();
+			renderer.DrawBatch(buffer, Material, start, length, type);
 			renderer.Context.SetBlendMode(BlendMode.None);
 		}
 
@@ -206,52 +208,6 @@ namespace OpenRA.Graphics
 			currentBlend = blendMode;
 			Array.Copy(v, 0, vertices, nv, v.Length);
 			nv += v.Length;
-		}
-
-		public void SetPalette(ITexture palette, ITexture colorShifts)
-		{
-			shader.SetTexture("Palette", palette);
-			shader.SetTexture("ColorShifts", colorShifts);
-		}
-
-		public void SetViewportParams(Size sheetSize, int downscale, float depthMargin, int2 scroll)
-		{
-			// Calculate the scale (r1) and offset (r2) that convert from OpenRA viewport pixels
-			// to OpenGL normalized device coordinates (NDC). OpenGL expects coordinates to vary from [-1, 1],
-			// so we rescale viewport pixels to the range [0, 2] using r1 then subtract 1 using r2.
-			var width = 2f / (downscale * sheetSize.Width);
-			var height = 2f / (downscale * sheetSize.Height);
-
-			// Depth is more complicated:
-			// * The OpenGL z axis is inverted (negative is closer) relative to OpenRA (positive is closer).
-			// * We want to avoid clipping pixels that are behind the nominal z == y plane at the
-			//   top of the map, or above the nominal z == y plane at the bottom of the map.
-			//   We therefore expand the depth range by an extra margin that is calculated based on
-			//   the maximum expected world height (see Renderer.InitializeDepthBuffer).
-			// * Sprites can specify an additional per-pixel depth offset map, which is applied in the
-			//   fragment shader. The fragment shader operates in OpenGL window coordinates, not NDC,
-			//   with a depth range [0, 1] corresponding to the NDC [-1, 1]. We must therefore multiply the
-			//   sprite channel value [0, 1] by 255 to find the pixel depth offset, then by our depth scale
-			//   to find the equivalent NDC offset, then divide by 2 to find the window coordinate offset.
-			// * If depthMargin == 0 (which indicates per-pixel depth testing is disabled) sprites that
-			//   extend beyond the top of bottom edges of the screen may be pushed outside [-1, 1] and
-			//   culled by the GPU. We avoid this by forcing everything into the z = 0 plane.
-			var depth = depthMargin != 0f ? 2f / (downscale * (sheetSize.Height + depthMargin)) : 0;
-			shader.SetVec("DepthTextureScale", 128 * depth);
-			shader.SetVec("Scroll", scroll.X, scroll.Y, depthMargin != 0f ? scroll.Y : 0);
-			shader.SetVec("r1", width, height, -depth);
-			shader.SetVec("r2", -1, -1, depthMargin != 0f ? 1 : 0);
-		}
-
-		public void SetDepthPreview(bool enabled, float contrast, float offset)
-		{
-			shader.SetBool("EnableDepthPreview", enabled);
-			shader.SetVec("DepthPreviewParams", contrast, offset);
-		}
-
-		public void SetAntialiasingPixelsPerTexel(float pxPerTx)
-		{
-			shader.SetVec("AntialiasPixelsPerTexel", pxPerTx);
 		}
 	}
 }

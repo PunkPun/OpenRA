@@ -195,7 +195,7 @@ namespace OpenRA.Mods.Cnc.Graphics
 		public void RefreshBuffer()
 		{
 			vertexBuffer?.Dispose();
-			vertexBuffer = Game.Renderer.CreateVertexBuffer<ModelVertex>(totalVertexCount);
+			vertexBuffer = Game.Renderer.WorldModelRenderer.Material.CreateVertexBuffer(totalVertexCount);
 			vertexBuffer.SetData(vertices.SelectMany(v => v).ToArray(), totalVertexCount);
 			cachedVertexCount = totalVertexCount;
 		}

@@ -55,7 +55,7 @@ namespace OpenRA.Graphics
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
-			Game.Renderer.SpriteRenderer.DrawSprite(sprite, Palette, screenPos, scale, float3.Ones, alpha, rotation);
+			Game.Renderer.UISpriteRenderer.DrawSprite(sprite, Palette, screenPos, scale, float3.Ones, alpha, rotation);
 		}
 
 		public void RenderDebugGeometry(WorldRenderer wr)

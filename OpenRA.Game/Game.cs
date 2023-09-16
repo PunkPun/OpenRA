@@ -474,6 +474,7 @@ namespace OpenRA
 				return;
 
 			ModData.InitializeLoaders(ModData.DefaultFileSystem);
+			Renderer.InitialiseMaterials();
 			Renderer.InitializeFonts(ModData);
 
 			using (new PerfTimer("LoadMaps"))

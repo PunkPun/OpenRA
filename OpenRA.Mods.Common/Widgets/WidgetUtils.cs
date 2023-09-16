@@ -73,7 +73,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public static void DrawSpriteCentered(Sprite s, PaletteReference p, float2 pos, float scale = 1f)
 		{
-			Game.Renderer.SpriteRenderer.DrawSprite(s, p, pos - 0.5f * scale * s.Size, scale);
+			Game.Renderer.UISpriteRenderer.DrawSprite(s, p, pos - 0.5f * scale * s.Size, scale);
 		}
 
 		public static void DrawPanel(string collection, Rectangle bounds)

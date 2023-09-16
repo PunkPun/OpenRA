@@ -14,15 +14,12 @@ uniform sampler2D Texture7;
 uniform sampler2D Palette;
 uniform sampler2D ColorShifts;
 
-uniform bool EnableDepthPreview;
-uniform vec2 DepthPreviewParams;
-uniform float DepthTextureScale;
+uniform float AntialiasPixelsPerTexel;
 
 #if __VERSION__ == 120
 varying vec4 vTexCoord;
 varying vec2 vTexMetadata;
 varying vec4 vChannelMask;
-varying vec4 vDepthMask;
 varying vec2 vTexSampler;
 
 varying vec4 vColorFraction;
@@ -44,7 +41,6 @@ in vec4 vColor;
 in vec4 vTexCoord;
 in vec2 vTexMetadata;
 in vec4 vChannelMask;
-in vec4 vDepthMask;
 in vec2 vTexSampler;
 
 in vec4 vColorFraction;
@@ -228,13 +224,34 @@ void main()
 {
 	vec2 coords = vTexCoord.st;
 
-	vec4 x = Sample(vTexSampler.s, coords);
-	vec2 p = vec2(dot(x, vChannelMask), vTexMetadata.s);
-	#if __VERSION__ == 120
-	vec4 c = vPalettedFraction * texture2D(Palette, p) + vRGBAFraction * x + vColorFraction * vTexCoord;
-	#else
-	vec4 c = vPalettedFraction * texture(Palette, p) + vRGBAFraction * x + vColorFraction * vTexCoord;
-	#endif
+	vec4 c;
+	if (AntialiasPixelsPerTexel > 0.0)
+	{
+		vec2 textureSize = vec2(Size(vTexSampler.s));
+		vec2 offset = fract(coords.st * textureSize);
+
+		// Offset the sampling point to simulate bilinear intepolation in window coordinates instead of texture coordinates
+		// https://csantosbh.wordpress.com/2014/01/25/manual-texture-filtering-for-pixelated-games-in-webgl/
+		// https://csantosbh.wordpress.com/2014/02/05/automatically-detecting-the-texture-filter-threshold-for-pixelated-magnifications/
+		// ik is defined as 1/k from the articles, set to 1/0.7 because it looks good
+		float ik = 1.43;
+		vec2 interp = clamp(offset * ik * AntialiasPixelsPerTexel, 0.0, .5) + clamp((offset - 1.0) * ik * AntialiasPixelsPerTexel + .5, 0.0, .5);
+		coords = (floor(coords.st * textureSize) + interp) / textureSize;
+
+		if (vPalettedFraction.x > 0.0)
+			c = SamplePalettedBilinear(vTexSampler.s, coords, textureSize);
+	}
+
+	if (!(AntialiasPixelsPerTexel > 0.0 && vPalettedFraction.x > 0.0))
+	{
+		vec4 x = Sample(vTexSampler.s, coords);
+		vec2 p = vec2(dot(x, vChannelMask), vTexMetadata.s);
+		#if __VERSION__ == 120
+		c = vPalettedFraction * texture2D(Palette, p) + vRGBAFraction * x + vColorFraction * vTexCoord;
+		#else
+		c = vPalettedFraction * texture(Palette, p) + vRGBAFraction * x + vColorFraction * vTexCoord;
+		#endif
+	}
 
 	// Discard any transparent fragments (both color and depth)
 	if (c.a == 0.0)
@@ -243,37 +260,17 @@ void main()
 	if (vRGBAFraction.r > 0.0 && vTexMetadata.s > 0.0)
 		c = ColorShift(c, vTexMetadata.s);
 
-	float depth = gl_FragCoord.z;
-	if (length(vDepthMask) > 0.0)
-	{
-		vec4 y = Sample(vTexSampler.t, vTexCoord.pq);
-		depth = depth + DepthTextureScale * dot(y, vDepthMask);
-	}
+	gl_FragDepth = gl_FragCoord.z;
 
-	gl_FragDepth = depth;
-
-	if (EnableDepthPreview)
-	{
-		float intensity = 1.0 - clamp(DepthPreviewParams.x * depth - 0.5 * DepthPreviewParams.x - DepthPreviewParams.y + 0.5, 0.0, 1.0);
-
-		#if __VERSION__ == 120
-		gl_FragColor = vec4(vec3(intensity), 1.0);
-		#else
-		fragColor = vec4(vec3(intensity), 1.0);
-		#endif
-	}
+	// A negative tint alpha indicates that the tint should replace the colour instead of multiplying it
+	if (vTint.a < 0.0)
+		c = vec4(vTint.rgb, -vTint.a);
 	else
-	{
-		// A negative tint alpha indicates that the tint should replace the colour instead of multiplying it
-		if (vTint.a < 0.0)
-			c = vec4(vTint.rgb, -vTint.a);
-		else
-			c *= vTint;
+		c *= vTint;
 
-		#if __VERSION__ == 120
-		gl_FragColor = c;
-		#else
-		fragColor = c;
-		#endif
-	}
+	#if __VERSION__ == 120
+	gl_FragColor = c;
+	#else
+	fragColor = c;
+	#endif
 }

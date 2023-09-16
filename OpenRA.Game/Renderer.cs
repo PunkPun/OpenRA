@@ -29,7 +29,7 @@ namespace OpenRA
 		public RgbaColorRenderer WorldRgbaColorRenderer { get; }
 		public ModelRenderer WorldModelRenderer { get; }
 		public RgbaColorRenderer RgbaColorRenderer { get; }
-		public SpriteRenderer SpriteRenderer { get; }
+		public SpriteRenderer UISpriteRenderer { get; }
 		public RgbaSpriteRenderer RgbaSpriteRenderer { get; }
 
 		public bool WindowHasInputFocus => Window.HasInputFocus;
@@ -84,16 +84,31 @@ namespace OpenRA
 			TempBufferSize = graphicSettings.BatchSize;
 			SheetSize = graphicSettings.SheetSize;
 
-			var combinedBindings = new CombinedShaderBindings();
-			WorldSpriteRenderer = new SpriteRenderer(this, Context.CreateShader(combinedBindings));
+			UISpriteRenderer = new SpriteRenderer(this);
+
+			// UI renderer needs to be initialised as soon as possible.
+			UISpriteRenderer.Initialise(Context, new UISpriteMaterial(Context));
+			tempBuffer = UISpriteRenderer.Material.CreateVertexBuffer(TempBufferSize);
+			RgbaSpriteRenderer = new RgbaSpriteRenderer(UISpriteRenderer);
+			RgbaColorRenderer = new RgbaColorRenderer(UISpriteRenderer);
+
+			WorldSpriteRenderer = new SpriteRenderer(this);
 			WorldRgbaSpriteRenderer = new RgbaSpriteRenderer(WorldSpriteRenderer);
 			WorldRgbaColorRenderer = new RgbaColorRenderer(WorldSpriteRenderer);
-			WorldModelRenderer = new ModelRenderer(this, Context.CreateShader(new ModelShaderBindings()));
-			SpriteRenderer = new SpriteRenderer(this, Context.CreateShader(combinedBindings));
-			RgbaSpriteRenderer = new RgbaSpriteRenderer(SpriteRenderer);
-			RgbaColorRenderer = new RgbaColorRenderer(SpriteRenderer);
+			WorldModelRenderer = new ModelRenderer(this);
+		}
 
-			tempBuffer = Context.CreateVertexBuffer<Vertex>(TempBufferSize);
+		public void InitialiseMaterials()
+		{
+			WorldSpriteRenderer.Initialise(Context, CreateMaterial<Vertex>("combined"));
+			WorldModelRenderer.Initialise(Context, CreateMaterial<ModelVertex>("model"));
+		}
+
+		IOpenRAMaterial<T> CreateMaterial<T>(string name) where T : struct
+		{
+			var className = char.ToUpperInvariant(name[0]) + name[1..] + "Material";
+			var args = new Dictionary<string, object>() { ["context"] = Context };
+			return Game.ModData.ObjectCreator.CreateObject<IOpenRAMaterial<T>>(className, args);
 		}
 
 		static Size GetResolution(GraphicSettings graphicsSettings)
@@ -114,6 +129,7 @@ namespace OpenRA
 			if (Fonts != null)
 				foreach (var font in Fonts.Values)
 					font.Dispose();
+
 			using (new PerfTimer("SpriteFonts"))
 			{
 				fontSheetBuilder?.Dispose();
@@ -182,7 +198,7 @@ namespace OpenRA
 			var bufferSize = new Size((int)(surfaceBufferSize.Width / scale), (int)(surfaceBufferSize.Height / scale));
 			if (lastBufferSize != bufferSize)
 			{
-				SpriteRenderer.SetViewportParams(bufferSize, 1, 0f, int2.Zero);
+				UISpriteRenderer.Material.SetView(bufferSize, 1, 0f, int2.Zero);
 				lastBufferSize = bufferSize;
 			}
 		}
@@ -253,8 +269,8 @@ namespace OpenRA
 
 			if (lastWorldViewport != worldViewport)
 			{
-				WorldSpriteRenderer.SetViewportParams(worldSheet.Size, WorldDownscaleFactor, depthMargin, worldViewport.Location);
-				WorldModelRenderer.SetViewportParams();
+				WorldSpriteRenderer.Material.SetView(worldSheet.Size, WorldDownscaleFactor, depthMargin, worldViewport.Location);
+				WorldModelRenderer.Material.SetView(new Size(SheetSize, SheetSize), default, default, default);
 
 				lastWorldViewport = worldViewport;
 			}
@@ -276,10 +292,10 @@ namespace OpenRA
 				var scale = Window.EffectiveWindowScale;
 				var bufferScale = new float3((int)(screenSprite.Bounds.Width / scale) / worldSprite.Size.X, (int)(-screenSprite.Bounds.Height / scale) / worldSprite.Size.Y, 1f);
 
-				SpriteRenderer.SetAntialiasingPixelsPerTexel(Window.SurfaceSize.Height * 1f / worldSprite.Bounds.Height);
+				UISpriteRenderer.Material.SetAntialiasingPixelsPerTexel(Window.SurfaceSize.Height * 1f / worldSprite.Bounds.Height);
 				RgbaSpriteRenderer.DrawSprite(worldSprite, float3.Zero, bufferScale);
 				Flush();
-				SpriteRenderer.SetAntialiasingPixelsPerTexel(0);
+				UISpriteRenderer.Material.SetAntialiasingPixelsPerTexel(0);
 			}
 			else
 			{
@@ -301,9 +317,9 @@ namespace OpenRA
 			Flush();
 			currentPaletteTexture = palette.Texture;
 
-			SpriteRenderer.SetPalette(currentPaletteTexture, palette.ColorShifts);
-			WorldSpriteRenderer.SetPalette(currentPaletteTexture, palette.ColorShifts);
-			WorldModelRenderer.SetPalette(currentPaletteTexture);
+			UISpriteRenderer.Material.SetPalette(currentPaletteTexture, palette.ColorShifts);
+			WorldSpriteRenderer.Material.SetPalette(currentPaletteTexture, palette.ColorShifts);
+			WorldModelRenderer.Material.SetPalette(currentPaletteTexture, palette.ColorShifts);
 		}
 
 		public void EndFrame(IInputHandler inputHandler)
@@ -327,24 +343,24 @@ namespace OpenRA
 			renderType = RenderType.None;
 		}
 
-		public void DrawBatch(Vertex[] vertices, IShader shader, int numVertices, PrimitiveType type)
+		public void DrawBatch(Vertex[] vertices, IMaterial<Vertex> material, int numVertices, PrimitiveType type)
 		{
 			tempBuffer.SetData(vertices, numVertices);
-			DrawBatch(tempBuffer, shader, 0, numVertices, type);
+			DrawBatch(tempBuffer, material, 0, numVertices, type);
 		}
 
-		public void DrawBatch(ref Vertex[] vertices, IShader shader, int numVertices, PrimitiveType type)
+		public void DrawBatch(ref Vertex[] vertices, IMaterial<Vertex> material, int numVertices, PrimitiveType type)
 		{
 			tempBuffer.SetData(ref vertices, numVertices);
-			DrawBatch(tempBuffer, shader, 0, numVertices, type);
+			DrawBatch(tempBuffer, material, 0, numVertices, type);
 		}
 
-		public void DrawBatch<T>(IVertexBuffer<T> vertices, IShader shader,
+		public void DrawBatch<T>(IVertexBuffer<T> vertices, IMaterial<T> material,
 			int firstVertex, int numVertices, PrimitiveType type)
 			where T : struct
 		{
 			vertices.Bind();
-			shader.Bind();
+			material.Bind();
 			Context.DrawPrimitives(type, firstVertex, numVertices);
 			PerfHistory.Increment("batches", 1);
 		}
@@ -374,11 +390,6 @@ namespace OpenRA
 				currentBatchRenderer?.Flush();
 				currentBatchRenderer = value;
 			}
-		}
-
-		public IVertexBuffer<T> CreateVertexBuffer<T>(int length) where T : struct
-		{
-			return Context.CreateVertexBuffer<T>(length);
 		}
 
 		public void EnableScissor(Rectangle rect)
@@ -462,7 +473,7 @@ namespace OpenRA
 				throw new InvalidOperationException($"EndFrame called with renderType = {renderType}, expected RenderType.UI.");
 
 			Flush();
-			SpriteRenderer.SetAntialiasingPixelsPerTexel(Window.EffectiveWindowScale);
+			UISpriteRenderer.Material.SetAntialiasingPixelsPerTexel(Window.EffectiveWindowScale);
 		}
 
 		public void DisableAntialiasingFilter()
@@ -471,7 +482,7 @@ namespace OpenRA
 				throw new InvalidOperationException($"EndFrame called with renderType = {renderType}, expected RenderType.UI.");
 
 			Flush();
-			SpriteRenderer.SetAntialiasingPixelsPerTexel(0);
+			UISpriteRenderer.Material.SetAntialiasingPixelsPerTexel(0);
 		}
 
 		public void GrabWindowMouseFocus()

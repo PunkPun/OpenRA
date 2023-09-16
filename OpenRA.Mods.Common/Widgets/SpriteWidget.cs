@@ -75,7 +75,7 @@ namespace OpenRA.Mods.Common.Widgets
 			}
 
 			Game.Renderer.EnableAntialiasingFilter();
-			Game.Renderer.SpriteRenderer.DrawSprite(sprite, pr, RenderOrigin + offset, scale);
+			Game.Renderer.UISpriteRenderer.DrawSprite(sprite, pr, RenderOrigin + offset, scale);
 			Game.Renderer.DisableAntialiasingFilter();
 		}
 	}
