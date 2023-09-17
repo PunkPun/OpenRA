@@ -215,10 +215,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var localPlayer = localClient == null ? null : world.Players.FirstOrDefault(player => player.ClientIndex == localClient.Index);
 			bool LocalPlayerCanKick() => localClient != null
 				&& (Game.IsHost || ((!orderManager.LocalClient.IsObserver) && localPlayer.WinState == WinState.Undefined));
-			bool CanClientBeKicked(Session.Client client, Func<bool> isVoteKick) =>
-				client.Index != localClient.Index && client.State != Session.ClientState.Disconnected
-				&& (!client.IsAdmin || orderManager.LobbyInfo.GlobalSettings.Dedicated)
-				&& (!isVoteKick() || UnitOrders.KickVoteTarget == null || UnitOrders.KickVoteTarget == client.Index);
+			bool CanClientBeKicked(Session.Client client) =>
+				client.Index != localClient.Index && client.State != Session.ClientState.Disconnected;
+			bool IsKickingClientDisabled(Session.Client client, Func<bool> isVoteKick) =>
+				(client.IsAdmin && !orderManager.LobbyInfo.GlobalSettings.Dedicated)
+				|| (isVoteKick() && UnitOrders.KickVoteTarget != null && UnitOrders.KickVoteTarget != client.Index);
 
 			foreach (var t in teams)
 			{
@@ -273,9 +274,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					var kickButton = item.Get<ButtonWidget>("KICK");
 					bool IsVoteKick() => !Game.IsHost || pp.WinState == WinState.Undefined;
-					kickButton.IsVisible = () => !pp.IsBot && LocalPlayerCanKick() && CanClientBeKicked(client, IsVoteKick);
+					kickButton.IsVisible = () => !pp.IsBot && LocalPlayerCanKick() && CanClientBeKicked(client);
+					kickButton.IsDisabled = () => IsKickingClientDisabled(client, IsVoteKick);
 					kickButton.OnClick = () => KickAction(client, IsVoteKick);
 					kickButton.GetTooltipText = () => IsVoteKick() ? voteKickTooltip : kickTooltip;
+					var kickImage = kickButton.Get<ImageWidget>("KICK_ICON")
+						.GetImageName = () => kickButton.IsDisabled() ? "kick-disabled" : "kick";
 
 					playerPanel.AddChild(item);
 				}
@@ -310,9 +314,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					var kickButton = item.Get<ButtonWidget>("KICK");
 					bool IsVoteKick() => !Game.IsHost;
-					kickButton.IsVisible = () => LocalPlayerCanKick() && CanClientBeKicked(client, IsVoteKick);
+					kickButton.IsVisible = () => LocalPlayerCanKick() && CanClientBeKicked(client);
+					kickButton.IsDisabled = () => IsKickingClientDisabled(client, IsVoteKick);
 					kickButton.OnClick = () => KickAction(client, IsVoteKick);
 					kickButton.GetTooltipText = () => IsVoteKick() ? voteKickTooltip : kickTooltip;
+					var kickImage = kickButton.Get<ImageWidget>("KICK_ICON")
+						.GetImageName = () => kickButton.IsDisabled() ? "kick-disabled" : "kick";
 
 					var muteCheckbox = item.Get<CheckboxWidget>("MUTE");
 					muteCheckbox.IsChecked = () => TextNotificationsManager.MutedPlayers[client.Index];

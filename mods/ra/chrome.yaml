@@ -348,6 +348,7 @@ lobby-bits:
 		colorpicker: 68, 119, 22, 22
 		huepicker: 136, 0, 7, 15
 		kick: 153, 0, 11, 11
+		kick-disabled: 165, 0, 11, 11
 		protected: 0, 17, 12, 13
 		protected-disabled: 17, 17, 12, 13
 		authentication: 34, 17, 12, 13

@@ -140,9 +140,8 @@ Container@SKIRMISH_STATS:
 							Background: checkbox-toggle
 							TooltipContainer: TOOLTIP_CONTAINER
 							Children:
-								Image:
+								Image@KICK_ICON:
 									ImageCollection: lobby-bits
-									ImageName: kick
 									X: 7
 									Y: 7
 				Container@SPECTATOR_TEMPLATE:
@@ -182,8 +181,7 @@ Container@SKIRMISH_STATS:
 							Background: checkbox-toggle
 							TooltipContainer: TOOLTIP_CONTAINER
 							Children:
-								Image:
+								Image@KICK_ICON:
 									ImageCollection: lobby-bits
-									ImageName: kick
 									X: 7
 									Y: 7
