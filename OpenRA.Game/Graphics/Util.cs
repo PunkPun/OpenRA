@@ -81,8 +81,8 @@ namespace OpenRA.Graphics
 			float sb = 0;
 
 			// See combined.vert for documentation on the channel attribute format
-			var attribC = r.Channel == TextureChannel.RGBA ? 0x02 : ((byte)r.Channel) << 1 | 0x01;
-			attribC |= samplers.X << 6;
+			var attrib = r.Channel == TextureChannel.RGBA ? 0x02 : ((byte)r.Channel) << 1 | 0x01;
+			attrib |= samplers.X << 6;
 			if (r is SpriteWithSecondaryData ss)
 			{
 				sl = ss.SecondaryLeft;
@@ -90,15 +90,14 @@ namespace OpenRA.Graphics
 				sr = ss.SecondaryRight;
 				sb = ss.SecondaryBottom;
 
-				attribC |= ((byte)ss.SecondaryChannel) << 4 | 0x08;
-				attribC |= samplers.Y << 9;
+				attrib |= ((byte)ss.SecondaryChannel) << 4 | 0x08;
+				attrib |= samplers.Y << 9;
 			}
 
-			var fAttribC = (uint)attribC;
-			vertices[nv] = new Vertex(a, r.Left, r.Top, sl, st, paletteTextureIndex, fAttribC, tint, alpha);
-			vertices[nv + 1] = new Vertex(b, r.Right, r.Top, sr, st, paletteTextureIndex, fAttribC, tint, alpha);
-			vertices[nv + 2] = new Vertex(c, r.Right, r.Bottom, sr, sb, paletteTextureIndex, fAttribC, tint, alpha);
-			vertices[nv + 3] = new Vertex(d, r.Left, r.Bottom, sl, sb, paletteTextureIndex, fAttribC, tint, alpha);
+			vertices[nv] = new Vertex(a, r.Left, r.Top, sl, st, paletteTextureIndex, (uint)attrib, tint, alpha);
+			vertices[nv + 1] = new Vertex(b, r.Right, r.Top, sr, st, paletteTextureIndex, (uint)attrib, tint, alpha);
+			vertices[nv + 2] = new Vertex(c, r.Right, r.Bottom, sr, sb, paletteTextureIndex, (uint)attrib, tint, alpha);
+			vertices[nv + 3] = new Vertex(d, r.Left, r.Bottom, sl, sb, paletteTextureIndex, (uint)attrib, tint, alpha);
 		}
 
 		public static void FastCopyIntoChannel(Sprite dest, byte[] src, SpriteFrameType srcType)
