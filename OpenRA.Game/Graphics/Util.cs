@@ -94,7 +94,7 @@ namespace OpenRA.Graphics
 				attribC |= samplers.Y << 9;
 			}
 
-			var fAttribC = (float)attribC;
+			var fAttribC = (uint)attribC;
 			vertices[nv] = new Vertex(a, r.Left, r.Top, sl, st, paletteTextureIndex, fAttribC, tint, alpha);
 			vertices[nv + 1] = new Vertex(b, r.Right, r.Top, sr, st, paletteTextureIndex, fAttribC, tint, alpha);
 			vertices[nv + 2] = new Vertex(c, r.Right, r.Bottom, sr, sb, paletteTextureIndex, fAttribC, tint, alpha);
