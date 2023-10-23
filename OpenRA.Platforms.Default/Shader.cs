@@ -135,7 +135,8 @@ namespace OpenRA.Platforms.Default
 			for (ushort i = 0; i < bindings.Attributes.Length; i++)
 			{
 				var attribute = bindings.Attributes[i];
-				OpenGL.glVertexAttribPointer(i, attribute.Components, OpenGL.GL_FLOAT, false, bindings.Stride, new IntPtr(attribute.Offset));
+
+				OpenGL.glVertexAttribPointer(i, attribute.Components, (int)attribute.Type, false, bindings.Stride, new IntPtr(attribute.Offset));
 				OpenGL.CheckGLError();
 			}
 		}
