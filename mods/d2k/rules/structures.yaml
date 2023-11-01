@@ -306,9 +306,11 @@ refinery:
 	WithIdleOverlay@TOP:
 		RequiresCondition: !build-incomplete
 		Sequence: idle-top
-	WithDockedOverlay@SMOKE:
-		RequiresCondition: !build-incomplete
+	WithIdleOverlay@SMOKE:
+		RequiresCondition: !build-incomplete && unloading
 		Sequence: smoke
+	GrantConditionOnDock:
+		Condition: unloading
 	Power:
 		Amount: -75
 	ProvidesPrerequisite@buildingname:

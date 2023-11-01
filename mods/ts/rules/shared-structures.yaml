@@ -145,10 +145,12 @@ PROC:
 	WithIdleOverlay@BIB:
 		RequiresCondition: !build-incomplete
 		Sequence: bib
-	WithDockedOverlay@FLAME:
-		RequiresCondition: !build-incomplete
+	WithIdleOverlay@FLAME:
+		RequiresCondition: !build-incomplete && unloading
 		Sequence: flame
 		Palette: effect
+	GrantConditionOnDock:
+		Condition: unloading
 	WithDockingOverlay@UNLOAD:
 		RequiresCondition: !build-incomplete
 	Power:
