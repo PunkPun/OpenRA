@@ -526,8 +526,8 @@
 	ProximityCaptor:
 		Types: Ship
 	Chronoshiftable:
-	RepairableNear:
-		RepairActors: spen, syrd
+	RepairableTestcase:
+	DockClientManager:
 	GpsDot:
 		String: Ship
 	WithDamageOverlay:

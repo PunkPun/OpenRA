@@ -21,16 +21,23 @@ namespace OpenRA.Mods.Common.Activities
 	public class MoveToDock : Activity
 	{
 		readonly DockClientManager dockClient;
-		Actor dockHostActor;
-		IDockHost dockHost;
+		(Actor Actor, IDockHost Trait) dockHost;
+		readonly BitSet<DockType> type;
 		readonly INotifyDockClientMoving[] notifyDockClientMoving;
 		readonly Color? dockLineColor = null;
 
-		public MoveToDock(Actor self, DockClientManager dockClient, Actor dockHostActor = null, IDockHost dockHost = null, Color? dockLineColor = null)
+		public MoveToDock(Actor self, DockClientManager dockClient, Actor dockHostActor, IDockHost dockHost, Color? dockLineColor = null)
 		{
 			this.dockClient = dockClient;
-			this.dockHostActor = dockHostActor;
-			this.dockHost = dockHost;
+			this.dockHost = (dockHostActor, dockHost);
+			this.dockLineColor = dockLineColor;
+			notifyDockClientMoving = self.TraitsImplementing<INotifyDockClientMoving>().ToArray();
+		}
+
+		public MoveToDock(Actor self, DockClientManager dockClient, BitSet<DockType> type = default, Color? dockLineColor = null)
+		{
+			this.dockClient = dockClient;
+			this.type = type;
 			this.dockLineColor = dockLineColor;
 			notifyDockClientMoving = self.TraitsImplementing<INotifyDockClientMoving>().ToArray();
 		}
@@ -47,14 +54,11 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			// Find the nearest DockHost if not explicitly ordered to a specific dock.
-			if (dockHost == null || !dockHost.IsEnabledAndInWorld)
+			if (dockHost.Actor == null || !dockHost.Trait.IsEnabledAndInWorld)
 			{
-				var host = dockClient.ClosestDock(null);
+				var host = dockClient.ClosestDock(null, type);
 				if (host.HasValue)
-				{
-					dockHost = host.Value.Trait;
-					dockHostActor = host.Value.Actor;
-				}
+					dockHost = (host.Value.Actor, host.Value.Trait);
 				else
 				{
 					// No docks exist; check again after delay defined in dockClient.
@@ -63,17 +67,17 @@ namespace OpenRA.Mods.Common.Activities
 				}
 			}
 
-			if (dockClient.ReserveHost(dockHostActor, dockHost))
+			if (dockClient.ReserveHost(dockHost.Actor, dockHost.Trait))
 			{
-				if (dockHost.QueueMoveActivity(this, dockHostActor, self, dockClient))
+				if (dockHost.Trait.QueueMoveActivity(this, dockHost.Actor, self, dockClient))
 				{
 					foreach (var ndcm in notifyDockClientMoving)
-						ndcm.MovingToDock(self, dockHostActor, dockHost);
+						ndcm.MovingToDock(self, dockHost.Actor, dockHost.Trait);
 
 					return false;
 				}
 
-				dockHost.QueueDockActivity(this, dockHostActor, self, dockClient);
+				dockHost.Trait.QueueDockActivity(this, dockHost.Actor, self, dockClient);
 				return true;
 			}
 			else
@@ -98,8 +102,8 @@ namespace OpenRA.Mods.Common.Activities
 			if (!dockLineColor.HasValue)
 				yield break;
 
-			if (dockHostActor != null)
-				yield return new TargetLineNode(Target.FromActor(dockHostActor), dockLineColor.Value);
+			if (dockHost.Actor != null)
+				yield return new TargetLineNode(Target.FromActor(dockHost.Actor), dockLineColor.Value);
 			else
 			{
 				if (dockClient.ReservedHostActor != null)

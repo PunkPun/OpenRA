@@ -14,7 +14,6 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Activities;
-using OpenRA.Mods.Common.Orders;
 using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
@@ -225,7 +224,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class Aircraft : PausableConditionalTrait<AircraftInfo>, ITick, ISync, IFacing, IPositionable, IMove,
 		INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyActorDisposing, INotifyBecomingIdle, ICreationActivity,
-		IActorPreviewInitModifier, IDeathActorInitModifier, IIssueDeployOrder, IIssueOrder, IResolveOrder, IOrderVoice
+		IActorPreviewInitModifier, IDeathActorInitModifier, IIssueOrder, IResolveOrder, IOrderVoice
 	{
 		readonly Actor self;
 
@@ -586,39 +585,6 @@ namespace OpenRA.Mods.Common.Traits
 			MayYieldReservation = false;
 		}
 
-		bool AircraftCanEnter(Actor a, TargetModifiers modifiers)
-		{
-			if (RequireForceMove && !modifiers.HasModifier(TargetModifiers.ForceMove))
-				return false;
-
-			return AircraftCanEnter(a);
-		}
-
-		bool AircraftCanEnter(Actor a)
-		{
-			if (self.AppearsHostileTo(a))
-				return false;
-
-			var canRearmAtActor = rearmable != null && rearmable.Info.RearmActors.Contains(a.Info.Name);
-			var canRepairAtActor = repairable != null && repairable.Info.RepairActors.Contains(a.Info.Name);
-
-			return canRearmAtActor || canRepairAtActor;
-		}
-
-		bool AircraftCanResupplyAt(Actor a, bool allowedToForceEnter = false)
-		{
-			if (self.AppearsHostileTo(a))
-				return false;
-
-			var canRearmAtActor = rearmable != null && rearmable.Info.RearmActors.Contains(a.Info.Name);
-			var canRepairAtActor = repairable != null && repairable.Info.RepairActors.Contains(a.Info.Name);
-
-			var allowedToEnterRearmer = canRearmAtActor && (allowedToForceEnter || rearmable.RearmableAmmoPools.Any(p => !p.HasFullAmmo));
-			var allowedToEnterRepairer = canRepairAtActor && (allowedToForceEnter || self.GetDamageState() != DamageState.Undamaged);
-
-			return allowedToEnterRearmer || allowedToEnterRepairer;
-		}
-
 		public int MovementSpeed => !IsTraitDisabled && !IsTraitPaused ? Util.ApplyPercentageModifiers(Info.Speed, speedModifiers) : 0;
 		public int IdleMovementSpeed => Info.IdleSpeed < 0 ? MovementSpeed :
 			!IsTraitDisabled && !IsTraitPaused ? Util.ApplyPercentageModifiers(Info.IdleSpeed, speedModifiers) : 0;
@@ -721,16 +687,6 @@ namespace OpenRA.Mods.Common.Traits
 			return true;
 		}
 
-		public bool CanRearmAt(Actor host)
-		{
-			return rearmable != null && rearmable.Info.RearmActors.Contains(host.Info.Name) && rearmable.RearmableAmmoPools.Any(p => !p.HasFullAmmo);
-		}
-
-		public bool CanRepairAt(Actor host)
-		{
-			return repairable != null && repairable.Info.RepairActors.Contains(host.Info.Name) && self.GetDamageState() != DamageState.Undamaged;
-		}
-
 		public void ModifyDeathActorInit(Actor self, TypeDictionary init)
 		{
 			init.Add(new FacingInit(Facing));
@@ -754,8 +710,6 @@ namespace OpenRA.Mods.Common.Traits
 				self.QueueActivity(new FlyOffMap(self, Target.FromCell(self.World, edgeCell)));
 				self.QueueActivity(new RemoveSelf());
 			}
-			else if (Info.IdleBehavior == IdleBehaviorType.ReturnToBase && GetActorBelow() == null)
-				self.QueueActivity(new ReturnToBase(self, null, !Info.TakeOffOnResupply));
 			else
 			{
 				var dat = self.World.Map.DistanceAboveTerrain(CenterPosition);
@@ -988,29 +942,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		#region Implement order interfaces
 
-		public IEnumerable<IOrderTargeter> Orders
-		{
-			get
-			{
-				yield return new EnterAlliedActorTargeter<BuildingInfo>(
-					"ForceEnter",
-					6,
-					Info.EnterCursor,
-					Info.EnterBlockedCursor,
-					(target, modifiers) => Info.CanForceLand && modifiers.HasModifier(TargetModifiers.ForceMove) && AircraftCanEnter(target),
-					target => Reservable.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, true));
-
-				yield return new EnterAlliedActorTargeter<BuildingInfo>(
-					"Enter",
-					5,
-					Info.EnterCursor,
-					Info.EnterBlockedCursor,
-					AircraftCanEnter,
-					target => Reservable.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, !Info.TakeOffOnResupply));
-
-				yield return new AircraftMoveOrderTargeter(this);
-			}
-		}
+		public IEnumerable<IOrderTargeter> Orders { get { yield return new AircraftMoveOrderTargeter(this); } }
 
 		public Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
 		{
@@ -1020,16 +952,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			return null;
 		}
-
-		Order IIssueDeployOrder.IssueDeployOrder(Actor self, bool queued)
-		{
-			if (IsTraitDisabled || rearmable == null || rearmable.Info.RearmActors.Count == 0)
-				return null;
-
-			return new Order("ReturnToBase", self, queued);
-		}
-
-		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued) { return rearmable != null && rearmable.Info.RearmActors.Count > 0; }
 
 		public string VoicePhraseForOrder(Actor self, Order order)
 		{
@@ -1053,8 +975,6 @@ namespace OpenRA.Mods.Common.Traits
 				case "Stop":
 				case "Scatter":
 					return Info.Voice;
-				case "ReturnToBase":
-					return rearmable != null && rearmable.Info.RearmActors.Count > 0 ? Info.Voice : null;
 				default: return null;
 			}
 		}
@@ -1100,56 +1020,14 @@ namespace OpenRA.Mods.Common.Traits
 				self.QueueActivity(order.Queued, new Land(self, target, targetLineColor: Info.TargetLineColor));
 				self.ShowTargetLines();
 			}
-			else if (orderString == "Enter" || orderString == "ForceEnter" || orderString == "Repair")
-			{
-				// Enter, ForceEnter and Repair orders are only valid for own/allied actors,
-				// which are guaranteed to never be frozen.
-				if (order.Target.Type != TargetType.Actor)
-					return;
-
-				var targetActor = order.Target.Actor;
-				var isForceEnter = orderString == "ForceEnter";
-				var canResupplyAt = AircraftCanResupplyAt(targetActor, isForceEnter || !Info.TakeOffOnResupply);
-
-				// This is what the order targeter checks to display the correct cursor, so we need to make sure
-				// the behavior matches the cursor if the player clicks despite a "blocked" cursor.
-				if (!canResupplyAt || !Reservable.IsAvailableFor(targetActor, self))
-					return;
-
-				if (!order.Queued)
-					UnReserve();
-
-				// Aircraft with TakeOffOnResupply would immediately take off again, so there's no point in automatically forcing
-				// them to land on a resupplier. For aircraft without it, it makes more sense to land than to idle above a
-				// free resupplier.
-				var forceLand = isForceEnter || !Info.TakeOffOnResupply;
-				self.QueueActivity(order.Queued, new ReturnToBase(self, targetActor, forceLand));
-				self.ShowTargetLines();
-			}
 			else if (orderString == "Stop")
 			{
 				// We don't want the Stop order to cancel a running Resupply activity.
-				// Resupply is always either the main activity or a child of ReturnToBase.
-				if (self.CurrentActivity is Resupply ||
-					(self.CurrentActivity is ReturnToBase && GetActorBelow() != null))
+				if (self.CurrentActivity is GenericDockSequence)
 					return;
 
 				self.CancelActivity();
 				UnReserve();
-			}
-			else if (orderString == "ReturnToBase")
-			{
-				// Do nothing if not rearmable and don't restart activity every time deploy hotkey is triggered
-				if (rearmable == null || rearmable.Info.RearmActors.Count == 0 || self.CurrentActivity is ReturnToBase || GetActorBelow() != null)
-					return;
-
-				if (!order.Queued)
-					UnReserve();
-
-				// Aircraft with TakeOffOnResupply would immediately take off again, so there's no point in forcing them to land
-				// on a resupplier. For aircraft without it, it makes more sense to land than to idle above a free resupplier.
-				self.QueueActivity(order.Queued, new ReturnToBase(self, null, !Info.TakeOffOnResupply));
-				self.ShowTargetLines();
 			}
 			else if (orderString == "Scatter")
 			{

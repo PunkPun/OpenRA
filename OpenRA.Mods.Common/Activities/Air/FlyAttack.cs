@@ -131,7 +131,10 @@ namespace OpenRA.Mods.Common.Activities
 				if (attackAircraft.Info.AbortOnResupply)
 					NextActivity?.Cancel(self);
 
-				QueueChild(new ReturnToBase(self));
+				var manager = self.TraitOrDefault<DockClientManager>();
+				if (manager != null && !manager.IsTraitDisabled)
+					QueueChild(new MoveToDock(self, manager, attackAircraft.Info.RearmDockType, manager.DockLineColor));
+
 				returnToBase = true;
 				return attackAircraft.Info.AbortOnResupply;
 			}

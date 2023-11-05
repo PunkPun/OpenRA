@@ -135,13 +135,6 @@ namespace OpenRA.Mods.Common.Traits
 	public interface INotifyAppliedDamage { void AppliedDamage(Actor self, Actor damaged, AttackInfo e); }
 
 	[RequireExplicitImplementation]
-	public interface INotifyResupply
-	{
-		void BeforeResupply(Actor host, Actor target, ResupplyType types);
-		void ResupplyTick(Actor host, Actor target, ResupplyType types);
-	}
-
-	[RequireExplicitImplementation]
 	public interface INotifyTakeOff { void TakeOff(Actor self); }
 	[RequireExplicitImplementation]
 	public interface INotifyLanding { void Landing(Actor self); }
@@ -166,9 +159,17 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	[RequireExplicitImplementation]
-	public interface INotifyDockHost { void Docked(Actor self, Actor client); void Undocked(Actor self, Actor client); }
+	public interface INotifyDock
+	{
+		void DockProcedureStarted(Actor self, Actor client, BitSet<DockType> type);
+		void DockProcedureEnded(Actor self, Actor client, BitSet<DockType> type);
+	}
+
 	[RequireExplicitImplementation]
-	public interface INotifyDockClient { void Docked(Actor self, Actor host); void Undocked(Actor self, Actor host); }
+	public interface INotifyActiveDock
+	{
+		void ActiveDocksChanged(Actor self, Actor other, BitSet<DockType> activeTypes);
+	}
 
 	[RequireExplicitImplementation]
 	public interface INotifyDockClientMoving
@@ -226,7 +227,7 @@ namespace OpenRA.Mods.Common.Traits
 		/// <summary>When null, the client should act as if it can dock but never do.</summary>
 		DockClientManager DockClientManager { get; }
 		void OnDockStarted(Actor self, Actor hostActor, IDockHost host);
-		bool OnDockTick(Actor self, Actor hostActor, IDockHost dock);
+		bool OnDockTick(Actor self, Actor hostActor, IDockHost dock, out bool paused);
 		void OnDockCompleted(Actor self, Actor hostActor, IDockHost host);
 
 		/// <summary>Is this client allowed to dock.</summary>
@@ -365,6 +366,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public interface IDockClientBody
 	{
+		BitSet<DockType> DockType { get; }
 		void PlayDockAnimation(Actor self, Action after);
 		void PlayReverseDockAnimation(Actor self, Action after);
 	}

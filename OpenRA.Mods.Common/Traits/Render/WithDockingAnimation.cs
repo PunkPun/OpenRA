@@ -9,43 +9,63 @@
  */
 #endregion
 
-using System;
+using System.Linq;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits.Render
 {
-	public class WithDockingAnimationInfo : TraitInfo, Requires<WithSpriteBodyInfo>, Requires<HarvesterInfo>
+	[Desc("Replaces the default animation when actor resupplies a unit.")]
+	public class WithDockingAnimationInfo : ConditionalTraitInfo, Requires<WithSpriteBodyInfo>
 	{
-		[SequenceReference]
-		[Desc("Displayed when docking to refinery.")]
-		public readonly string DockSequence = "dock";
+		[Desc("Docking type. If left empty will trigger on any dock type.")]
+		public readonly BitSet<DockType> Type;
 
 		[SequenceReference]
-		[Desc("Looped while unloading at refinery.")]
-		public readonly string DockLoopSequence = "dock-loop";
+		[Desc("Sequence name to use")]
+		public readonly string Sequence = "active";
+
+		[Desc("Which sprite body to play the animation on.")]
+		public readonly string Body = "body";
 
 		public override object Create(ActorInitializer init) { return new WithDockingAnimation(init.Self, this); }
 	}
 
-	public class WithDockingAnimation : IDockClientBody
+	public class WithDockingAnimation : ConditionalTrait<WithDockingAnimationInfo>, INotifyActiveDock
 	{
-		readonly WithDockingAnimationInfo info;
 		readonly WithSpriteBody wsb;
+		bool animPlaying;
 
 		public WithDockingAnimation(Actor self, WithDockingAnimationInfo info)
+			: base(info)
 		{
-			this.info = info;
-			wsb = self.Trait<WithSpriteBody>();
+			wsb = self.TraitsImplementing<WithSpriteBody>().Single(w => w.Info.Name == Info.Body);
 		}
 
-		void IDockClientBody.PlayDockAnimation(Actor self, Action after)
+		void INotifyActiveDock.ActiveDocksChanged(Actor self, Actor other, BitSet<DockType> activeTypes)
 		{
-			wsb.PlayCustomAnimation(self, info.DockSequence, () => { wsb.PlayCustomAnimationRepeating(self, info.DockLoopSequence); after(); });
+			if (IsTraitDisabled || animPlaying == (activeTypes.Overlaps(Info.Type) || (activeTypes != default && Info.Type == default)))
+				return;
+
+			if (animPlaying)
+			{
+				animPlaying = false;
+				wsb.CancelCustomAnimation(self);
+			}
+			else
+			{
+				animPlaying = true;
+				wsb.PlayCustomAnimationRepeating(self, Info.Sequence);
+			}
 		}
 
-		void IDockClientBody.PlayReverseDockAnimation(Actor self, Action after)
+		protected override void TraitDisabled(Actor self)
 		{
-			wsb.PlayCustomAnimationBackwards(self, info.DockSequence, () => after());
+			if (animPlaying)
+			{
+				animPlaying = false;
+				wsb.CancelCustomAnimation(self);
+			}
 		}
 	}
 }

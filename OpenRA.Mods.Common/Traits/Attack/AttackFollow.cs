@@ -22,6 +22,8 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Actor will follow units until in range to attack them.")]
 	public class AttackFollowInfo : AttackBaseInfo
 	{
+		public readonly BitSet<DockType> RearmDockType = new("Rearm");
+
 		[Desc("Automatically acquire and fire on targets of opportunity when not actively attacking.")]
 		public readonly bool OpportunityFire = true;
 
@@ -236,7 +238,6 @@ namespace OpenRA.Mods.Common.Traits
 			readonly Color? targetLineColor;
 			readonly Rearmable rearmable;
 			readonly AttackSource source;
-			readonly bool isAircraft;
 
 			Target target;
 			Target lastVisibleTarget;
@@ -260,7 +261,6 @@ namespace OpenRA.Mods.Common.Traits
 				this.forceAttack = forceAttack;
 				this.targetLineColor = targetLineColor;
 				this.source = source;
-				isAircraft = self.Info.HasTraitInfo<AircraftInfo>();
 
 				// The target may become hidden between the initial order request and the first tick (e.g. if queued)
 				// Moving to any position (even if quite stale) is still better than immediately giving up
@@ -369,21 +369,9 @@ namespace OpenRA.Mods.Common.Traits
 					if (attack.Info.AbortOnResupply)
 						NextActivity?.Cancel(self);
 
-					if (isAircraft)
-						QueueChild(new ReturnToBase(self));
-					else
-					{
-						var target = self.World.ActorsHavingTrait<Reservable>()
-							.Where(a => !a.IsDead && a.IsInWorld
-								&& a.Owner.IsAlliedWith(self.Owner) &&
-								rearmable.Info.RearmActors.Contains(a.Info.Name))
-							.OrderBy(a => a.Owner == self.Owner ? 0 : 1)
-							.ThenBy(p => (self.Location - p.Location).LengthSquared)
-							.FirstOrDefault();
-
-						if (target != null)
-							QueueChild(new Resupply(self, target, new WDist(512)));
-					}
+					var manager = self.TraitOrDefault<DockClientManager>();
+					if (manager != null && !manager.IsTraitDisabled)
+						QueueChild(new MoveToDock(self, manager, attack.Info.RearmDockType, manager.DockLineColor));
 
 					returnToBase = true;
 					return attack.Info.AbortOnResupply;

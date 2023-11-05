@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual void OnDockStarted(Actor self, Actor hostActor, IDockHost host) { }
 
-		public virtual bool OnDockTick(Actor self, Actor hostActor, IDockHost host) { return false; }
+		public virtual bool OnDockTick(Actor self, Actor hostActor, IDockHost host, out bool paused) { paused = false; return false; }
 
 		public virtual void OnDockCompleted(Actor self, Actor hostActor, IDockHost host) { }
 	}

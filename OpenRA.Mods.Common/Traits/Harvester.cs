@@ -158,8 +158,10 @@ namespace OpenRA.Mods.Common.Traits
 				acceptResources = hostActor.TraitOrDefault<IAcceptResources>();
 		}
 
-		public override bool OnDockTick(Actor self, Actor hostActor, IDockHost host)
+		bool paused = false;
+		public override bool OnDockTick(Actor self, Actor hostActor, IDockHost host, out bool paused)
 		{
+			paused = this.paused;
 			if (acceptResources == null || IsTraitDisabled)
 				return true;
 
@@ -179,11 +181,15 @@ namespace OpenRA.Mods.Common.Traits
 					sr.RemoveResource(c.Key, accepted);
 					currentUnloadTicks = Info.BaleUnloadDelay;
 					UpdateCondition(self);
+					this.paused = false;
+					paused = false;
 					return false;
 				}
 			}
 
-			return IsEmpty;
+			paused = !IsEmpty;
+			this.paused = paused;
+			return !paused;
 		}
 
 		public override void OnDockCompleted(Actor self, Actor hostActor, IDockHost dock)

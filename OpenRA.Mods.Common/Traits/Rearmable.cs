@@ -11,30 +11,33 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class RearmableInfo : TraitInfo
+	[Desc("This actor can be sent for rearming.")]
+	public class RearmableInfo : DockClientBaseInfo, Requires<IHealthInfo>, Requires<IMoveInfo>, IObservesVariablesInfo
 	{
-		[ActorReference]
-		[FieldLoader.Require]
-		[Desc("Actors that this actor can dock to and get rearmed by.")]
-		public readonly HashSet<string> RearmActors = new();
+		[Desc("Docking type")]
+		public readonly BitSet<DockType> Type = new("Rearm");
 
 		[Desc("Name(s) of AmmoPool(s) that use this trait to rearm.")]
 		public readonly HashSet<string> AmmoPools = new() { "primary" };
 
-		public override object Create(ActorInitializer init) { return new Rearmable(this); }
+		public override object Create(ActorInitializer init) { return new Rearmable(init.Self, this); }
 	}
 
-	public class Rearmable : INotifyCreated, INotifyDockClient
+	public class Rearmable : DockClientBase<RearmableInfo>, INotifyCreated
 	{
-		public readonly RearmableInfo Info;
+		readonly Actor self;
 
-		public Rearmable(RearmableInfo info)
+		public override BitSet<DockType> GetDockType => Info.Type;
+
+		public Rearmable(Actor self, RearmableInfo info)
+			: base(self, info)
 		{
-			Info = info;
+			this.self = self;
 		}
 
 		public AmmoPool[] RearmableAmmoPools { get; private set; }
@@ -44,7 +47,12 @@ namespace OpenRA.Mods.Common.Traits
 			RearmableAmmoPools = self.TraitsImplementing<AmmoPool>().Where(p => Info.AmmoPools.Contains(p.Info.Name)).ToArray();
 		}
 
-		void INotifyDockClient.Docked(Actor self, Actor dock)
+		protected override bool CanDock()
+		{
+			return self.GetDamageState() > DamageState.Undamaged;
+		}
+
+		public override void OnDockStarted(Actor self, Actor hostActor, IDockHost host)
 		{
 			// Reset the ReloadDelay to avoid any issues with early cancellation
 			// from previous reload attempts (explicit order, host building died, etc).
@@ -52,10 +60,9 @@ namespace OpenRA.Mods.Common.Traits
 				pool.RemainingTicks = pool.Info.ReloadDelay;
 		}
 
-		void INotifyDockClient.Undocked(Actor self, Actor dock) { }
-
-		public bool RearmTick(Actor self)
+		public override bool OnDockTick(Actor self, Actor hostActor, IDockHost host, out bool paused)
 		{
+			paused = false;
 			var rearmComplete = true;
 			foreach (var ammoPool in RearmableAmmoPools)
 			{
@@ -76,5 +83,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			return rearmComplete;
 		}
+
+		public override void OnDockCompleted(Actor self, Actor hostActor, IDockHost host) { }
 	}
 }

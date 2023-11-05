@@ -36,23 +36,30 @@ namespace OpenRA.Mods.Common.Activities
 
 		protected DockingState dockingState;
 
-		readonly INotifyDockClient[] notifyDockClients;
-		readonly INotifyDockHost[] notifyDockHosts;
+		readonly INotifyActiveDock[] notifyActiveDockClients;
+		readonly INotifyActiveDock[] notifyActiveDockHosts;
+		readonly INotifyDock[] notifyDockClients;
+		readonly INotifyDock[] notifyDockHosts;
 
+		readonly BitSet<DockType> sharedDockTypes;
+		BitSet<DockType> activeDockTypes;
 		bool dockInitiated = false;
 
 		public GenericDockSequence(Actor self, DockClientManager client, Actor hostActor, IDockHost host)
 		{
 			dockingState = DockingState.Drag;
+			sharedDockTypes = client.GetSharedTypes(host);
 
 			DockClient = client;
-			DockClientBody = self.TraitOrDefault<IDockClientBody>();
-			notifyDockClients = self.TraitsImplementing<INotifyDockClient>().ToArray();
+			DockClientBody = self.TraitsImplementing<IDockClientBody>().FirstOrDefault(b => b.DockType.Overlaps(sharedDockTypes));
+			notifyActiveDockClients = self.TraitsImplementing<INotifyActiveDock>().ToArray();
+			notifyDockClients = self.TraitsImplementing<INotifyDock>().ToArray();
 
 			DockHost = host;
 			DockHostActor = hostActor;
 			DockHostSpriteOverlay = hostActor.TraitOrDefault<WithDockingOverlay>();
-			notifyDockHosts = hostActor.TraitsImplementing<INotifyDockHost>().ToArray();
+			notifyActiveDockHosts = hostActor.TraitsImplementing<INotifyActiveDock>().ToArray();
+			notifyDockHosts = hostActor.TraitsImplementing<INotifyDock>().ToArray();
 
 			if (host is IDockHostDrag sequence)
 			{
@@ -94,7 +101,7 @@ namespace OpenRA.Mods.Common.Activities
 						PlayDockAnimations(self);
 						DockHost.OnDockStarted(DockHostActor, self, DockClient);
 						DockClient.OnDockStarted(self, DockHostActor, DockHost);
-						NotifyDocked(self);
+						NotifyProcedureStarted(self);
 					}
 					else
 						dockingState = DockingState.Undock;
@@ -102,8 +109,11 @@ namespace OpenRA.Mods.Common.Activities
 					return false;
 
 				case DockingState.Loop:
-					if (IsCanceling || DockHostActor.IsDead || !DockHostActor.IsInWorld || DockClient.OnDockTick(self, DockHostActor, DockHost))
+					if (IsCanceling || DockHostActor.IsDead || !DockHostActor.IsInWorld || DockClient.OnDockTick(self, DockHostActor, DockHost, () => UpdateActiveDockTypes(self)))
+					{
+						NotifyUndocked(self);
 						dockingState = DockingState.Undock;
+					}
 
 					return false;
 
@@ -118,7 +128,7 @@ namespace OpenRA.Mods.Common.Activities
 				case DockingState.Complete:
 					DockHost.OnDockCompleted(DockHostActor, self, DockClient);
 					DockClient.OnDockCompleted(self, DockHostActor, DockHost);
-					NotifyUndocked(self);
+					NotifyProcedureEnded(self);
 					if (IsDragRequired)
 						QueueChild(new Drag(self, EndDrag, StartDrag, DragLength));
 
@@ -128,26 +138,21 @@ namespace OpenRA.Mods.Common.Activities
 			throw new InvalidOperationException("Invalid harvester dock state");
 		}
 
-		public virtual void PlayDockAnimations(Actor self)
+		protected virtual void PlayDockAnimations(Actor self)
 		{
 			PlayDockCientAnimation(self, () =>
 			{
-				if (DockHostSpriteOverlay != null && !DockHostSpriteOverlay.Visible)
+				if (DockHostSpriteOverlay != null)
 				{
 					dockingState = DockingState.Wait;
-					DockHostSpriteOverlay.Visible = true;
-					DockHostSpriteOverlay.WithOffset.Animation.PlayThen(DockHostSpriteOverlay.Info.Sequence, () =>
-					{
-						dockingState = DockingState.Loop;
-						DockHostSpriteOverlay.Visible = false;
-					});
+					DockHostSpriteOverlay.Start(self, () => dockingState = DockingState.Loop);
 				}
 				else
 					dockingState = DockingState.Loop;
 			});
 		}
 
-		public virtual void PlayDockCientAnimation(Actor self, Action after)
+		protected virtual void PlayDockCientAnimation(Actor self, Action after)
 		{
 			if (DockClientBody != null)
 			{
@@ -158,26 +163,18 @@ namespace OpenRA.Mods.Common.Activities
 				after();
 		}
 
-		public virtual void PlayUndockAnimations(Actor self)
+		protected virtual void PlayUndockAnimations(Actor self)
 		{
-			if (DockHostActor.IsInWorld && !DockHostActor.IsDead && DockHostSpriteOverlay != null && !DockHostSpriteOverlay.Visible)
+			if (DockHostActor.IsInWorld && !DockHostActor.IsDead && DockHostSpriteOverlay != null)
 			{
 				dockingState = DockingState.Wait;
-				DockHostSpriteOverlay.Visible = true;
-				DockHostSpriteOverlay.WithOffset.Animation.PlayBackwardsThen(DockHostSpriteOverlay.Info.Sequence, () =>
-				{
-					PlayUndockClientAnimation(self, () =>
-					{
-						dockingState = DockingState.Complete;
-						DockHostSpriteOverlay.Visible = false;
-					});
-				});
+				DockHostSpriteOverlay.End(self, () => PlayUndockClientAnimation(self, () => dockingState = DockingState.Complete));
 			}
 			else
 				PlayUndockClientAnimation(self, () => dockingState = DockingState.Complete);
 		}
 
-		public virtual void PlayUndockClientAnimation(Actor self, Action after)
+		protected virtual void PlayUndockClientAnimation(Actor self, Action after)
 		{
 			if (DockClientBody != null)
 			{
@@ -188,23 +185,52 @@ namespace OpenRA.Mods.Common.Activities
 				after();
 		}
 
-		void NotifyDocked(Actor self)
+		void NotifyProcedureStarted(Actor self)
 		{
 			foreach (var nd in notifyDockClients)
-				nd.Docked(self, DockHostActor);
+				nd.DockProcedureStarted(self, DockHostActor, sharedDockTypes);
 
 			foreach (var nd in notifyDockHosts)
-				nd.Docked(DockHostActor, self);
+				nd.DockProcedureStarted(DockHostActor, self, sharedDockTypes);
+		}
+
+		void NotifyProcedureEnded(Actor self)
+		{
+			foreach (var nd in notifyDockClients)
+				nd.DockProcedureEnded(self, DockHostActor, sharedDockTypes);
+
+			if (DockHostActor.IsInWorld && !DockHostActor.IsDead)
+				foreach (var nd in notifyDockHosts)
+					nd.DockProcedureEnded(DockHostActor, self, sharedDockTypes);
+		}
+
+		void NotifyActiveDocksChanged(Actor self)
+		{
+			foreach (var nd in notifyActiveDockClients)
+				nd.ActiveDocksChanged(self, DockHostActor, activeDockTypes);
+
+			foreach (var nd in notifyActiveDockHosts)
+				nd.ActiveDocksChanged(DockHostActor, self, activeDockTypes);
+		}
+
+		void UpdateActiveDockTypes(Actor self)
+		{
+			var active = DockClient.GetActiveTypes(DockHost);
+			if (activeDockTypes == active)
+				return;
+
+			NotifyActiveDocksChanged(self);
+
+			activeDockTypes = active;
 		}
 
 		void NotifyUndocked(Actor self)
 		{
-			foreach (var nd in notifyDockClients)
-				nd.Undocked(self, DockHostActor);
+			if (activeDockTypes == default)
+				return;
 
-			if (DockHostActor.IsInWorld && !DockHostActor.IsDead)
-				foreach (var nd in notifyDockHosts)
-					nd.Undocked(DockHostActor, self);
+			NotifyActiveDocksChanged(self);
+			activeDockTypes = default;
 		}
 
 		public override IEnumerable<Target> GetTargets(Actor self)

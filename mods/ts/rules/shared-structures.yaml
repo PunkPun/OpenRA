@@ -152,6 +152,8 @@ PROC:
 	GrantConditionOnDock:
 		Condition: unloading
 	WithDockingOverlay@UNLOAD:
+		StartSequence: unload-overlay
+		EndSequence: unload-overlay-reverse
 		RequiresCondition: !build-incomplete
 	Power:
 		Amount: -30

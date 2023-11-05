@@ -109,7 +109,8 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	public class Cloak : PausableConditionalTrait<CloakInfo>, IRenderModifier, INotifyDamage, INotifyUnloadCargo, INotifyLoadCargo, INotifyDemolition, INotifyInfiltration,
-		INotifyAttack, ITick, IVisibilityModifier, IRadarColorModifier, INotifyDockClient, INotifySupportPower
+
+		INotifyAttack, ITick, IVisibilityModifier, IRadarColorModifier, INotifyDock, INotifySupportPower
 	{
 		readonly float3 cloakedColor;
 		readonly float cloakedColorAlpha;
@@ -306,7 +307,7 @@ namespace OpenRA.Mods.Common.Traits
 			return color;
 		}
 
-		void INotifyDockClient.Docked(Actor self, Actor host)
+		void INotifyDock.DockProcedureStarted(Actor self, Actor other, BitSet<DockType> types)
 		{
 			if (Info.UncloakOn.HasFlag(UncloakType.Dock))
 			{
@@ -315,7 +316,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		void INotifyDockClient.Undocked(Actor self, Actor host)
+		void INotifyDock.DockProcedureEnded(Actor self, Actor other, BitSet<DockType> types)
 		{
 			if (Info.UncloakOn.HasFlag(UncloakType.Dock))
 				isDocking = false;

@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Activities;
@@ -118,27 +119,77 @@ namespace OpenRA.Mods.Common.Traits
 			return false;
 		}
 
+		public BitSet<DockType> GetSharedTypes(IDockHost host)
+		{
+			BitSet<DockType> types = default;
+			foreach (var client in dockClients)
+				types.Union(host.GetDockType.Intersect(client.GetDockType));
+
+			return types;
+		}
+
+		List<IDockClient> activeClients;
+
+		public BitSet<DockType> GetActiveTypes(IDockHost host)
+		{
+			BitSet<DockType> types = default;
+			foreach (var client in activeClients)
+				types.Union(host.GetDockType.Intersect(client.GetDockType));
+
+			return types;
+		}
+
 		public void OnDockStarted(Actor self, Actor hostActor, IDockHost host)
 		{
+			activeClients = dockClients.ToList();
 			foreach (var client in dockClients)
 				client.OnDockStarted(self, hostActor, host);
 		}
 
-		public bool OnDockTick(Actor self, Actor hostActor, IDockHost host)
+		public bool OnDockTick(Actor self, Actor hostActor, IDockHost host, Action onActiveClientsChanged)
 		{
 			if (IsTraitDisabled)
 				return true;
 
 			var cancel = true;
 			foreach (var client in dockClients)
-				if (!client.OnDockTick(self, hostActor, host))
+			{
+				if (client.OnDockTick(self, hostActor, host, out var paused))
+				{
+					if (activeClients.Contains(client))
+					{
+						activeClients.Remove(client);
+						onActiveClientsChanged();
+					}
+				}
+				else
+				{
 					cancel = false;
+					if (!paused)
+					{
+						if (!activeClients.Contains(client))
+						{
+							activeClients.Add(client);
+							onActiveClientsChanged();
+						}
+					}
+					else
+					{
+						if (activeClients.Contains(client))
+						{
+							activeClients.Remove(client);
+							onActiveClientsChanged();
+						}
+					}
+				}
+			}
 
 			return cancel;
 		}
 
 		public void OnDockCompleted(Actor self, Actor hostActor, IDockHost host)
 		{
+			activeClients = null;
 			foreach (var client in dockClients)
 				client.OnDockCompleted(self, hostActor, host);
 

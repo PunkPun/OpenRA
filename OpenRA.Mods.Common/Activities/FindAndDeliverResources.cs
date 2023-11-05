@@ -57,7 +57,7 @@ namespace OpenRA.Mods.Common.Activities
 				// We have to make sure the actual "harvest" order is not skipped if a third order is queued,
 				// so we keep deliveredLoad false.
 				if (harv.IsFull)
-					QueueChild(new MoveToDock(self, dockClient, dockLineColor: dockClient.DockLineColor));
+					QueueChild(new MoveToDock(self, dockClient, harvInfo.Type, dockClient.DockLineColor));
 			}
 		}
 
@@ -84,7 +84,7 @@ namespace OpenRA.Mods.Common.Activities
 				if (harv.DockClientManager.ReservedHost != null)
 					return false;
 
-				QueueChild(new MoveToDock(self, dockClient, dockLineColor: dockClient.DockLineColor));
+				QueueChild(new MoveToDock(self, dockClient, harvInfo.Type, dockClient.DockLineColor));
 				hasDeliveredLoad = true;
 			}
 

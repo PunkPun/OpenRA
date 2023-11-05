@@ -22,6 +22,8 @@ namespace OpenRA.Mods.Common.Traits
 {
 	public class MinelayerInfo : TraitInfo, Requires<RearmableInfo>
 	{
+		public readonly BitSet<DockType> RearmDockType = new("Rearm");
+
 		[ActorReference]
 		public readonly string Mine = "minv";
 

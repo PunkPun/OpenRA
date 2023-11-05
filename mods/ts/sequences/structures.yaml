@@ -2116,6 +2116,13 @@ proc.gdi:
 			SNOW: narefn_a.shp
 		Length: *
 		ZOffset: 1024
+	unload-overlay-reverse:
+		TilesetFilenames:
+			TEMPERATE: ntrefn_a.shp
+			SNOW: narefn_a.shp
+		Length: *
+		Frames: 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+		ZOffset: 1024
 	idle-lights:
 		TilesetFilenames:
 			TEMPERATE: ntrefn_c.shp
@@ -2207,6 +2214,13 @@ proc.nod:
 			TEMPERATE: ntrefn_a.shp
 			SNOW: narefn_a.shp
 		Length: *
+		ZOffset: 1024
+	unload-overlay-reverse:
+		TilesetFilenames:
+			TEMPERATE: ntrefn_a.shp
+			SNOW: narefn_a.shp
+		Length: *
+		Frames: 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 		ZOffset: 1024
 	idle-lights:
 		TilesetFilenames:

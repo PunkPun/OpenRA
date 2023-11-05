@@ -402,7 +402,7 @@ GADEPT:
 		RequiresCondition: !build-incomplete && !empdisable
 		Sequence: circuits-bright
 		Palette: bright
-	WithRepairOverlay@CRANE:
+	WithDockingOverlay@CRANE:
 		RequiresCondition: !build-incomplete
 		PauseOnCondition: empdisable
 		StartSequence: crane-start
@@ -410,16 +410,16 @@ GADEPT:
 		EndSequence: crane-end
 		Palette: player-nobright
 		IsPlayerPalette: True
-	WithRepairOverlay@CRANE-BRIGHT:
-		RequiresCondition: !build-incomplete
+	WithIdleOverlay@CRANE-BRIGHT:
+		RequiresCondition: !build-incomplete && repairing
 		PauseOnCondition: empdisable
-		StartSequence: crane-start
 		Sequence: crane-loop-bright
-		EndSequence: crane-end
 		Palette: bright
-	WithRepairOverlay@PLATFORM:
-		RequiresCondition: !build-incomplete && !empdisable
+	WithIdleOverlay@PLATFORM:
+		RequiresCondition: !build-incomplete && !empdisable && repairing
 		Sequence: platform
+	GrantConditionOnDock:
+		Condition: repairing
 	WithDeathAnimation@BIB:
 		DeathSequence: dead-ground
 		UseDeathTypeSuffix: false
@@ -431,11 +431,11 @@ GADEPT:
 		FactionImages:
 			gdi: gadept.gdi
 			nod: gadept.nod
-	GrantConditionOnHostDock:
-		Condition: serving
+	GrantConditionOnDock@SELLABLE:
+		Condition: notsellable
 		AfterDockDuration: 20
 	Sellable:
-		RequiresCondition: !serving && !build-incomplete && !being-demolished
+		RequiresCondition: !notsellable && !build-incomplete && !being-demolished
 
 GARADR:
 	Inherits: ^Building

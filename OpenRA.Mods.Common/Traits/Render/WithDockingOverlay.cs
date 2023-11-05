@@ -9,17 +9,26 @@
  */
 #endregion
 
+using System;
 using OpenRA.Graphics;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits.Render
 {
-	[Desc("Rendered on the refinery when a voxel harvester is docking and undocking.")]
+	[Desc("Rendered on the dock host. Docking procedure stops while StartSequence and EndSequence are playing.")]
 	public class WithDockingOverlayInfo : PausableConditionalTraitInfo, Requires<RenderSpritesInfo>, Requires<BodyOrientationInfo>
 	{
 		[SequenceReference]
-		[Desc("Sequence name to use")]
-		public readonly string Sequence = "unload-overlay";
+		[Desc("Sequence to use upon beginning to dock.")]
+		public readonly string StartSequence = null;
+
+		[SequenceReference]
+		[Desc("Sequence to play during repeatedly.")]
+		public readonly string Sequence = null;
+
+		[SequenceReference]
+		[Desc("Sequence to use after docking has finished.")]
+		public readonly string EndSequence = null;
 
 		[Desc("Position relative to body")]
 		public readonly WVec Offset = WVec.Zero;
@@ -36,9 +45,9 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 	public class WithDockingOverlay : PausableConditionalTrait<WithDockingOverlayInfo>
 	{
-		public readonly AnimationWithOffset WithOffset;
+		readonly Animation overlay;
 
-		public bool Visible;
+		bool visible;
 
 		public WithDockingOverlay(Actor self, WithDockingOverlayInfo info)
 			: base(info)
@@ -46,14 +55,59 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var rs = self.Trait<RenderSprites>();
 			var body = self.Trait<BodyOrientation>();
 
-			var overlay = new Animation(self.World, rs.GetImage(self), () => IsTraitPaused);
-			overlay.Play(info.Sequence);
+			overlay = new Animation(self.World, rs.GetImage(self), () => IsTraitPaused);
 
-			WithOffset = new AnimationWithOffset(overlay,
+			var withOffset = new AnimationWithOffset(overlay,
 				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation))),
-				() => !Visible || IsTraitDisabled);
+				() => !visible || IsTraitDisabled,
+				p => RenderUtils.ZOffsetFromCenter(self, p, 1));
 
-			rs.Add(WithOffset, info.Palette, info.IsPlayerPalette);
+			rs.Add(withOffset, info.Palette, info.IsPlayerPalette);
+		}
+
+		public void Start(Actor self, Action after)
+		{
+			if (Info.StartSequence != null)
+			{
+				visible = true;
+				overlay.PlayThen(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), Info.StartSequence), () =>
+					{
+						if (Info.Sequence != null)
+							overlay.PlayRepeating(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), Info.Sequence));
+						else
+							visible = false;
+
+						after();
+					});
+			}
+			else
+			{
+				if (Info.Sequence != null)
+				{
+					visible = true;
+					overlay.PlayRepeating(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), Info.Sequence));
+				}
+
+				after();
+			}
+		}
+
+		public void End(Actor self, Action after)
+		{
+			if (Info.EndSequence != null)
+			{
+				visible = true;
+				overlay.PlayThen(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), Info.EndSequence), () =>
+					{
+						visible = false;
+						after();
+					});
+			}
+			else
+			{
+				visible = false;
+				after();
+			}
 		}
 	}
 }
