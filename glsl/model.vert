@@ -1,7 +1,6 @@
 #version {VERSION}
 
-uniform mat4 View;
-uniform mat4 TransformMatrix;
+uniform mat4 MVP;
 
 in vec4 aVertexPosition;
 in vec4 aVertexTexCoord;
@@ -20,7 +19,7 @@ vec4 DecodeMask(float x)
 
 void main()
 {
-	gl_Position = View*TransformMatrix*aVertexPosition;
+	gl_Position = MVP * aVertexPosition;
 	vTexCoord = aVertexTexCoord;
 	vChannelMask = DecodeMask(aVertexTexMetadata.s);
 	vNormalsMask = DecodeMask(aVertexTexMetadata.t);

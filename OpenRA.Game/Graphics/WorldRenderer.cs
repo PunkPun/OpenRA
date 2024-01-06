@@ -44,7 +44,6 @@ namespace OpenRA.Graphics
 		readonly List<IFinalizedRenderable> preparedAnnotationRenderables = new();
 
 		readonly List<IRenderable> renderablesBuffer = new();
-		readonly IRenderer[] renderers;
 		readonly IRenderPostProcessPass[] postProcessPasses;
 
 		internal WorldRenderer(ModData modData, World world)
@@ -68,24 +67,11 @@ namespace OpenRA.Graphics
 			palette.Initialize();
 
 			TerrainLighting = world.WorldActor.TraitOrDefault<ITerrainLighting>();
-			renderers = world.WorldActor.TraitsImplementing<IRenderer>().ToArray();
 			terrainRenderer = world.WorldActor.TraitOrDefault<IRenderTerrain>();
 
 			debugVis = Exts.Lazy(() => world.WorldActor.TraitOrDefault<DebugVisualizations>());
 
 			postProcessPasses = world.WorldActor.TraitsImplementing<IRenderPostProcessPass>().ToArray();
-		}
-
-		public void BeginFrame()
-		{
-			foreach (var r in renderers)
-				r.BeginFrame();
-		}
-
-		public void EndFrame()
-		{
-			foreach (var r in renderers)
-				r.EndFrame();
 		}
 
 		public void UpdatePalettesForPlayer(string internalName, Color color, bool replaceExisting)

@@ -105,9 +105,8 @@ namespace OpenRA
 
 	public interface IRenderer
 	{
-		void BeginFrame();
-		void EndFrame();
 		void SetPalette(HardwarePalette palette);
+		void SetViewportParams(Size sheetSize, int downscale, float depthMargin, int2 scroll);
 	}
 
 	public interface IVertexBuffer<T> : IDisposable where T : struct
