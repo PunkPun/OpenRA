@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
@@ -27,6 +28,64 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void WorldLoaded(World world, WorldRenderer wr)
 		{
+			var yaml = new List<MiniYamlNode>();
+			var bridgeActors = new List<Actor>();
+			var bridgeHutActors = new List<string>();
+
+			Actor AddActor(string name, ActorInfo actor, ActorInit init = null)
+			{
+				var actorReference = new ActorReference(name)
+				{
+					new OwnerInit(world.WorldActor.Owner),
+					new FactionInit(world.WorldActor.Owner.Faction.InternalName),
+					new LocationInit(CPos.Zero),
+				};
+
+				if (init != null)
+					actorReference.Add(init);
+
+				Console.WriteLine($"Adding actor {name}");
+				try
+				{
+					var a = world.CreateActor(false, actorReference);
+					var bounds = a.TraitOrDefault<IMouseBounds>().MouseoverBounds(a, wr).BoundingRect;
+					yaml.Add(new MiniYamlNode(name, bounds.ToString()));
+					return a;
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine($"Failed to get bounds for {name}: {e.Message}");
+				}
+
+				return null;
+			}
+
+			foreach (var ai in Game.ModData.DefaultRules.Actors)
+			{
+				if (!ai.Value.HasTraitInfo<IMouseBoundsInfo>())
+					continue;
+
+				if (ai.Value.HasTraitInfo<LegacyBridgeHutInfo>())
+					bridgeHutActors.Add(ai.Key);
+				else
+				{
+					var a = AddActor(ai.Key, ai.Value);
+					if (ai.Value.HasTraitInfo<BridgeInfo>())
+						bridgeActors.Add(a);
+				}
+			}
+
+			foreach (var a in bridgeHutActors)
+			{
+				var bridge = bridgeActors.FirstOrDefault();
+				if (bridge == null)
+					continue;
+
+				AddActor(a, Game.ModData.DefaultRules.Actors[a], new ParentActorInit(bridge));
+			}
+
+			yaml.WriteToFile($"mousebounds-{Game.ModData.Manifest.Id}.yaml");
+
 			var preventMapSpawns = world.WorldActor.TraitsImplementing<IPreventMapSpawn>()
 				.Concat(world.WorldActor.Owner.PlayerActor.TraitsImplementing<IPreventMapSpawn>())
 				.ToArray();
