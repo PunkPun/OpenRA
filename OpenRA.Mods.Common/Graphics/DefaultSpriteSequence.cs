@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using OpenRA.Graphics;
@@ -45,8 +44,7 @@ namespace OpenRA.Mods.Common.Graphics
 		int ISpriteSequenceLoader.BgraSheetSize => BgraSheetSize;
 		int ISpriteSequenceLoader.IndexedSheetSize => IndexedSheetSize;
 
-		IReadOnlyDictionary<string, ISpriteSequence> ISpriteSequenceLoader.ParseSequences(
-			ModData modData, string tileset, SpriteCache cache, MiniYamlNode imageNode)
+		Dictionary<string, ISpriteSequence> ISpriteSequenceLoader.ParseSequences(ModData modData, string tileset, SpriteCache cache, MiniYamlNode imageNode)
 		{
 			var sequences = new Dictionary<string, ISpriteSequence>();
 			var node = imageNode.Value.NodeWithKeyOrDefault("Defaults");
@@ -70,7 +68,7 @@ namespace OpenRA.Mods.Common.Graphics
 				}
 			}
 
-			return new ReadOnlyDictionary<string, ISpriteSequence>(sequences);
+			return new Dictionary<string, ISpriteSequence>(sequences);
 		}
 	}
 

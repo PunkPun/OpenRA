@@ -20,7 +20,7 @@ namespace OpenRA
 	/// <summary>
 	/// A unit/building inside the game. Every rules starts with one and adds trait to it.
 	/// </summary>
-	public class ActorInfo
+	public class ActorInfo : IRulesetLoaded
 	{
 		public const char AbstractActorPrefix = '^';
 		public const char TraitInstanceSeparator = '@';
@@ -32,16 +32,37 @@ namespace OpenRA
 		/// You can remove inherited traits by adding a - in front of them as in -TraitName: to inherit everything, but this trait.
 		/// </summary>
 		public readonly string Name;
-		readonly TypeDictionary traits = new();
+		TypeDictionary traits = new();
 		List<TraitInfo> constructOrderCache = null;
+		public Ruleset Rules; // used for storing unresolvedRulesYaml and resolvedRulesYaml
+		public MiniYamlNodeBuilder ActorResolvedRules; // used for storing unresolvedRulesYaml and resolvedRulesYaml
+		public MiniYamlNodeBuilder ActorUnresolvedRules; // used for storing unresolvedRulesYaml and resolvedRulesYaml
 
 		public ActorInfo(ObjectCreator creator, string name, MiniYamlNode node)
 		{
 			Name = name;
+			LoadTraits(creator, node);
+		}
+
+		public void LoadTraits(ObjectCreator creator, MiniYamlNodeBuilder node, bool clearAllFirst = false)
+		{
+			LoadTraits(creator, node.Build(), clearAllFirst);
+		}
+
+		public void LoadTraits(ObjectCreator creator, MiniYamlNode node, bool clearAllFirst = false)
+		{
+			MiniYaml yaml;
+			if (Rules != null && Rules.ResolvedRulesYaml != null)
+				yaml = Ruleset.ResolveIndividualNode(node, Rules.ResolvedRulesYaml);
+			else
+				yaml = node.Value;
+
+			if (clearAllFirst)
+				ClearTraits();
 
 			try
 			{
-				foreach (var t in node.Value.Nodes)
+				foreach (var t in yaml.Nodes)
 				{
 					try
 					{
@@ -61,8 +82,31 @@ namespace OpenRA
 			}
 			catch (YamlException e)
 			{
-				throw new YamlException($"Actor type {name}: {e.Message}");
+				throw new YamlException($"Error loading traits: {e.Message}");
 			}
+		}
+
+		public void RulesetLoaded(Ruleset rules, ActorInfo info)
+		{
+			Rules = rules;
+			if (Rules.UnresolvedRulesYamlDict.TryGetValue(Name.ToLowerInvariant(), out var actorUnresolvedRulesYaml))
+			{
+				ActorUnresolvedRules = new MiniYamlNodeBuilder(actorUnresolvedRulesYaml);
+
+				var resolved = Rules.ResolvedRulesYaml.FirstOrDefault(s => string.Equals(s.Key, Name, StringComparison.InvariantCultureIgnoreCase));
+				if (resolved == null)
+					Console.WriteLine($"Actor {Name} not found in resolvedRulesYaml");
+				else
+					ActorResolvedRules = new MiniYamlNodeBuilder(resolved);
+			}
+			else
+				Console.WriteLine($"Actor {Name} not found in unresolvedRulesYamlDict");
+		}
+
+		public void ClearTraits()
+		{
+			traits = new(); // Incase we are reloading traits
+			constructOrderCache = null;
 		}
 
 		static TraitInfo LoadTraitInfo(ObjectCreator creator, string traitName, MiniYaml my)

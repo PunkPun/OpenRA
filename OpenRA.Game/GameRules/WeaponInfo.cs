@@ -70,7 +70,7 @@ namespace OpenRA.GameRules
 	public interface IProjectile : IEffect { }
 	public interface IProjectileInfo { IProjectile Create(ProjectileArgs args); }
 
-	public sealed class WeaponInfo
+	public sealed class WeaponInfo : IRulesetLoaded<WeaponInfo>
 	{
 		[Desc("The maximum range the weapon can fire.")]
 		public readonly WDist Range = WDist.Zero;
@@ -130,7 +130,10 @@ namespace OpenRA.GameRules
 		[FieldLoader.LoadUsing(nameof(LoadWarheads))]
 		public readonly List<IWarhead> Warheads = new();
 
+		public Ruleset Rules { get; private set; }
 		public string Name { get; }
+		public MiniYamlNodeBuilder ResolvedWeapons { get; private set; } // used for storing unresolvedRulesYaml and resolvedRulesYaml
+		public MiniYamlNodeBuilder UnresolvedWeapons { get; private set; } // used for storing unresolvedRulesYaml and resolvedRulesYaml
 
 		/// <summary>
 		/// This constructor is used solely for documentation generation.
@@ -143,7 +146,22 @@ namespace OpenRA.GameRules
 
 			// Resolve any weapon-level yaml inheritance or removals
 			// HACK: The "Defaults" sequence syntax prevents us from doing this generally during yaml parsing
-			FieldLoader.Load(this, MiniYaml.AtomicMerge(node));
+			LoadYaml(node);
+		}
+
+		public void LoadYaml(MiniYamlNodeBuilder node)
+		{
+			LoadYaml(node.Build());
+		}
+
+		public void LoadYaml(MiniYamlNode node)
+		{
+			MiniYaml nodeContent;
+			if (Rules != null && Rules.ResolvedWeaponsYaml != null)
+				nodeContent = Ruleset.ResolveIndividualNode(node, Rules.ResolvedWeaponsYaml);
+			else
+				nodeContent = Ruleset.ResolveIndividualNode(node);
+			FieldLoader.Load(this, nodeContent);
 		}
 
 		static object LoadProjectile(MiniYaml yaml)
@@ -174,6 +192,15 @@ namespace OpenRA.GameRules
 			}
 
 			return retList;
+		}
+
+		public void RulesetLoaded(Ruleset rules, WeaponInfo info)
+		{
+			Rules = rules;
+			Rules.UnresolvedWeaponsYamlDict.TryGetValue(Name.ToLowerInvariant(), out var unresolvedRulesYaml);
+			UnresolvedWeapons = new MiniYamlNodeBuilder(unresolvedRulesYaml);
+			ResolvedWeapons = new MiniYamlNodeBuilder(Rules.ResolvedWeaponsYaml.
+				FirstOrDefault(s => string.Equals(s.Key, Name, StringComparison.InvariantCultureIgnoreCase)));
 		}
 
 		public bool IsValidTarget(BitSet<TargetableType> targetTypes)
