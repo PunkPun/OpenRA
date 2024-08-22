@@ -140,12 +140,10 @@ namespace OpenRA.GameRules
 		public WeaponInfo(MiniYamlNode node, string name)
 		{
 			Name = name;
-			var content = node.Value;
 
 			// Resolve any weapon-level yaml inheritance or removals
 			// HACK: The "Defaults" sequence syntax prevents us from doing this generally during yaml parsing
-			content = content.WithNodes(MiniYaml.Merge(new IReadOnlyCollection<MiniYamlNode>[] { content.Nodes }));
-			FieldLoader.Load(this, content);
+			FieldLoader.Load(this, MiniYaml.AtomicMerge(node));
 		}
 
 		static object LoadProjectile(MiniYaml yaml)

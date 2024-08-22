@@ -395,6 +395,23 @@ namespace OpenRA
 			return FromLines(text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None).Select(s => s.AsMemory()), name, discardCommentsAndWhitespace, stringPool);
 		}
 
+		public static MiniYaml AtomicMerge(MiniYamlNode node)
+		{ return AtomicMerge(node, new List<IReadOnlyCollection<MiniYamlNode>>() { new List<MiniYamlNode>() { node } }); }
+
+		public static MiniYaml AtomicMerge(MiniYamlNode node, IEnumerable<IReadOnlyCollection<MiniYamlNode>> sources)
+		{
+			var tree = sources
+				.Where(s => s != null)
+				.Select(MergeSelfPartial)
+				.Aggregate(MergePartial)
+				.Where(n => n.Key != null)
+				.ToDictionary(n => n.Key, n => n.Value);
+
+			var inherited = ImmutableDictionary<string, MiniYamlNode.SourceLocation>.Empty.Add(node.Key, default);
+			var children = ResolveInherits(node.Value, tree, inherited);
+			return new MiniYaml(node.Value.Value, children);
+		}
+
 		public static List<MiniYamlNode> Merge(IEnumerable<IReadOnlyCollection<MiniYamlNode>> sources)
 		{
 			var sourcesList = sources.ToList();
