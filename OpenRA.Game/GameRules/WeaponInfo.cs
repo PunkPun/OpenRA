@@ -130,13 +130,18 @@ namespace OpenRA.GameRules
 		[FieldLoader.LoadUsing(nameof(LoadWarheads))]
 		public readonly List<IWarhead> Warheads = new();
 
+		public string Name { get; }
+
 		/// <summary>
 		/// This constructor is used solely for documentation generation.
 		/// </summary>
 		public WeaponInfo() { }
 
-		public WeaponInfo(MiniYaml content)
+		public WeaponInfo(MiniYamlNode node, string name)
 		{
+			Name = name;
+			var content = node.Value;
+
 			// Resolve any weapon-level yaml inheritance or removals
 			// HACK: The "Defaults" sequence syntax prevents us from doing this generally during yaml parsing
 			content = content.WithNodes(MiniYaml.Merge(new IReadOnlyCollection<MiniYamlNode>[] { content.Nodes }));

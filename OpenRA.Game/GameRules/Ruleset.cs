@@ -61,31 +61,31 @@ namespace OpenRA
 				}
 			}
 
-			foreach (var weapon in Weapons)
+			foreach (var weapon in Weapons.Values)
 			{
-				if (weapon.Value.Projectile is IRulesetLoaded<WeaponInfo> projectileLoaded)
+				if (weapon.Projectile is IRulesetLoaded<WeaponInfo> projectileLoaded)
 				{
 					try
 					{
-						projectileLoaded.RulesetLoaded(this, weapon.Value);
+						projectileLoaded.RulesetLoaded(this, weapon);
 					}
 					catch (YamlException e)
 					{
-						throw new YamlException($"Projectile type {weapon.Key}: {e.Message}");
+						throw new YamlException($"Projectile type {weapon.Name}: {e.Message}");
 					}
 				}
 
-				foreach (var warhead in weapon.Value.Warheads)
+				foreach (var warhead in weapon.Warheads)
 				{
 					if (warhead is IRulesetLoaded<WeaponInfo> cacher)
 					{
 						try
 						{
-							cacher.RulesetLoaded(this, weapon.Value);
+							cacher.RulesetLoaded(this, weapon);
 						}
 						catch (YamlException e)
 						{
-							throw new YamlException($"Weapon type {weapon.Key}: {e.Message}");
+							throw new YamlException($"Weapon type {weapon.Name}: {e.Message}");
 						}
 					}
 				}
@@ -123,11 +123,11 @@ namespace OpenRA
 			void LoadRuleset()
 			{
 				var actors = MergeOrDefault("Manifest,Rules", fs, m.Rules, null, null,
-					k => new ActorInfo(modData.ObjectCreator, k.Key.ToLowerInvariant(), k.Value),
+					k => new ActorInfo(modData.ObjectCreator, k.Key.ToLowerInvariant(), k),
 					filterNode: n => n.Key.StartsWith(ActorInfo.AbstractActorPrefix));
 
 				var weapons = MergeOrDefault("Manifest,Weapons", fs, m.Weapons, null, null,
-					k => new WeaponInfo(k.Value));
+					k => new WeaponInfo(k, k.Key));
 
 				var voices = MergeOrDefault("Manifest,Voices", fs, m.Voices, null, null,
 					k => new SoundInfo(k.Value));
@@ -181,11 +181,11 @@ namespace OpenRA
 			void LoadRuleset()
 			{
 				var actors = MergeOrDefault("Rules", fileSystem, m.Rules, mapRules, dr.Actors,
-					k => new ActorInfo(modData.ObjectCreator, k.Key.ToLowerInvariant(), k.Value),
+					k => new ActorInfo(modData.ObjectCreator, k.Key.ToLowerInvariant(), k),
 					filterNode: n => n.Key.StartsWith(ActorInfo.AbstractActorPrefix));
 
 				var weapons = MergeOrDefault("Weapons", fileSystem, m.Weapons, mapWeapons, dr.Weapons,
-					k => new WeaponInfo(k.Value));
+					k => new WeaponInfo(k, k.Key));
 
 				var voices = MergeOrDefault("Voices", fileSystem, m.Voices, mapVoices, dr.Voices,
 					k => new SoundInfo(k.Value));

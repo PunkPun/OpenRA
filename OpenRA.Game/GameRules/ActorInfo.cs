@@ -35,13 +35,13 @@ namespace OpenRA
 		readonly TypeDictionary traits = new();
 		List<TraitInfo> constructOrderCache = null;
 
-		public ActorInfo(ObjectCreator creator, string name, MiniYaml node)
+		public ActorInfo(ObjectCreator creator, string name, MiniYamlNode node)
 		{
+			Name = name;
+
 			try
 			{
-				Name = name;
-
-				foreach (var t in node.Nodes)
+				foreach (var t in node.Value.Nodes)
 				{
 					try
 					{
@@ -63,14 +63,6 @@ namespace OpenRA
 			{
 				throw new YamlException($"Actor type {name}: {e.Message}");
 			}
-		}
-
-		public ActorInfo(string name, params TraitInfo[] traitInfos)
-		{
-			Name = name;
-			foreach (var t in traitInfos)
-				traits.Add(t);
-			traits.TrimExcess();
 		}
 
 		static TraitInfo LoadTraitInfo(ObjectCreator creator, string traitName, MiniYaml my)
