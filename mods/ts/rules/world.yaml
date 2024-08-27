@@ -239,6 +239,7 @@ World:
 	DebugVisualizationCommands:
 	PathFinderOverlay:
 	HierarchicalPathFinderOverlay:
+	RuntimeRulesetReloadCommand:
 	PlayerCommands:
 	HelpCommand:
 	BuildingInfluence:

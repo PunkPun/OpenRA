@@ -742,6 +742,7 @@ description-levelup-actor = adds a specified number of levels to the selected ac
 description-player-experience = adds a specified amount of player experience to the owner(s) of selected actors.
 description-power-outage = causes owner(s) of selected actors to have a 5 second power outage.
 description-kill-selected-actors = kills selected actors.
+description-reload-ruleset = reloads the ruleset.
 description-dispose-selected-actors = disposes selected actors.
 
 ## HelpCommands
@@ -773,6 +774,13 @@ description-path-debug-overlay = toggles a visualization of path searching.
 
 ## TerrainGeometryOverlay
 description-terrain-geometry-overlay = toggles the terrain geometry overlay.
+
+## RuntimeRulesetReload
+description-ruleset-autoreload = enables/disables automatic reload of ruleset when changed externally.
+notification-ruleset-autoreload-multiplayer-disabled = Automatic reload of ruleset cannot be enabled in multiplayer.
+notification-ruleset-autoreload-enabled = Automatic reload of ruleset enabled.
+notification-ruleset-autoreload-disabled = Automatic reload of ruleset disabled.
+notification-ruleset-autoreload-invalid-argument = Invalid argument value. Valid values: <no argument>, true, false
 
 ## MapOptions, MissionBrowserLogic
 options-game-speed =

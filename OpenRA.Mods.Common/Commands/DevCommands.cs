@@ -75,6 +75,9 @@ namespace OpenRA.Mods.Common.Commands
 		[TranslationReference]
 		const string DisposeSelectedActorsDescription = "description-dispose-selected-actors";
 
+		[TranslationReference]
+		const string ReloadActorsDescription = "description-reload-ruleset";
+
 		readonly IDictionary<string, (string Description, Action<string, World> Handler)> commandHandlers = new Dictionary<string, (string, Action<string, World>)>
 		{
 			{ "visibility", (ToggleVisiblityDescription, Visibility) },
@@ -91,7 +94,8 @@ namespace OpenRA.Mods.Common.Commands
 			{ "player-experience", (PlayerExperienceDescription, PlayerExperience) },
 			{ "power-outage", (PowerOutageDescription, PowerOutage) },
 			{ "kill", (KillSelectedActorsDescription, Kill) },
-			{ "dispose", (DisposeSelectedActorsDescription, Dispose) }
+			{ "reload", (ReloadActorsDescription, HotReload) },
+			{ "dispose", (DisposeSelectedActorsDescription, Dispose) },
 		};
 
 		World world;
@@ -154,6 +158,117 @@ namespace OpenRA.Mods.Common.Commands
 			}
 
 			world.IssueOrder(giveCashOrder);
+		}
+
+		static void HotReload(string arg, World world)
+		{
+			if (!world.LobbyInfo.GlobalSettings.GameSavesEnabled)
+				return;
+
+			var modData = Game.ModData;
+
+			var defaultRules = world.Map.Rules;
+			if (!string.IsNullOrEmpty(arg))
+			{
+				if (arg.EndsWith(".yaml", StringComparison.InvariantCultureIgnoreCase))
+				{
+					var matchingRulesFile = modData.Manifest.Rules.FirstOrDefault(f => f.Contains(arg));
+					var matchingWeaponsFile = modData.Manifest.Weapons.FirstOrDefault(f => f.Contains(arg));
+					var matchingSequencesFile = modData.Manifest.Sequences.FirstOrDefault(f => f.Contains(arg));
+
+					if (matchingRulesFile == null && matchingWeaponsFile == null && matchingSequencesFile == null)
+					{
+						TextNotificationsManager.Debug($"Cannot find file specified - check spelling: {arg}. Reload aborted.");
+						return;
+					}
+
+					Dictionary<string, MiniYamlNode> unresolvedRulesYaml = null;
+					if (matchingRulesFile != null)
+					{
+						try
+						{
+							unresolvedRulesYaml = defaultRules.GetUnresolvedRulesYaml(modData, new string[] { matchingRulesFile });
+						}
+						catch (Exception ex)
+						{
+							TextNotificationsManager.Debug($"Loading the YAML weapon files raised the exception: {ex.GetType().FullName} : {ex.Message}. Aborting.");
+							return;
+						}
+
+						TextNotificationsManager.Debug($"Reloading rule files: {matchingRulesFile}");
+					}
+
+					Dictionary<string, MiniYamlNode> unresolvedWeaponsYaml = null;
+					if (matchingWeaponsFile != null)
+					{
+						try
+						{
+							unresolvedWeaponsYaml = defaultRules.GetUnresolvedWeaponsYaml(modData, new string[] { matchingWeaponsFile });
+						}
+						catch (Exception ex)
+						{
+							TextNotificationsManager.Debug($"Loading the YAML weapon files raised the exception: {ex.GetType().FullName} : {ex.Message}. Aborting.");
+							return;
+						}
+
+						TextNotificationsManager.Debug($"Reloading weapon files: {matchingWeaponsFile}");
+					}
+
+					string[] sequences = null;
+					if (matchingSequencesFile != null)
+					{
+						sequences = new string[] { matchingSequencesFile };
+						TextNotificationsManager.Debug($"Reloading sequence file {matchingSequencesFile}");
+					}
+
+					try
+					{
+						world.Map.Sequences.ReloadSequenceSetFromFiles(modData.DefaultFileSystem, sequences);
+					}
+					catch (Exception e)
+					{
+						TextNotificationsManager.Debug($"Reloading failed: {e.Message}");
+						return;
+					}
+
+					if (unresolvedRulesYaml != null || unresolvedWeaponsYaml != null)
+						defaultRules.ReloadRules(world, modData, unresolvedRulesYaml, unresolvedWeaponsYaml);
+				}
+				else
+				{
+					defaultRules.LoadActorTraitsFromRulesActor(world, modData, arg);
+					defaultRules.LoadWeapon(world, modData, arg);
+					world.Map.Sequences.ReloadSequenceSetFromNode(modData.DefaultFileSystem, arg);
+				}
+			}
+			else
+			{
+				TextNotificationsManager.Debug("No rule file specified, reloading all rule files.");
+
+				Dictionary<string, MiniYamlNode> unresolvedRulesYaml = null;
+				Dictionary<string, MiniYamlNode> unresolvedWeaponsYaml = null;
+				try
+				{
+					unresolvedWeaponsYaml = defaultRules.GetUnresolvedWeaponsYaml(modData, modData.Manifest.Rules);
+					unresolvedWeaponsYaml = defaultRules.GetUnresolvedWeaponsYaml(modData, modData.Manifest.Weapons);
+				}
+				catch (Exception ex)
+				{
+					TextNotificationsManager.Debug($"Loading the YAML weapon files raised the exception: {ex.GetType().FullName} : {ex.Message}. Aborting.");
+					return;
+				}
+
+				try
+				{
+					world.Map.Sequences.ReloadSequenceSetFromFiles(modData.DefaultFileSystem, modData.Manifest.Sequences);
+				}
+				catch (Exception e)
+				{
+					TextNotificationsManager.Debug($"Reloading failed: {e.Message}");
+				}
+
+				defaultRules.ReloadRules(world, modData, unresolvedRulesYaml, unresolvedWeaponsYaml);
+			}
 		}
 
 		static void Visibility(string arg, World world)
