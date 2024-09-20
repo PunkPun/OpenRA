@@ -345,7 +345,13 @@ namespace OpenRA.Platforms.Default
 				Context = ctx;
 			}
 			else
+			{
+				// TODO Include this hint in the SDL wrapper.
+				if (Platform.CurrentPlatform == PlatformType.OSX)
+					SDL.SDL_SetHint("SDL_MAC_OPENGL_ASYNC_DISPATCH", "1");
+
 				Context = new ThreadedGraphicsContext(new Sdl2GraphicsContext(this), vertexBatchSize, indexBatchSize);
+			}
 
 			Context.SetVSyncEnabled(Game.Settings.Graphics.VSync);
 
