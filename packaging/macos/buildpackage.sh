@@ -149,8 +149,11 @@ build_app "${TEMPLATE_DIR}" "${BUILTDIR}/OpenRA - Dune 2000.app" "d2k" "Dune 200
 rm -rf "${TEMPLATE_DIR}"
 
 echo "Packaging disk image"
-if hdiutil info | grep -q "/Volumes/OpenRA"; then
+
+if mount | grep -q "/Volumes/OpenRA"; then
   echo "Some process is stealing our resources! /Volumes/OpenRA is already mounted!"
+else
+  echo "/Volumes/OpenRA is not mounted."
 fi
 
 hdiutil create "build.dmg" -format UDRW -volname "OpenRA" -fs HFS+ -srcfolder build
