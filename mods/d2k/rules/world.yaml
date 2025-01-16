@@ -238,6 +238,7 @@ World:
 	ScriptTriggers:
 	CellTriggerOverlay:
 	StartGameNotification:
+		SavedTextNotification notification-game-saved
 	TimeLimitManager:
 		TimeLimitDisplayOrder: 2
 	ColorPickerManager:

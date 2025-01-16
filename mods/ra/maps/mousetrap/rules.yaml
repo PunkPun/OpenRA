@@ -15,7 +15,8 @@ World:
 			hard: options-difficulty.hard
 		Default: normal
 	# Stavros' opening line makes this feel redundant.
-	-StartGameNotification:
+	StartGameNotification:
+		Notification:
 	# Give our Chrono dummy the ability to move (and be shifted) within the void.
 	Locomotor@TRACKED:
 		TerrainSpeeds:

@@ -51,6 +51,8 @@ faction-nod =
      and the alien substance Tiberium. They use stealth technology
      and guerilla tactics to defeat those who oppose them.
 
+notification-game-saved = Game saved.
+
 ## defaults.yaml
 notification-unit-lost = Unit lost.
 notification-unit-promoted = Unit promoted.

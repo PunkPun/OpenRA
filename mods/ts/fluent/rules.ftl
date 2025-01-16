@@ -51,6 +51,8 @@ faction-nod =
      and the alien substance Tiberium. They employ stealth technology
      and guerrilla tactics to defeat those who oppose them.
 
+notification-game-saved = Game saved.
+
 ## Structures
 notification-construction-complete = Construction complete.
 notification-unit-ready = Unit ready.

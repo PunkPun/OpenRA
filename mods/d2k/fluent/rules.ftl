@@ -103,6 +103,8 @@ faction-smugglers =
 faction-fremen =
    .name = Fremen
 
+notification-game-saved = Game saved.
+
 ## defaults.yaml
 notification-unit-lost = Unit lost.
 notification-unit-promoted = Unit promoted.

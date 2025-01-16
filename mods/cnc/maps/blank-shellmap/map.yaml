@@ -44,6 +44,7 @@ Actors:
 Rules:
 	World:
 		-SpawnStartingUnits:
+		-StartGameNotification:
 		-MapStartingLocations:
 		-CrateSpawner:
 		MusicPlaylist:

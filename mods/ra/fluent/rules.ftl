@@ -37,6 +37,8 @@ resource-minerals = Valuable Minerals
 map-generator-ra = RA Experimental
 map-generator-clear = Clear
 
+notification-game-saved = Game saved.
+
 ## Faction
 faction-allies =
     .name = Allies
