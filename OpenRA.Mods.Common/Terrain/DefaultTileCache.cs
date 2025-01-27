@@ -43,7 +43,7 @@ namespace OpenRA.Mods.Common.Terrain
 
 		public DefaultTileCache(DefaultTerrain terrainInfo, Action<uint, string> onMissingImage = null)
 		{
-			sheetBuilders = new Cache<SheetType, SheetBuilder>(t => new SheetBuilder(t, terrainInfo.SheetSize));
+			sheetBuilders = new Cache<SheetType, SheetBuilder>(t => new SheetBuilder(t, Game.ModData.Manifest.TerrainSheetSize));
 
 			random = new MersenneTwister();
 

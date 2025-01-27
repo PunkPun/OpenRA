@@ -70,7 +70,6 @@ namespace OpenRA.Mods.Common.Terrain
 	{
 		public readonly string Name;
 		public readonly string Id;
-		public readonly int SheetSize = 512;
 		public readonly Color[] HeightDebugColors = { Color.Red };
 		public readonly string[] EditorTemplateOrder;
 		public readonly bool IgnoreTileSpriteOffsets;

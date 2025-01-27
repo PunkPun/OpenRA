@@ -85,6 +85,7 @@ namespace OpenRA
 		public readonly string[] VideoFormats = Array.Empty<string>();
 		public readonly int FontSheetSize = 512;
 		public readonly int CursorSheetSize = 512;
+		public readonly int TerrainSheetSize = 512;
 
 		// TODO: This should be controlled by a user-selected translation bundle!
 		public readonly string FluentCulture = "en";
@@ -96,7 +97,8 @@ namespace OpenRA
 			"Sequences", "ModelSequences", "Cursors", "Chrome", "Assemblies", "ChromeLayout", "Weapons",
 			"Voices", "Notifications", "Music", "FluentMessages", "TileSets", "ChromeMetrics", "Missions", "Hotkeys",
 			"ServerTraits", "LoadScreen", "DefaultOrderGenerator", "SupportsMapsFrom", "SoundFormats", "SpriteFormats", "VideoFormats",
-			"RequiresMods", "PackageFormats", "AllowUnusedFluentMessagesInExternalPackages", "FontSheetSize", "CursorSheetSize"
+			"RequiresMods", "PackageFormats", "AllowUnusedFluentMessagesInExternalPackages", "FontSheetSize", "CursorSheetSize",
+			"TerrainSheetSize"
 		};
 
 		readonly TypeDictionary modules = new();
@@ -193,6 +195,9 @@ namespace OpenRA
 
 			if (yaml.TryGetValue("CursorSheetSize", out entry))
 				CursorSheetSize = FieldLoader.GetValue<int>("CursorSheetSize", entry.Value);
+
+			if (yaml.TryGetValue("TerrainSheetSize", out entry))
+				TerrainSheetSize = FieldLoader.GetValue<int>("TerrainSheetSize", entry.Value);
 		}
 
 		public void LoadCustomData(ObjectCreator oc)
