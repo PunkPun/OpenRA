@@ -277,6 +277,8 @@ AssetBrowser:
 	AudioExtensions: .aud, .wav
 	VideoExtensions: .vqa
 
+TerrainSheetSize: 1024
+
 GameSpeeds:
 	DefaultSpeed: default
 	Speeds:
