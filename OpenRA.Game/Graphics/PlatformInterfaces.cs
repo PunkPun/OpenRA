@@ -26,7 +26,7 @@ namespace OpenRA
 	public interface IPlatform
 	{
 		IPlatformWindow CreateWindow(
-			Size size, WindowMode windowMode, float scaleModifier, int vertexBatchSize, int indexBatchSize, int videoDisplay, GLProfile profile);
+			Size size, WindowMode windowMode, float scaleModifier, int vertexBatchSize, int indexBatchSize, uint videoDisplay, GLProfile profile);
 		ISoundEngine CreateSound(string device);
 		IFont CreateFont(byte[] data);
 	}
@@ -56,8 +56,8 @@ namespace OpenRA
 		float NativeWindowScale { get; }
 		float EffectiveWindowScale { get; }
 		Size SurfaceSize { get; }
-		int DisplayCount { get; }
-		int CurrentDisplay { get; }
+		uint[] Displays { get; }
+		uint CurrentDisplay { get; }
 		bool HasInputFocus { get; }
 		bool IsSuspended { get; }
 

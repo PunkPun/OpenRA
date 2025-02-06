@@ -216,7 +216,7 @@ namespace OpenRA
 		public bool DisableHardwareCursors = false;
 
 		[Desc("Display index to use in a multi-monitor fullscreen setup.")]
-		public int VideoDisplay = 0;
+		public uint VideoDisplay = 0;
 
 		[Desc("Preferred OpenGL profile to use.",
 			"Modern: OpenGL Core Profile 3.2 or greater.",

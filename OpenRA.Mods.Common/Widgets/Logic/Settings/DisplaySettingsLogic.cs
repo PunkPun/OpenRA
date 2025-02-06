@@ -67,7 +67,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		[FluentReference("fps")]
 		const string FrameLimiter = "checkbox-frame-limiter";
-		static readonly int OriginalVideoDisplay;
+		static readonly uint OriginalVideoDisplay;
 		static readonly WindowMode OriginalGraphicsMode;
 		static readonly int2 OriginalGraphicsWindowedSize;
 		static readonly int2 OriginalGraphicsFullscreenSize;
@@ -171,9 +171,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var displaySelectionDropDown = panel.Get<DropDownButtonWidget>("DISPLAY_SELECTION_DROPDOWN");
 			displaySelectionDropDown.OnMouseDown = _ => ShowDisplaySelectionDropdown(displaySelectionDropDown, ds);
-			var displaySelectionLabel = new CachedTransform<int, string>(i => FluentProvider.GetMessage(Display, "number", i + 1));
+			var displaySelectionLabel = new CachedTransform<uint, string>(i => FluentProvider.GetMessage(Display, "number", i));
 			displaySelectionDropDown.GetText = () => displaySelectionLabel.Update(ds.VideoDisplay);
-			displaySelectionDropDown.IsDisabled = () => Game.Renderer.DisplayCount < 2;
+			displaySelectionDropDown.IsDisabled = () => Game.Renderer.Displays.Length < 2;
 
 			var glProfileLabel = new CachedTransform<GLProfile, string>(p => p.ToString());
 			var glProfileDropdown = panel.Get<DropDownButtonWidget>("GL_PROFILE_DROPDOWN");
@@ -419,18 +419,18 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		static void ShowDisplaySelectionDropdown(DropDownButtonWidget dropdown, GraphicSettings s)
 		{
-			ScrollItemWidget SetupItem(int o, ScrollItemWidget itemTemplate)
+			ScrollItemWidget SetupItem(uint o, ScrollItemWidget itemTemplate)
 			{
 				var item = ScrollItemWidget.Setup(itemTemplate,
 					() => s.VideoDisplay == o,
 					() => s.VideoDisplay = o);
 
-				var label = $"Display {o + 1}";
+				var label = $"Display {o}";
 				item.Get<LabelWidget>("LABEL").GetText = () => label;
 				return item;
 			}
 
-			dropdown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", 500, Enumerable.Range(0, Game.Renderer.DisplayCount), SetupItem);
+			dropdown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", 500, Game.Renderer.Displays, SetupItem);
 		}
 
 		static void ShowGLProfileDropdown(DropDownButtonWidget dropdown, GraphicSettings s)

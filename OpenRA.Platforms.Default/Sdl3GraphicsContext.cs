@@ -11,25 +11,24 @@
 
 using System;
 using OpenRA.Primitives;
-using SDL2;
 
 namespace OpenRA.Platforms.Default
 {
-	sealed class Sdl2GraphicsContext : ThreadAffine, IGraphicsContext
+	sealed class Sdl3GraphicsContext : ThreadAffine, IGraphicsContext
 	{
-		readonly Sdl2PlatformWindow window;
+		readonly Sdl3PlatformWindow window;
 		IntPtr context;
 
 		public string GLVersion => OpenGL.Version;
 
-		public Sdl2GraphicsContext(Sdl2PlatformWindow window)
+		public Sdl3GraphicsContext(Sdl3PlatformWindow window)
 		{
 			this.window = window;
 
 			// SDL requires us to create the GL context on the main thread to avoid various platform-specific issues.
 			// We must then release it from the main thread before we rebind it to the render thread (in InitializeOpenGL below).
 			context = SDL.SDL_GL_CreateContext(window.Window);
-			if (context == IntPtr.Zero || SDL.SDL_GL_MakeCurrent(window.Window, IntPtr.Zero) < 0)
+			if (context == IntPtr.Zero || !SDL.SDL_GL_MakeCurrent(window.Window, IntPtr.Zero))
 				throw new InvalidOperationException($"Can not create OpenGL context. (Error: {SDL.SDL_GetError()})");
 		}
 
@@ -37,7 +36,7 @@ namespace OpenRA.Platforms.Default
 		{
 			SetThreadAffinity();
 
-			if (SDL.SDL_GL_MakeCurrent(window.Window, context) < 0)
+			if (!SDL.SDL_GL_MakeCurrent(window.Window, context))
 				throw new InvalidOperationException($"Can not bind OpenGL context. (Error: {SDL.SDL_GetError()})");
 
 			OpenGL.Initialize();
@@ -284,12 +283,12 @@ namespace OpenRA.Platforms.Default
 		{
 			if (context != IntPtr.Zero)
 			{
-				SDL.SDL_GL_DeleteContext(context);
+				SDL.SDL_GL_DestroyContext(context);
 				context = IntPtr.Zero;
 			}
 		}
 
-		~Sdl2GraphicsContext()
+		~Sdl3GraphicsContext()
 		{
 			Dispose(false);
 		}

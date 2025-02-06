@@ -13,20 +13,24 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using OpenRA.Primitives;
-using SDL2;
 
 namespace OpenRA.Platforms.Default
 {
-	sealed class Sdl2HardwareCursor : IHardwareCursor
+	sealed class Sdl3HardwareCursor : IHardwareCursor
 	{
 		public IntPtr Cursor { get; private set; }
 		IntPtr surface;
 
-		public Sdl2HardwareCursor(Size size, byte[] data, int2 hotspot)
+		public Sdl3HardwareCursor(Size size, byte[] data, int2 hotspot)
 		{
 			try
 			{
-				surface = SDL.SDL_CreateRGBSurface(0, size.Width, size.Height, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+				var pixelFormat = SDL.SDL_GetPixelFormatForMasks(32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+				unsafe
+				{
+					surface = (IntPtr)SDL.SDL_CreateSurface(size.Width, size.Height, pixelFormat);
+				}
+
 				if (surface == IntPtr.Zero)
 					throw new InvalidDataException($"Failed to create surface: {SDL.SDL_GetError()}");
 
@@ -54,18 +58,18 @@ namespace OpenRA.Platforms.Default
 		{
 			if (Cursor != IntPtr.Zero)
 			{
-				SDL.SDL_FreeCursor(Cursor);
+				SDL.SDL_DestroyCursor(Cursor);
 				Cursor = IntPtr.Zero;
 			}
 
 			if (surface != IntPtr.Zero)
 			{
-				SDL.SDL_FreeSurface(surface);
+				SDL.SDL_DestroySurface(surface);
 				surface = IntPtr.Zero;
 			}
 		}
 
-		~Sdl2HardwareCursor()
+		~Sdl3HardwareCursor()
 		{
 			Dispose(false);
 		}

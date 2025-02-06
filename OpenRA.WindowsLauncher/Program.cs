@@ -17,7 +17,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using SDL2;
+using OpenRA.Platforms.Default;
 
 namespace OpenRA.WindowsLauncher
 {
@@ -158,7 +158,7 @@ namespace OpenRA.WindowsLauncher
 				SetForegroundWindow(Process.GetCurrentProcess().MainWindowHandle);
 			});
 
-			if (SDL.SDL_ShowMessageBox(ref dialog, out var buttonid) < 0)
+			if (!SDL.SDL_ShowMessageBox(ref dialog, out var buttonid))
 				Exit();
 
 			switch (buttonid)

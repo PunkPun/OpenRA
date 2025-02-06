@@ -11,36 +11,40 @@
 
 using System;
 using System.Runtime.InteropServices;
-using System.Text;
-using SDL2;
 
 namespace OpenRA.Platforms.Default
 {
-	sealed class Sdl2Input
+	sealed class Sdl3Input
 	{
 		MouseButton lastButtonBits = MouseButton.None;
 
 		public static string GetClipboardText() { return SDL.SDL_GetClipboardText(); }
-		public static bool SetClipboardText(string text) { return SDL.SDL_SetClipboardText(text) == 0; }
+		public static bool SetClipboardText(string text) { return !SDL.SDL_SetClipboardText(text); }
 
 		static MouseButton MakeButton(byte b)
 		{
-			return b == SDL.SDL_BUTTON_LEFT ? MouseButton.Left
-				: b == SDL.SDL_BUTTON_RIGHT ? MouseButton.Right
-				: b == SDL.SDL_BUTTON_MIDDLE ? MouseButton.Middle
-				: 0;
+			switch (b)
+			{
+				case 1:
+					return MouseButton.Left;
+				case 2:
+					return MouseButton.Middle;
+				case 3:
+					return MouseButton.Right;
+				default: return MouseButton.None;
+			}
 		}
 
 		static Modifiers MakeModifiers(int raw)
 		{
-			return ((raw & (int)SDL.SDL_Keymod.KMOD_ALT) != 0 ? Modifiers.Alt : 0)
-				 | ((raw & (int)SDL.SDL_Keymod.KMOD_CTRL) != 0 ? Modifiers.Ctrl : 0)
-				 | ((raw & (int)SDL.SDL_Keymod.KMOD_LGUI) != 0 ? Modifiers.Meta : 0)
-				 | ((raw & (int)SDL.SDL_Keymod.KMOD_RGUI) != 0 ? Modifiers.Meta : 0)
-				 | ((raw & (int)SDL.SDL_Keymod.KMOD_SHIFT) != 0 ? Modifiers.Shift : 0);
+			return ((raw & (int)SDL.SDL_Keymod.SDL_KMOD_ALT) != 0 ? Modifiers.Alt : 0)
+				 | ((raw & (int)SDL.SDL_Keymod.SDL_KMOD_CTRL) != 0 ? Modifiers.Ctrl : 0)
+				 | ((raw & (int)SDL.SDL_Keymod.SDL_KMOD_LGUI) != 0 ? Modifiers.Meta : 0)
+				 | ((raw & (int)SDL.SDL_Keymod.SDL_KMOD_RGUI) != 0 ? Modifiers.Meta : 0)
+				 | ((raw & (int)SDL.SDL_Keymod.SDL_KMOD_SHIFT) != 0 ? Modifiers.Shift : 0);
 		}
 
-		static int2 EventPosition(Sdl2PlatformWindow device, int x, int y)
+		static int2 EventPosition(Sdl3PlatformWindow device, int x, int y)
 		{
 			// On Windows and Linux (X11) events are given in surface coordinates
 			// These must be scaled to our effective window coordinates
@@ -61,64 +65,55 @@ namespace OpenRA.Platforms.Default
 			return new int2(x, y);
 		}
 
-		public void PumpInput(Sdl2PlatformWindow device, IInputHandler inputHandler, int2? lockedMousePosition)
+		public void PumpInput(Sdl3PlatformWindow device, IInputHandler inputHandler, int2? lockedMousePosition)
 		{
 			var mods = MakeModifiers((int)SDL.SDL_GetModState());
 			inputHandler.ModifierKeys(mods);
 			MouseInput? pendingMotion = null;
 
-			while (SDL.SDL_PollEvent(out var e) != 0)
+			while (SDL.SDL_PollEvent(out var e))
 			{
-				switch (e.type)
+				switch ((SDL.SDL_EventType)e.type)
 				{
-					case SDL.SDL_EventType.SDL_QUIT:
+					case SDL.SDL_EventType.SDL_EVENT_QUIT:
 						// On macOS, we'd like to restrict Cmd + Q from suddenly exiting the game.
 						if (Platform.CurrentPlatform != PlatformType.OSX || !mods.HasModifier(Modifiers.Meta))
 							Game.Exit();
 
 						break;
 
-					case SDL.SDL_EventType.SDL_WINDOWEVENT:
-					{
-						switch (e.window.windowEvent)
-						{
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_FOCUS_LOST:
-								device.HasInputFocus = false;
-								break;
-
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_FOCUS_GAINED:
-								device.HasInputFocus = true;
-								break;
-
-							// Triggered when moving between displays with different DPI settings
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED:
-								device.WindowSizeChanged();
-								break;
-
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_HIDDEN:
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MINIMIZED:
-								device.IsSuspended = true;
-								break;
-
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_EXPOSED:
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_SHOWN:
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_MAXIMIZED:
-							case SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESTORED:
-								device.IsSuspended = false;
-								break;
-						}
-
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_FOCUS_LOST:
+						device.HasInputFocus = false;
 						break;
-					}
 
-					case SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
-					case SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_FOCUS_GAINED:
+						device.HasInputFocus = true;
+						break;
+
+					// Triggered when moving between displays with different DPI settings
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_RESIZED:
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+						device.WindowSizeChanged();
+						break;
+
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_HIDDEN:
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_MINIMIZED:
+						device.IsSuspended = true;
+						break;
+
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_EXPOSED:
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_SHOWN:
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_MAXIMIZED:
+					case SDL.SDL_EventType.SDL_EVENT_WINDOW_RESTORED:
+						device.IsSuspended = false;
+						break;
+
+					case SDL.SDL_EventType.SDL_EVENT_MOUSE_BUTTON_DOWN:
+					case SDL.SDL_EventType.SDL_EVENT_MOUSE_BUTTON_UP:
 					{
 						// Mouse 1, Mouse 2 and Mouse 3 are handled as mouse inputs
 						// Mouse 4 and Mouse 5 are treated as (pseudo) keyboard inputs
-						if (e.button.button == SDL.SDL_BUTTON_LEFT ||
-							e.button.button == SDL.SDL_BUTTON_MIDDLE ||
-							e.button.button == SDL.SDL_BUTTON_RIGHT)
+						if (e.button.button is 1 or 2 or 3)
 						{
 							if (pendingMotion != null)
 							{
@@ -128,15 +123,15 @@ namespace OpenRA.Platforms.Default
 
 							var button = MakeButton(e.button.button);
 
-							if (e.type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN)
+							if (e.type == (uint)SDL.SDL_EventType.SDL_EVENT_MOUSE_BUTTON_DOWN)
 								lastButtonBits |= button;
 							else
 								lastButtonBits &= ~button;
 
-							var input = lockedMousePosition ?? new int2(e.button.x, e.button.y);
+							var input = lockedMousePosition ?? new int2((int)e.button.x, (int)e.button.y);
 							var pos = EventPosition(device, input.X, input.Y);
 
-							if (e.type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN)
+							if (e.type == (uint)SDL.SDL_EventType.SDL_EVENT_MOUSE_BUTTON_DOWN)
 								inputHandler.OnMouseInput(new MouseInput(
 									MouseInputEvent.Down, button, pos, int2.Zero, mods,
 									MultiTapDetection.DetectFromMouse(e.button.button, pos)));
@@ -146,20 +141,19 @@ namespace OpenRA.Platforms.Default
 									MultiTapDetection.InfoFromMouse(e.button.button)));
 						}
 
-						if (e.button.button == SDL.SDL_BUTTON_X1 ||
-							e.button.button == SDL.SDL_BUTTON_X2)
+						if (e.button.button is 4 or 5)
 						{
 							Keycode keyCode;
 
-							if (e.button.button == SDL.SDL_BUTTON_X1)
+							if (e.button.button == (byte)SDL.SDL_MouseButtonFlags.SDL_BUTTON_X1MASK)
 								keyCode = Keycode.MOUSE4;
 							else
 								keyCode = Keycode.MOUSE5;
 
-							var type = e.type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN ?
+							var type = e.type == (uint)SDL.SDL_EventType.SDL_EVENT_MOUSE_BUTTON_DOWN ?
 								KeyInputEvent.Down : KeyInputEvent.Up;
 
-							var tapCount = e.type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN ?
+							var tapCount = e.type == (uint)SDL.SDL_EventType.SDL_EVENT_MOUSE_BUTTON_DOWN ?
 								MultiTapDetection.DetectFromKeyboard(keyCode, mods) :
 								MultiTapDetection.InfoFromKeyboard(keyCode, mods);
 
@@ -170,7 +164,7 @@ namespace OpenRA.Platforms.Default
 								Modifiers = mods,
 								UnicodeChar = '?',
 								MultiTapCount = tapCount,
-								IsRepeat = e.key.repeat != 0
+								IsRepeat = e.key.repeat
 							};
 							inputHandler.OnKeyInput(keyEvent);
 						}
@@ -178,14 +172,14 @@ namespace OpenRA.Platforms.Default
 						break;
 					}
 
-					case SDL.SDL_EventType.SDL_MOUSEMOTION:
+					case SDL.SDL_EventType.SDL_EVENT_MOUSE_MOTION:
 					{
-						var mousePos = new int2(e.motion.x, e.motion.y);
+						var mousePos = new int2((int)e.motion.x, (int)e.motion.y);
 						var input = lockedMousePosition ?? mousePos;
 						var pos = EventPosition(device, input.X, input.Y);
 
 						var delta = lockedMousePosition == null
-							? EventPosition(device, e.motion.xrel, e.motion.yrel)
+							? EventPosition(device, (int)e.motion.xrel, (int)e.motion.yrel)
 							: mousePos - lockedMousePosition.Value;
 
 						pendingMotion = new MouseInput(
@@ -194,32 +188,35 @@ namespace OpenRA.Platforms.Default
 						break;
 					}
 
-					case SDL.SDL_EventType.SDL_MOUSEWHEEL:
+					case SDL.SDL_EventType.SDL_EVENT_MOUSE_WHEEL:
 					{
 						SDL.SDL_GetMouseState(out var x, out var y);
 
-						var pos = EventPosition(device, x, y);
-						inputHandler.OnMouseInput(new MouseInput(MouseInputEvent.Scroll, MouseButton.None, pos, new int2(0, e.wheel.y), mods, 0));
+						var pos = EventPosition(device, (int)x, (int)y);
+						inputHandler.OnMouseInput(new MouseInput(MouseInputEvent.Scroll, MouseButton.None, pos, new int2(0, (int)e.wheel.y), mods, 0));
 
 						break;
 					}
 
-					case SDL.SDL_EventType.SDL_TEXTINPUT:
+					case SDL.SDL_EventType.SDL_EVENT_TEXT_INPUT:
 					{
-						var rawBytes = new byte[SDL.SDL_TEXTINPUTEVENT_TEXT_SIZE];
-						unsafe { Marshal.Copy((IntPtr)e.text.text, rawBytes, 0, SDL.SDL_TEXTINPUTEVENT_TEXT_SIZE); }
-						inputHandler.OnTextInput(Encoding.UTF8.GetString(rawBytes, 0, rawBytes.IndexOf((byte)0)));
+						unsafe
+						{
+							var text = Marshal.PtrToStringUTF8((IntPtr)e.text.text);
+							inputHandler.OnTextInput(text);
+						}
+
 						break;
 					}
 
-					case SDL.SDL_EventType.SDL_KEYDOWN:
-					case SDL.SDL_EventType.SDL_KEYUP:
+					case SDL.SDL_EventType.SDL_EVENT_KEY_DOWN:
+					case SDL.SDL_EventType.SDL_EVENT_KEY_UP:
 					{
-						var keyCode = (Keycode)e.key.keysym.sym;
-						var type = e.type == SDL.SDL_EventType.SDL_KEYDOWN ?
+						var keyCode = (Keycode)e.key.key;
+						var type = e.type == (uint)SDL.SDL_EventType.SDL_EVENT_KEY_DOWN ?
 							KeyInputEvent.Down : KeyInputEvent.Up;
 
-						var tapCount = e.type == SDL.SDL_EventType.SDL_KEYDOWN ?
+						var tapCount = e.type == (uint)SDL.SDL_EventType.SDL_EVENT_KEY_DOWN ?
 							MultiTapDetection.DetectFromKeyboard(keyCode, mods) :
 							MultiTapDetection.InfoFromKeyboard(keyCode, mods);
 
@@ -228,13 +225,13 @@ namespace OpenRA.Platforms.Default
 							Event = type,
 							Key = keyCode,
 							Modifiers = mods,
-							UnicodeChar = (char)e.key.keysym.sym,
+							UnicodeChar = (char)e.key.key,
 							MultiTapCount = tapCount,
-							IsRepeat = e.key.repeat != 0
+							IsRepeat = e.key.repeat
 						};
 
 						// Special case workaround for windows users
-						if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F4 && mods.HasModifier(Modifiers.Alt) &&
+						if (e.key.key == (uint)SDL.SDL_Keycode.SDLK_F4 && mods.HasModifier(Modifiers.Alt) &&
 							Platform.CurrentPlatform == PlatformType.Windows)
 							Game.Exit();
 						else

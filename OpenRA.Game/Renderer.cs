@@ -564,8 +564,8 @@ namespace OpenRA
 
 		public string GLVersion => Context.GLVersion;
 
-		public int DisplayCount => Window.DisplayCount;
+		public uint[] Displays => Window.Displays;
 
-		public int CurrentDisplay => Window.CurrentDisplay;
+		public uint CurrentDisplay => Window.CurrentDisplay;
 	}
 }

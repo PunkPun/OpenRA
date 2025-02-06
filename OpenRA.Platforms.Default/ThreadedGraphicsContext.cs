@@ -54,7 +54,7 @@ namespace OpenRA.Platforms.Default
 		Action<object> doSetBlendMode;
 		Action<object> doSetVSync;
 
-		public ThreadedGraphicsContext(Sdl2GraphicsContext context, int vertexBatchSize, int indexBatchSize)
+		public ThreadedGraphicsContext(Sdl3GraphicsContext context, int vertexBatchSize, int indexBatchSize)
 		{
 			VertexBatchSize = vertexBatchSize;
 			IndexBatchSize = indexBatchSize;
@@ -74,7 +74,7 @@ namespace OpenRA.Platforms.Default
 
 		void RenderThread(object contextObject)
 		{
-			using (var context = (Sdl2GraphicsContext)contextObject)
+			using (var context = (Sdl3GraphicsContext)contextObject)
 			{
 				// This lock allows the constructor to block until initialization completes.
 				lock (syncObject)
