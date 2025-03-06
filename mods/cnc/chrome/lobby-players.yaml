@@ -257,7 +257,7 @@ Container@LOBBY_PLAYER_BIN:
 									Text: label-lobby-players-faction
 						Label@TEAM:
 							X: 435
-							Width: 44
+							Width: 25
 							Height: 25
 							Align: Center
 						DropDownButton@TEAM_DROPDOWN:
