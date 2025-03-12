@@ -244,19 +244,18 @@ namespace OpenRA.Mods.Common.Traits
 			if (currentTarget == null)
 				return;
 
-			var target = targetManager.self;
-			foreach (var w in progressWatchers)
-				w.Update(self, self, target, 0, 0);
-
-			if (targetManager != null)
-				foreach (var w in targetManager.progressWatchers)
-					w.Update(target, self, target, 0, 0);
-
 			if (capturingToken != Actor.InvalidConditionToken)
 				capturingToken = self.RevokeCondition(capturingToken);
 
 			if (targetManager != null)
 			{
+				var target = targetManager.self;
+				foreach (var w in progressWatchers)
+					w.Update(self, self, target, 0, 0);
+
+				foreach (var w in targetManager.progressWatchers)
+					w.Update(target, self, target, 0, 0);
+
 				if (targetManager.beingCapturedToken != Actor.InvalidConditionToken)
 					targetManager.beingCapturedToken = target.RevokeCondition(targetManager.beingCapturedToken);
 
