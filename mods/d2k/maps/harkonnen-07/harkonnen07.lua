@@ -233,7 +233,7 @@ WorldLoaded = function()
 	Camera.Position = HEngineer.CenterPosition
 	AtreidesAttackLocation = AConYard2.Location
 
-	Trigger.AfterDelay(DateTime.Minutes(5), SendAirStrike)
+	Trigger.AfterDelay(EarlyGameStage, SendAirStrike)
 
 	Trigger.OnCapture(AConYard2, function()
 		Harkonnen.MarkCompletedObjective(CaptureAtreidesConYard)

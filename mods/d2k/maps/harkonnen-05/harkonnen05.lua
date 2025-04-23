@@ -282,4 +282,5 @@ WorldLoaded = function()
 	local ordosCondition = function() return Harkonnen.IsObjectiveCompleted(KillOrdos) end
 	TriggerCarryallReinforcements(Harkonnen, OrdosMain, BaseAreaTriggers[1], OrdosHunters[1], OrdosHunterPaths[2], ordosCondition)
 	TriggerCarryallReinforcements(Harkonnen, OrdosMain, BaseAreaTriggers[2], OrdosHunters[2], OrdosHunterPaths[1], ordosCondition)
+
 end

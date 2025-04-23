@@ -366,8 +366,8 @@ WorldLoaded = function()
 	Camera.Position = HBarracks.CenterPosition
 	AtreidesAttackLocation = HBarracks.Location
 
-	Trigger.AfterDelay(DateTime.Minutes(5), SendAirStrike)
-	Trigger.AfterDelay(DateTime.Minutes(1) + DateTime.Seconds (30), BuildFremen)
+	Trigger.AfterDelay(EarlyGameStage, SendAirStrike)
+	Trigger.AfterDelay(EarlyGameStage, BuildFremen)
 
 	Trigger.OnAllKilledOrCaptured(AtreidesMainBase, function()
 		Utils.Do(AtreidesMain.GetGroundAttackers(), IdleHunt)

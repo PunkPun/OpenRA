@@ -286,8 +286,8 @@ WorldLoaded = function()
 	Camera.Position = HMCV.CenterPosition
 	AtreidesAttackLocation = HarkonnenRally.Location
 
-	Trigger.AfterDelay(DateTime.Minutes(5), SendAirStrike)
-	Trigger.AfterDelay(DateTime.Minutes(1) + DateTime.Seconds (30), BuildFremen)
+	Trigger.AfterDelay(DateTime.Minutes(10), SendAirStrike)
+	Trigger.AfterDelay(DateTime.Minutes(3) + DateTime.Seconds (30), BuildFremen)
 
 	Trigger.OnAllKilledOrCaptured(AtreidesMainBase, function()
 		Utils.Do(AtreidesMain.GetGroundAttackers(), IdleHunt)

@@ -7,6 +7,15 @@
    information, see COPYING.
 ]]
 
+EarlyGameStage = DateTime.Minutes(5)
+InitialProductionDelay = {
+	HarkonnenMain =
+	{
+		easy = DateTime.Seconds(100),
+		normal = DateTime.Seconds(60),
+		hard = DateTime.Seconds(30)
+	}
+}
 AttackGroupSize =
 {
 	easy = 6,
@@ -14,7 +23,13 @@ AttackGroupSize =
 	hard = 10
 }
 
-AttackDelays =
+EarlyAttackDelays =
+{
+	easy = { DateTime.Seconds(7), DateTime.Seconds(10) },
+	normal = { DateTime.Seconds(5), DateTime.Seconds(7) },
+	hard = { DateTime.Seconds(3), DateTime.Seconds(5) }
+}
+LateAttackDelays =
 {
 	easy = { DateTime.Seconds(4), DateTime.Seconds(7) },
 	normal = { DateTime.Seconds(2), DateTime.Seconds(5) },
@@ -49,7 +64,14 @@ ProduceInfantry = function()
 		return
 	end
 
-	local delay = Utils.RandomInteger(AttackDelays[Difficulty][1], AttackDelays[Difficulty][2] + 1)
+	local delay = 0
+	if EarlyGameStage >= DateTime.GameTime then
+		delay =  Utils.RandomInteger(EarlyAttackDelays[Difficulty][1], EarlyAttackDelays[Difficulty][2] + 1)
+	else
+		delay =  Utils.RandomInteger(LateAttackDelays[Difficulty][1], LateAttackDelays[Difficulty][2] + 1)
+	end
+
+
 	local toBuild = { Utils.Random(HarkonnenInfantryTypes) }
 	Harkonnen.Build(toBuild, function(unit)
 		IdlingUnits[Harkonnen][#IdlingUnits[Harkonnen] + 1] = unit[1]
@@ -66,12 +88,21 @@ ActivateAI = function()
 	LastHarvesterEaten[Harkonnen] = true
 	InitAIUnits()
 
-	local delay = function() return Utils.RandomInteger(AttackDelays[Difficulty][1], AttackDelays[Difficulty][2] + 1) end
+	local delay = function()
+		if EarlyGameStage >= DateTime.GameTime then
+			return Utils.RandomInteger(EarlyAttackDelays[Difficulty][1], EarlyAttackDelays[Difficulty][2] + 1)
+		else
+			return Utils.RandomInteger(LateAttackDelays[Difficulty][1], LateAttackDelays[Difficulty][2] + 1)
+		end
+	end
 	local vehilcesToBuild = function() return { Utils.Random(HarkonnenVehicleTypes) } end
 	local tanksToBuild = function() return HarkonnenTankType end
 	local attackThresholdSize = AttackGroupSize[Difficulty] * 2.5
+	Trigger.AfterDelay(InitialProductionDelay["HarkonnenMain"][Difficulty], function()
+		ProduceInfantry()
+		ProduceUnits(Harkonnen, HarkonnenLightFactory, delay, vehilcesToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
+		ProduceUnits(Harkonnen, HarkonnenHeavyFactory, delay, tanksToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
+	end)
+	ActivateCrusherOnProductions({"combat_tank_h"}, {HarkonnenHeavyFactory})
 
-	ProduceInfantry()
-	ProduceUnits(Harkonnen, HarkonnenLightFactory, delay, vehilcesToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
-	ProduceUnits(Harkonnen, HarkonnenHeavyFactory, delay, tanksToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
 end

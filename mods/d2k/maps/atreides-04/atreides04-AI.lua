@@ -63,4 +63,6 @@ ActivateAI = function()
 
 	ProduceUnits(Harkonnen, HarkonnenBarracks, delay, infantryToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
 	ProduceUnits(Harkonnen, HarkonnenHeavyFact, delay, tanksToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
+
+	ActivateCrusherOnProductions({"combat_tank_h"}, {HarkonnenHeavyFact})
 end

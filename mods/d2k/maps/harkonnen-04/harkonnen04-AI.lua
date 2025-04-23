@@ -42,4 +42,11 @@ ActivateAI = function()
 	ProduceUnits(Atreides, ABarracks, delay, infantryToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
 	ProduceUnits(Atreides, ALightFactory, delay, vehilcesToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
 	ProduceUnits(Atreides, AHeavyFactory, delay, tanksToBuild, AttackGroupSize[Difficulty], attackThresholdSize)
+
+	ActivateCrusherOnProductions({"combat_tank_a"}, crusherFactories)
+	Trigger.OnProduction(AHeavyFactory, function (producer, produced)
+		if produced.Type == "combat_tank_a" and producer.Owner.IsBot then
+			AICrushLogic(produced, producer.Owner)
+		end
+	end)
 end

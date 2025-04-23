@@ -169,7 +169,7 @@ BuildSaboteur = function()
 		SendSaboteur(saboteur)
 	end
 
-	Trigger.AfterDelay(DateTime.Minutes(1) + DateTime.Seconds(30), BuildSaboteur)
+	Trigger.AfterDelay(DateTime.Minutes(5) + DateTime.Seconds(30), BuildSaboteur)
 end
 
 SendSaboteur = function(saboteur)
@@ -275,8 +275,8 @@ WorldLoaded = function()
 	OrdosAttackLocation = HMCV.Location
 	MercenaryAttackLocation = HMCV.Location
 
-	Trigger.AfterDelay(DateTime.Minutes(5), SendAirStrike)
-	Trigger.AfterDelay(DateTime.Minutes(1) + DateTime.Seconds(30), BuildSaboteur)
+	Trigger.AfterDelay(EarlyGameStage, SendAirStrike)
+	Trigger.AfterDelay(EarlyGameStage, BuildSaboteur)
 
 	Trigger.OnCapture(MHeavyFactory, function()
 		Harkonnen.MarkCompletedObjective(AllyWithMercenaries)
