@@ -134,20 +134,13 @@ SendStarportReinforcements = function()
 		if CStarport.IsDead or CStarport.Owner ~= Corrino then
 			return
 		end
-
+		Media.DisplayMessage(UserInterface.GetFluentMessage("imperial-ships-penetrating-defense-grid"), Mentat)
 		local units = Reinforcements.ReinforceWithTransport(Corrino, "frigate", CorrinoStarportReinforcements[Difficulty], { CorrinoStarportEntry.Location, CStarport.Location + CVec.New(1, 1) }, { CorrinoStarportExit.Location })[2]
 		Utils.Do(units, function(unit)
 			unit.AttackMove(OrdosAttackLocation)
 			IdleHunt(unit)
 		end)
-
 		SendStarportReinforcements()
-
-		if Harkonnen.IsObjectiveFailed(GuardOutpost) then
-			return
-		end
-
-		Media.DisplayMessage(UserInterface.GetFluentMessage("imperial-ships-penetrating-defense-grid"), Mentat)
 	end)
 end
 
@@ -257,6 +250,9 @@ WorldLoaded = function()
 		Media.DisplayMessage(UserInterface.GetFluentMessage("protect-outpost"), Mentat)
 	end)
 
+	Trigger.OnAllKilledOrCaptured({ HOutpost }, function()
+		SendStarportReinforcements()
+	end)
 	local path = function() return Utils.Random(OrdosPaths) end
 	local waveCondition = function() return Harkonnen.IsObjectiveCompleted(KillOrdos) end
 	local huntFunction = function(unit)
@@ -265,8 +261,6 @@ WorldLoaded = function()
 	end
 	SendCarryallReinforcements(OrdosMain, 0, OrdosAttackWaves[Difficulty], OrdosAttackDelay[Difficulty], path, OrdosReinforcements[Difficulty], waveCondition, huntFunction)
 	OrdosReinforcementNotification(0, OrdosAttackWaves[Difficulty])
-
-	SendStarportReinforcements()
 
 	Actor.Create("upgrade.barracks", true, { Owner = OrdosMain })
 	Actor.Create("upgrade.light", true, { Owner = OrdosMain })
