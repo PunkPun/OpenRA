@@ -80,8 +80,13 @@ stay-away-from-starport = Stay away from our Starport.
 smuggler-leader = Smuggler Leader.
 were-warned-will-pay = You were warned. Now you will pay.
 destroy-smugglers-mercenaries = Destroy the Smugglers and their mercenaries.
+starport-destroyed = Starport destroyed.
 capture-harkonnen-barracks-release-hostages = Capture the Harkonnen barracks to release the hostages.
 
+## atreides-06b
+destroy-mercenaries = Destroy Mercenaries.
+destroy-ordos-starport = Destroy Ordos Starport.
+destroy-smugglers = Destroy Smugglers.
 ## harkonnen-01ab, harkonnen-03ab
 eliminate-atreides-units-reinforcements = Eliminate all Atreides forces and reinforcements in the area.
 
