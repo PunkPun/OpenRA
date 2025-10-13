@@ -16,6 +16,7 @@ using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Traits;
+using static OpenRA.Mods.Common.Traits.Locomotor;
 
 namespace OpenRA.Mods.Common.Activities
 {
@@ -248,6 +249,25 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			var containsTemporaryBlocker = self.World.ContainsTemporaryBlocker(nextCell, self);
+
+			/* For multi-cell units, branch here to attempt to find an alt path which fits its footprintSize... */
+			var footprint = MulticellExts.GetFootprint(self);
+			if ((footprint.Left | footprint.Width | footprint.Top | footprint.Height) != 0)
+			{
+				if (containsTemporaryBlocker || !mobile.CanEnterCell(nextCell, ignoreActor))
+				{
+					var detour = MulticellExts.TryMulticellDetour(self, mobile.ToCell, destination ?? nextCell, maxRadius: 6, ignoreActor);
+					if (detour.Count > 1)
+					{
+						for (var i = 0; i < detour.Count - 1; i++)
+						{
+							path.Add(detour[i]);
+						}
+
+						return (null, true);
+					}
+				}
+			}
 
 			// Next cell in the move is blocked by another actor
 			if (containsTemporaryBlocker || !mobile.CanEnterCell(nextCell, ignoreActor))

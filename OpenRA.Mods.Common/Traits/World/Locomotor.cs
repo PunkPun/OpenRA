@@ -162,6 +162,140 @@ namespace OpenRA.Mods.Common.Traits
 					terrainInfos[i] = LocomotorInfo.TerrainInfo.Impassable;
 		}
 
+		public static class MulticellExts
+		{
+			public static Rectangle GetFootprint(Actor actor)
+			{
+				var mobile = (Mobile)actor.OccupiesSpace;
+				return mobile.Info.MulticellFootprint;
+			}
+
+			public static IEnumerable<CPos> EnumFootprint(CPos center, Rectangle footprint)
+			{
+				/* Safeguard for single-cell units */
+				if (footprint.Left == 0 && footprint.Width == 0
+					&& footprint.Top == 0 && footprint.Height == 0)
+				{
+					yield return center;
+				}
+
+				for (var offX = -footprint.Left; offX <= footprint.Width; offX++)
+				{
+					for (var offY = -footprint.Top; offY <= footprint.Height; offY++)
+					{
+						yield return new CPos(center.X + offX, center.Y + offY, center.Layer);
+					}
+				}
+			}
+
+			public static bool CanFootprintEnter(Actor actor, Locomotor locomotor, CPos target, BlockedByActor blockedBy, Actor ignoredActor, bool ignoreSelf)
+			{
+				var footprint = GetFootprint(actor);
+				foreach (var c in EnumFootprint(target, footprint))
+				{
+					var cost = locomotor.MovementCostToEnterCell(actor, c, blockedBy, ignoredActor, ignoreSelf);
+					if (cost == PathGraph.MovementCostForUnreachableCell)
+					{
+						return false;
+					}
+				}
+
+				return true;
+			}
+
+			/// <summary>
+			/// Lightweight grid search to find a short detour that respects a multi-cell footprint.
+			/// Returns a path list from start->found inclusive (last item is start).
+			/// </summary>
+			public static List<CPos> TryMulticellDetour(Actor actor, CPos start, CPos desired, int maxRadius, Actor ignoredActor)
+			{
+				var world = actor.World;
+				var map = world.Map;
+
+				var mobile = (Mobile)actor.OccupiesSpace;
+				var locomotor = mobile.Locomotor;
+
+				var neighbors = new CVec[]
+				{
+					new(1, 0), new(-1, 0),
+					new(0, 1), new(0, -1),
+					new(1, 1), new(1, -1),
+					new(-1, 1), new(-1, -1),
+				};
+
+				var q = new Queue<CPos>();
+				var prev = new Dictionary<CPos, CPos>();
+				var dist = new Dictionary<CPos, int>();
+
+				q.Enqueue(start);
+				dist[start] = 0;
+
+				CPos? best = null;
+				var bestScore = int.MaxValue;
+
+				while (q.Count > 0)
+				{
+					var cur = q.Dequeue();
+					var curDist = dist[cur];
+
+					var score = (cur - desired).LengthSquared;
+					if (score < bestScore && CanFootprintEnter(actor, locomotor, cur, BlockedByActor.Immovable, ignoredActor, true))
+					{
+						best = cur;
+						bestScore = score;
+
+						if (cur == desired)
+						{
+							break;
+						}
+					}
+
+					if (curDist >= maxRadius)
+					{
+						continue;
+					}
+
+					for (var i = 0; i < neighbors.Length; i++)
+					{
+						var next = cur + neighbors[i];
+						if (!map.Contains(next))
+						{
+							continue;
+						}
+
+						if (dist.ContainsKey(next))
+						{
+							continue;
+						}
+
+						if (!CanFootprintEnter(actor, locomotor, next, BlockedByActor.Immovable, ignoredActor, true))
+						{
+							continue;
+						}
+
+						dist[next] = curDist + 1;
+						prev[next] = cur;
+						q.Enqueue(next);
+					}
+				}
+
+				if (best == null || best.Value == start)
+				{
+					return [];
+				}
+
+				var path = new List<CPos>();
+				for (var cur = best.Value; cur != start; cur = prev[cur])
+				{
+					path.Add(cur);
+				}
+
+				path.Add(start);
+
+				return path;
+			}
+		}
+
 		public short MovementCostForCell(CPos cell)
 		{
 			return MovementCostForCell(cell, null);
@@ -221,6 +355,20 @@ namespace OpenRA.Mods.Common.Traits
 			// If the check allows: We are not blocked by other actors.
 			if (check == BlockedByActor.None)
 				return true;
+
+			/* If we're a multi-cell actor, we should skip cells we ourselves are using */
+			if (actor != null)
+			{
+				var footprint = MulticellExts.GetFootprint(actor);
+				if ((footprint.Left | footprint.Width | footprint.Top | footprint.Height) != 0)
+				{
+					foreach (var occupied in actor.OccupiesSpace.OccupiedCells())
+					{
+						if (occupied.Cell == cell)
+							return true;
+					}
+				}
+			}
 
 			var cellCache = GetCache(cell);
 			var cellFlag = cellCache.CellFlag;
@@ -308,6 +456,23 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			if (MovementCostForCell(cell) == PathGraph.MovementCostForUnreachableCell)
 				return SubCell.Invalid;
+
+			/* For multi-cell mobiles, we want to validate every cell within the footprintSize
+			 *  *Any* cell blocked for the footprintSize means this is an invalid move */
+			var footprint = MulticellExts.GetFootprint(self);
+			if ((footprint.Left | footprint.Width | footprint.Top | footprint.Height) != 0)
+			{
+				foreach (var fcell in MulticellExts.EnumFootprint(cell, footprint))
+				{
+					if (!CanMoveFreelyInto(self, fcell, SubCell.FullCell, check, ignoreActor, ignoreSelf: true)
+						|| MovementCostForCell(fcell) == PathGraph.MovementCostForUnreachableCell)
+					{
+						return SubCell.Invalid;
+					}
+				}
+
+				return SubCell.FullCell;
+			}
 
 			if (check > BlockedByActor.None)
 			{

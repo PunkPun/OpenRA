@@ -92,6 +92,9 @@ namespace OpenRA.Mods.Common.Traits
 			"-1 means that the actor does not tilt on slopes.")]
 		public readonly WDist TerrainOrientationAdjustmentMargin = new(-1);
 
+		[Desc("Additional cell footprint size in cells; 1 for default cell size.")]
+		public readonly Rectangle MulticellFootprint = new(0, 0, 0, 0);
+
 		IEnumerable<ActorInit> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
 		{
 			yield return new FacingInit(PreviewFacing);
@@ -134,6 +137,25 @@ namespace OpenRA.Mods.Common.Traits
 			// PERF: Avoid repeated trait queries on the hot path
 			locomotor ??= world.WorldActor.TraitsImplementing<Locomotor>()
 				   .SingleOrDefault(l => l.Info.Name == Locomotor);
+
+			// For multi-cell mobiles, we need to validate more cells
+			var footprint = MulticellFootprint;
+			if ((footprint.Left | footprint.Width | footprint.Top | footprint.Height) != 0)
+			{
+				for (var offX = -footprint.Left; offX <= footprint.Width; offX++)
+				{
+					for (var offY = -footprint.Top; offY <= footprint.Height; offY++)
+					{
+						var c = new CPos(cell.X + offX, cell.Y + offY, cell.Layer);
+						if (locomotor.MovementCostToEnterCell(self, c, check, self, false, subCell) == PathGraph.MovementCostForUnreachableCell)
+						{
+							return false;
+						}
+					}
+				}
+
+				return true;
+			}
 
 			return locomotor.MovementCostToEnterCell(
 				self, cell, check, ignoreActor, false, subCell) != PathGraph.MovementCostForUnreachableCell;
@@ -255,6 +277,24 @@ namespace OpenRA.Mods.Common.Traits
 
 		public (CPos, SubCell)[] OccupiedCells()
 		{
+			var footprint = Info.MulticellFootprint;
+			if ((footprint.Left | footprint.Width | footprint.Top | footprint.Height) != 0)
+			{
+				var result = new List<(CPos, SubCell)>();
+				var center = ToCell;
+
+				for (var offX = -footprint.Left; offX <= footprint.Width; offX++)
+				{
+					for (var offY = -footprint.Top; offY <= footprint.Height; offY++)
+					{
+						var cell = new CPos(center.X + offX, center.Y + offY, center.Layer);
+						result.Add((cell, SubCell.FullCell));
+					}
+				}
+
+				return result.ToArray();
+			}
+
 			if (FromCell == ToCell)
 				return [(FromCell, FromSubCell)];
 

@@ -167,6 +167,7 @@ V2RL:
 		Type: Heavy
 	Mobile:
 		Speed: 64
+		MulticellFootprint: 0, 0, 1, 1
 	RevealsShroud:
 		MinRange: 4c0
 		Range: 6c0
@@ -390,6 +391,7 @@ MCV:
 	Mobile:
 		Speed: 60
 		Locomotor: heavywheeled
+		MulticellFootprint: 1, 1, 1, 1
 	RevealsShroud:
 		Range: 4c0
 	Transforms:

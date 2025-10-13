@@ -140,7 +140,7 @@ namespace OpenRA.Mods.Common.Traits
 			self.NotifyBlocker(self.Location + s.ExitCell);
 
 			return mobileInfo == null ||
-				mobileInfo.CanEnterCell(self.World, self, self.Location + s.ExitCell, ignoreActor: self);
+				mobileInfo.CanEnterCell(self.World, null, self.Location + s.ExitCell, ignoreActor: self);
 		}
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
