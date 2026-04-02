@@ -101,6 +101,9 @@ jobs:
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
       - name: Package Disk Image
         env:
           MACOS_DEVELOPER_IDENTITY: ${{ secrets.MACOS_DEVELOPER_IDENTITY }}
