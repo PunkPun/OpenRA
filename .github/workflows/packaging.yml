@@ -11,16 +11,10 @@ permissions:
   contents: write # for release creation
 
 jobs:
-  source:
-    name: Source Tarball
+  create-release:
+    name: Create Draft Release
     runs-on: ubuntu-22.04
     steps:
-      - name: Clone Repository
-        uses: actions/checkout@v6
-
-      - name: Prepare Environment
-        run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
-
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -32,7 +26,23 @@ jobs:
             PRE_RELEASE_FLAG="--prerelease"
           fi
 
-          gh release create "${{ github.ref_name }}" $PRE_RELEASE_FLAG
+          # Use --repo to interact with the API without needing a git checkout
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "${{ github.ref_name }}" \
+            --draft \
+            $PRE_RELEASE_FLAG
+
+  source:
+    name: Source Tarball
+    needs: create-release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Clone Repository
+        uses: actions/checkout@v6
+
+      - name: Prepare Environment
+        run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
 
       - name: Package Source
         run: |
@@ -48,6 +58,7 @@ jobs:
 
   linux:
     name: Linux AppImages
+    needs: create-release
     runs-on: ubuntu-22.04
     steps:
       - name: Clone Repository
@@ -76,6 +87,7 @@ jobs:
 
   macos:
     name: macOS Disk Image
+    needs: create-release
     runs-on: macos-14
     steps:
       - name: Clone Repository
@@ -109,6 +121,7 @@ jobs:
 
   windows:
     name: Windows Installers
+    needs: create-release
     runs-on: ubuntu-22.04
     steps:
       - name: Clone Repository
