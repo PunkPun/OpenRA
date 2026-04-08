@@ -56,6 +56,9 @@ SRCDIR="$(pwd)/../.."
 BUILTDIR="$(pwd)/build"
 ARTWORK_DIR="$(pwd)/../artwork/"
 
+# Clean up any leftover build directories from previous aborted runs
+rm -rf "${BUILTDIR}"
+
 modify_plist() {
 	sed "s|${1}|${2}|g" "${3}" > "${3}.tmp" && mv "${3}.tmp" "${3}"
 }
@@ -142,10 +145,10 @@ rm -rf "${TEMPLATE_DIR}"
 
 echo "Packaging disk image"
 if hdiutil info | grep -q "/Volumes/OpenRA"; then
-  echo "Some process is stealing our resources! /Volumes/OpenRA is already mounted!"
+	echo "Some process is stealing our resources! /Volumes/OpenRA is already mounted!"
 fi
 
-hdiutil create "build.dmg" -format UDRW -volname "OpenRA" -fs HFS+ -srcfolder build
+hdiutil create "build.dmg" -format UDRW -volname "OpenRA" -fs HFS+ -srcfolder "${BUILTDIR}"
 DMG_DEVICE=$(hdiutil attach -readwrite -noverify -noautoopen "build.dmg" | egrep '^/dev/' | sed 1q | awk '{print $1}')
 sleep 2
 
@@ -156,30 +159,30 @@ tiffutil -cathidpicheck "${ARTWORK_DIR}/macos-background.png" "${ARTWORK_DIR}/ma
 cp "${BUILTDIR}/OpenRA - Red Alert.app/Contents/Resources/ra.icns" "/Volumes/OpenRA/.VolumeIcon.icns"
 
 echo '
-   tell application "Finder"
-     tell disk "'OpenRA'"
-           open
-           set current view of container window to icon view
-           set toolbar visible of container window to false
-           set statusbar visible of container window to false
-           set the bounds of container window to {400, 100, 1040, 580}
-           set theViewOptions to the icon view options of container window
-           set arrangement of theViewOptions to not arranged
-           set icon size of theViewOptions to 72
-           set background picture of theViewOptions to file ".background:background.tiff"
-           make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
-           set position of item "'OpenRA - Tiberian Dawn.app'" of container window to {160, 106}
-           set position of item "'OpenRA - Red Alert.app'" of container window to {320, 106}
-           set position of item "'OpenRA - Dune 2000.app'" of container window to {480, 106}
-           set position of item "Applications" of container window to {320, 298}
-           set position of item ".background" of container window to {160, 298}
-           set position of item ".fseventsd" of container window to {160, 298}
-           set position of item ".VolumeIcon.icns" of container window to {160, 298}
-           update without registering applications
-           delay 5
-           close
-     end tell
-   end tell
+tell application "Finder"
+	tell disk "'OpenRA'"
+		open
+		set current view of container window to icon view
+		set toolbar visible of container window to false
+		set statusbar visible of container window to false
+		set the bounds of container window to {400, 100, 1040, 580}
+		set theViewOptions to the icon view options of container window
+		set arrangement of theViewOptions to not arranged
+		set icon size of theViewOptions to 72
+		set background picture of theViewOptions to file ".background:background.tiff"
+		make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
+		set position of item "'OpenRA - Tiberian Dawn.app'" of container window to {160, 106}
+		set position of item "'OpenRA - Red Alert.app'" of container window to {320, 106}
+		set position of item "'OpenRA - Dune 2000.app'" of container window to {480, 106}
+		set position of item "Applications" of container window to {320, 298}
+		set position of item ".background" of container window to {160, 298}
+		set position of item ".fseventsd" of container window to {160, 298}
+		set position of item ".VolumeIcon.icns" of container window to {160, 298}
+		update without registering applications
+		delay 5
+		close
+	end tell
+end tell
 ' | osascript
 
 # HACK: Copy the volume icon again - something in the previous step seems to delete it...?
@@ -225,33 +228,24 @@ sync
 hdiutil detach "${DMG_DEVICE}"
 rm -rf "${BUILTDIR}"
 
+DMG_NAME="OpenRA-${TAG}.dmg"
+FINAL_DMG_PATH="${OUTPUTDIR}/${DMG_NAME}"
 
+hdiutil convert "build.dmg" -format ULFO -ov -o "${FINAL_DMG_PATH}"
+rm "build.dmg"
+
+# Submit build for notarization
 if [ -n "${MACOS_DEVELOPER_USERNAME}" ] && [ -n "${MACOS_DEVELOPER_PASSWORD}" ] && [ -n "${MACOS_DEVELOPER_IDENTITY}" ]; then
 	echo "Submitting build for notarization"
 
-	# Reset xcode search path to fix xcrun not finding altool
+	# Reset xcode search path to fix xcrun not finding altool/notarytool
 	sudo xcode-select -r
 
-	# Create a temporary read-only dmg for submission (notarization service rejects read/write images)
-	hdiutil convert "build.dmg" -format ULFO -ov -o "build-notarization.dmg"
+	# Submit the final DMG directly to notarytool
+	xcrun notarytool submit "${FINAL_DMG_PATH}" --wait --apple-id "${MACOS_DEVELOPER_USERNAME}" --password "${MACOS_DEVELOPER_PASSWORD}" --team-id "${MACOS_DEVELOPER_IDENTITY}"
 
-	xcrun notarytool submit "build-notarization.dmg" --wait --apple-id "${MACOS_DEVELOPER_USERNAME}" --password "${MACOS_DEVELOPER_PASSWORD}" --team-id "${MACOS_DEVELOPER_IDENTITY}"
-
-	rm "build-notarization.dmg"
-
-	echo "Stapling tickets"
-	DMG_DEVICE=$(hdiutil attach -readwrite -noverify -noautoopen "build.dmg" | egrep '^/dev/' | sed 1q | awk '{print $1}')
-	sleep 2
-
-	xcrun stapler staple "/Volumes/OpenRA/OpenRA - Red Alert.app"
-	xcrun stapler staple "/Volumes/OpenRA/OpenRA - Tiberian Dawn.app"
-	xcrun stapler staple "/Volumes/OpenRA/OpenRA - Dune 2000.app"
-
-	sync
-	sync
-
-	hdiutil detach "${DMG_DEVICE}"
+	echo "Stapling tickets to DMG"
+	xcrun stapler staple "${FINAL_DMG_PATH}"
 fi
 
-hdiutil convert "build.dmg" -format ULFO -ov -o "${OUTPUTDIR}/OpenRA-${TAG}.dmg"
-rm "build.dmg"
+echo "Packaging complete: ${FINAL_DMG_PATH}"
