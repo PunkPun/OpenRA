@@ -17,15 +17,15 @@
 set -o errexit -o pipefail || exit $?
 
 if [[ "${OSTYPE}" != "darwin"* ]]; then
-	echo >&2 "macOS packaging requires a macOS host"
-	exit 1
+    echo >&2 "macOS packaging requires a macOS host"
+    exit 1
 fi
 
 command -v clang >/dev/null 2>&1 || { echo >&2 "macOS packaging requires clang."; exit 1; }
 
 if [ $# -ne "2" ]; then
-	echo "Usage: $(basename "$0") tag outputdir"
-	exit 1
+    echo "Usage: $(basename "$0") tag outputdir"
+    exit 1
 fi
 
 # Set the working dir to the location of this script
@@ -35,18 +35,18 @@ cd "${HERE}"
 
 # Import code signing certificate
 if [ -n "${MACOS_DEVELOPER_CERTIFICATE_BASE64}" ] && [ -n "${MACOS_DEVELOPER_CERTIFICATE_PASSWORD}" ] && [ -n "${MACOS_DEVELOPER_IDENTITY}" ]; then
-	echo "Importing signing certificate"
-	echo "${MACOS_DEVELOPER_CERTIFICATE_BASE64}" | base64 --decode > build.p12
-	security create-keychain -p build build.keychain
+    echo "Importing signing certificate"
+    echo "${MACOS_DEVELOPER_CERTIFICATE_BASE64}" | base64 --decode > build.p12
+    security create-keychain -p build build.keychain
 
-	# Ensure keychain is deleted upon script exit, even on failure
-	trap 'security delete-keychain build.keychain 2>/dev/null || true' EXIT
+    # Ensure keychain is deleted upon script exit, even on failure
+    trap 'security delete-keychain build.keychain 2>/dev/null || true' EXIT
 
-	security default-keychain -s build.keychain
-	security unlock-keychain -p build build.keychain
-	security import build.p12 -k build.keychain -P "${MACOS_DEVELOPER_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign >/dev/null 2>&1
-	security set-key-partition-list -S apple-tool:,apple: -s -k build build.keychain >/dev/null 2>&1
-	rm -fr build.p12
+    security default-keychain -s build.keychain
+    security unlock-keychain -p build build.keychain
+    security import build.p12 -k build.keychain -P "${MACOS_DEVELOPER_CERTIFICATE_PASSWORD}" -T /usr/bin/codesign >/dev/null 2>&1
+    security set-key-partition-list -S apple-tool:,apple: -s -k build build.keychain >/dev/null 2>&1
+    rm -fr build.p12
 fi
 
 TAG="${1}"
@@ -60,59 +60,59 @@ ARTWORK_DIR="$(pwd)/../artwork/"
 rm -rf "${BUILTDIR}"
 
 modify_plist() {
-	sed "s|${1}|${2}|g" "${3}" > "${3}.tmp" && mv "${3}.tmp" "${3}"
+    sed "s|${1}|${2}|g" "${3}" > "${3}.tmp" && mv "${3}.tmp" "${3}"
 }
 
 # Copies the game files and sets metadata
 build_app() {
-	TEMPLATE_DIR="${1}"
-	LAUNCHER_DIR="${2}"
-	MOD_ID="${3}"
-	MOD_NAME="${4}"
-	DISCORD_APPID="${5}"
+    TEMPLATE_DIR="${1}"
+    LAUNCHER_DIR="${2}"
+    MOD_ID="${3}"
+    MOD_NAME="${4}"
+    DISCORD_APPID="${5}"
 
-	LAUNCHER_CONTENTS_DIR="${LAUNCHER_DIR}/Contents"
-	LAUNCHER_RESOURCES_DIR="${LAUNCHER_CONTENTS_DIR}/Resources"
+    LAUNCHER_CONTENTS_DIR="${LAUNCHER_DIR}/Contents"
+    LAUNCHER_RESOURCES_DIR="${LAUNCHER_CONTENTS_DIR}/Resources"
 
-	cp -r "${TEMPLATE_DIR}" "${LAUNCHER_DIR}"
+    cp -r "${TEMPLATE_DIR}" "${LAUNCHER_DIR}"
 
-	IS_D2K="False"
-	if [ "${MOD_ID}" = "d2k" ]; then
-		IS_D2K="True"
-	fi
+    IS_D2K="False"
+    if [ "${MOD_ID}" = "d2k" ]; then
+        IS_D2K="True"
+    fi
 
-	# Install engine and mod files
-	install_assemblies "${SRCDIR}" "${LAUNCHER_CONTENTS_DIR}/MacOS/x86_64" "osx-x64" "True" "True" "${IS_D2K}"
-	install_assemblies "${SRCDIR}" "${LAUNCHER_CONTENTS_DIR}/MacOS/arm64" "osx-arm64" "True" "True" "${IS_D2K}"
+    # Install engine and mod files
+    install_assemblies "${SRCDIR}" "${LAUNCHER_CONTENTS_DIR}/MacOS/x86_64" "osx-x64" "True" "True" "${IS_D2K}"
+    install_assemblies "${SRCDIR}" "${LAUNCHER_CONTENTS_DIR}/MacOS/arm64" "osx-arm64" "True" "True" "${IS_D2K}"
 
-	install_data "${SRCDIR}" "${LAUNCHER_RESOURCES_DIR}" "${MOD_ID}"
-	set_engine_version "${TAG}" "${LAUNCHER_RESOURCES_DIR}"
-	set_mod_version "${TAG}" "${LAUNCHER_RESOURCES_DIR}/mods/${MOD_ID}/mod.yaml" "${LAUNCHER_RESOURCES_DIR}/mods/${MOD_ID}-content/mod.yaml"
+    install_data "${SRCDIR}" "${LAUNCHER_RESOURCES_DIR}" "${MOD_ID}"
+    set_engine_version "${TAG}" "${LAUNCHER_RESOURCES_DIR}"
+    set_mod_version "${TAG}" "${LAUNCHER_RESOURCES_DIR}/mods/${MOD_ID}/mod.yaml" "${LAUNCHER_RESOURCES_DIR}/mods/${MOD_ID}-content/mod.yaml"
 
-	# Assemble multi-resolution icon
-	mkdir "${MOD_ID}.iconset"
-	cp "${ARTWORK_DIR}/${MOD_ID}_16x16.png" "${MOD_ID}.iconset/icon_16x16.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_32x32.png" "${MOD_ID}.iconset/icon_16x16@2x.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_32x32.png" "${MOD_ID}.iconset/icon_32x32.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_64x64.png" "${MOD_ID}.iconset/icon_32x32@2x.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_128x128.png" "${MOD_ID}.iconset/icon_128x128.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_256x256.png" "${MOD_ID}.iconset/icon_128x128@2x.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_256x256.png" "${MOD_ID}.iconset/icon_256x256.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_512x512.png" "${MOD_ID}.iconset/icon_256x256@2x.png"
-	cp "${ARTWORK_DIR}/${MOD_ID}_1024x1024.png" "${MOD_ID}.iconset/icon_512x512@2x.png"
-	iconutil --convert icns "${MOD_ID}.iconset" -o "${LAUNCHER_RESOURCES_DIR}/${MOD_ID}.icns"
-	rm -rf "${MOD_ID}.iconset"
+    # Assemble multi-resolution icon
+    mkdir "${MOD_ID}.iconset"
+    cp "${ARTWORK_DIR}/${MOD_ID}_16x16.png" "${MOD_ID}.iconset/icon_16x16.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_32x32.png" "${MOD_ID}.iconset/icon_16x16@2x.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_32x32.png" "${MOD_ID}.iconset/icon_32x32.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_64x64.png" "${MOD_ID}.iconset/icon_32x32@2x.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_128x128.png" "${MOD_ID}.iconset/icon_128x128.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_256x256.png" "${MOD_ID}.iconset/icon_128x128@2x.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_256x256.png" "${MOD_ID}.iconset/icon_256x256.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_512x512.png" "${MOD_ID}.iconset/icon_256x256@2x.png"
+    cp "${ARTWORK_DIR}/${MOD_ID}_1024x1024.png" "${MOD_ID}.iconset/icon_512x512@2x.png"
+    iconutil --convert icns "${MOD_ID}.iconset" -o "${LAUNCHER_RESOURCES_DIR}/${MOD_ID}.icns"
+    rm -rf "${MOD_ID}.iconset"
 
-	# Set launcher metadata
-	modify_plist "{MOD_ID}" "${MOD_ID}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
-	modify_plist "{MOD_NAME}" "${MOD_NAME}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
-	modify_plist "{JOIN_SERVER_URL_SCHEME}" "openra-${MOD_ID}-${TAG}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
-	modify_plist "{DISCORD_URL_SCHEME}" "discord-${DISCORD_APPID}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
+    # Set launcher metadata
+    modify_plist "{MOD_ID}" "${MOD_ID}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
+    modify_plist "{MOD_NAME}" "${MOD_NAME}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
+    modify_plist "{JOIN_SERVER_URL_SCHEME}" "openra-${MOD_ID}-${TAG}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
+    modify_plist "{DISCORD_URL_SCHEME}" "discord-${DISCORD_APPID}" "${LAUNCHER_CONTENTS_DIR}/Info.plist"
 
-	# Sign binaries with developer certificate
-	if [ -n "${MACOS_DEVELOPER_IDENTITY}" ]; then
-		codesign --sign "${MACOS_DEVELOPER_IDENTITY}" --timestamp --options runtime -f --entitlements entitlements.plist --deep "${LAUNCHER_DIR}"
-	fi
+    # Sign binaries with developer certificate
+    if [ -n "${MACOS_DEVELOPER_IDENTITY}" ]; then
+        codesign --sign "${MACOS_DEVELOPER_IDENTITY}" --timestamp --options runtime -f --entitlements entitlements.plist --deep "${LAUNCHER_DIR}"
+    fi
 }
 
 echo "Building launchers"
@@ -143,9 +143,36 @@ build_app "${TEMPLATE_DIR}" "${BUILTDIR}/OpenRA - Dune 2000.app" "d2k" "Dune 200
 
 rm -rf "${TEMPLATE_DIR}"
 
+# Replace duplicate .NET runtime files with hard links to improve compression
+echo "Deduplicating runtime files between mods"
+for MOD in "Red Alert" "Tiberian Dawn"; do
+    for p in "x86_64" "arm64"; do
+        for f in "${BUILTDIR}/OpenRA - ${MOD}.app/Contents/MacOS/${p}"/*; do
+            g="${BUILTDIR}/OpenRA - Dune 2000.app/Contents/MacOS/${p}/"$(basename "${f}")
+            if [ -e "${g}" ] && cmp -s "${f}" "${g}"; then
+                echo "Deduplicating ${f}"
+                rm "${f}"
+                ln "${g}" "${f}"
+            fi
+        done
+    done
+done
+
+echo "Deduplicating runtime files between architectures"
+for MOD in "Red Alert" "Tiberian Dawn" "Dune 2000"; do
+    for f in "${BUILTDIR}/OpenRA - ${MOD}.app/Contents/MacOS/x86_64"/*; do
+        g="${BUILTDIR}/OpenRA - ${MOD}.app/Contents/MacOS/arm64/"$(basename "${f}")
+        if [ -e "${g}" ] && cmp -s "${f}" "${g}"; then
+            echo "Deduplicating ${f}"
+            rm "${f}"
+            ln "${g}" "${f}"
+        fi
+    done
+done
+
 echo "Packaging disk image"
 if hdiutil info | grep -q "/Volumes/OpenRA"; then
-	echo "Some process is stealing our resources! /Volumes/OpenRA is already mounted!"
+    echo "Some process is stealing our resources! /Volumes/OpenRA is already mounted!"
 fi
 
 hdiutil create "build.dmg" -format UDRW -volname "OpenRA" -fs HFS+ -srcfolder "${BUILTDIR}"
@@ -160,28 +187,28 @@ cp "${BUILTDIR}/OpenRA - Red Alert.app/Contents/Resources/ra.icns" "/Volumes/Ope
 
 echo '
 tell application "Finder"
-	tell disk "'OpenRA'"
-		open
-		set current view of container window to icon view
-		set toolbar visible of container window to false
-		set statusbar visible of container window to false
-		set the bounds of container window to {400, 100, 1040, 580}
-		set theViewOptions to the icon view options of container window
-		set arrangement of theViewOptions to not arranged
-		set icon size of theViewOptions to 72
-		set background picture of theViewOptions to file ".background:background.tiff"
-		make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
-		set position of item "'OpenRA - Tiberian Dawn.app'" of container window to {160, 106}
-		set position of item "'OpenRA - Red Alert.app'" of container window to {320, 106}
-		set position of item "'OpenRA - Dune 2000.app'" of container window to {480, 106}
-		set position of item "Applications" of container window to {320, 298}
-		set position of item ".background" of container window to {160, 298}
-		set position of item ".fseventsd" of container window to {160, 298}
-		set position of item ".VolumeIcon.icns" of container window to {160, 298}
-		update without registering applications
-		delay 5
-		close
-	end tell
+    tell disk "'OpenRA'"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {400, 100, 1040, 580}
+        set theViewOptions to the icon view options of container window
+        set arrangement of theViewOptions to not arranged
+        set icon size of theViewOptions to 72
+        set background picture of theViewOptions to file ".background:background.tiff"
+        make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
+        set position of item "'OpenRA - Tiberian Dawn.app'" of container window to {160, 106}
+        set position of item "'OpenRA - Red Alert.app'" of container window to {320, 106}
+        set position of item "'OpenRA - Dune 2000.app'" of container window to {480, 106}
+        set position of item "Applications" of container window to {320, 298}
+        set position of item ".background" of container window to {160, 298}
+        set position of item ".fseventsd" of container window to {160, 298}
+        set position of item ".VolumeIcon.icns" of container window to {160, 298}
+        update without registering applications
+        delay 5
+        close
+    end tell
 end tell
 ' | osascript
 
@@ -189,37 +216,6 @@ end tell
 cp "${BUILTDIR}/OpenRA - Red Alert.app/Contents/Resources/ra.icns" "/Volumes/OpenRA/.VolumeIcon.icns"
 SetFile -c icnC "/Volumes/OpenRA/.VolumeIcon.icns"
 SetFile -a C "/Volumes/OpenRA"
-
-# Replace duplicate .NET runtime files with hard links to improve compression
-for MOD in "Red Alert" "Tiberian Dawn"; do
-	for p in "x86_64" "arm64"; do
-		for f in "/Volumes/OpenRA/OpenRA - ${MOD}.app/Contents/MacOS/${p}"/*; do
-			g="/Volumes/OpenRA/OpenRA - Dune 2000.app/Contents/MacOS/${p}/"$(basename "${f}")
-			hashf=$(shasum "${f}" | awk '{ print $1 }') || :
-			hashg=$(shasum "${g}" | awk '{ print $1 }') || :
-			if [ -n "${hashf}" ] && [ "${hashf}" = "${hashg}" ]; then
-				echo "Deduplicating ${f}"
-				rm "${f}"
-				ln "${g}" "${f}"
-			fi
-		done
-	done
-done
-
-for MOD in "Red Alert" "Tiberian Dawn" "Dune 2000"; do
-	for f in "/Volumes/OpenRA/OpenRA - ${MOD}.app/Contents/MacOS/x86_64"/*; do
-		g="/Volumes/OpenRA/OpenRA - ${MOD}.app/Contents/MacOS/arm64/"$(basename "${f}")
-		if [ -e "${g}" ]; then
-			hashf=$(shasum "${f}" | awk '{ print $1 }') || :
-			hashg=$(shasum "${g}" | awk '{ print $1 }') || :
-			if [ -n "${hashf}" ] && [ "${hashf}" = "${hashg}" ]; then
-				echo "Deduplicating ${f}"
-				rm "${f}"
-				ln "${g}" "${f}"
-			fi
-		fi
-	done
-done
 
 chmod -Rf go-w /Volumes/OpenRA
 sync
@@ -236,16 +232,16 @@ rm "build.dmg"
 
 # Submit build for notarization
 if [ -n "${MACOS_DEVELOPER_USERNAME}" ] && [ -n "${MACOS_DEVELOPER_PASSWORD}" ] && [ -n "${MACOS_DEVELOPER_IDENTITY}" ]; then
-	echo "Submitting build for notarization"
+    echo "Submitting build for notarization"
 
-	# Reset xcode search path to fix xcrun not finding altool/notarytool
-	sudo xcode-select -r
+    # Reset xcode search path to fix xcrun not finding altool/notarytool
+    sudo xcode-select -r
 
-	# Submit the final DMG directly to notarytool
-	xcrun notarytool submit "${FINAL_DMG_PATH}" --wait --apple-id "${MACOS_DEVELOPER_USERNAME}" --password "${MACOS_DEVELOPER_PASSWORD}" --team-id "${MACOS_DEVELOPER_IDENTITY}"
+    # Submit the final DMG directly to notarytool
+    xcrun notarytool submit "${FINAL_DMG_PATH}" --wait --apple-id "${MACOS_DEVELOPER_USERNAME}" --password "${MACOS_DEVELOPER_PASSWORD}" --team-id "${MACOS_DEVELOPER_IDENTITY}"
 
-	echo "Stapling tickets to DMG"
-	xcrun stapler staple "${FINAL_DMG_PATH}"
+    echo "Stapling tickets to DMG"
+    xcrun stapler staple "${FINAL_DMG_PATH}"
 fi
 
 echo "Packaging complete: ${FINAL_DMG_PATH}"
